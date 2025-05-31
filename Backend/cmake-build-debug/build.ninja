@@ -41,37 +41,66 @@ include CMakeFiles/rules.ninja
 
 cmake_ninja_workdir = C$:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/
 # =============================================================================
-# Object build statements for EXECUTABLE target Backend
+# Object build statements for EXECUTABLE target BackendApp
 
 
 #############################################
-# Order-only phony target for Backend
+# Order-only phony target for BackendApp
 
-build cmake_object_order_depends_target_Backend: phony || .
+build cmake_object_order_depends_target_BackendApp: phony || cmake_object_order_depends_target_DataBaseLib
 
-build CMakeFiles/Backend.dir/main.cpp.obj: CXX_COMPILER__Backend_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/main.cpp || cmake_object_order_depends_target_Backend
-  DEP_FILE = CMakeFiles\Backend.dir\main.cpp.obj.d
+build CMakeFiles/BackendApp.dir/main.cpp.obj: CXX_COMPILER__BackendApp_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/main.cpp || cmake_object_order_depends_target_BackendApp
+  DEP_FILE = CMakeFiles\BackendApp.dir\main.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
-  OBJECT_DIR = CMakeFiles\Backend.dir
-  OBJECT_FILE_DIR = CMakeFiles\Backend.dir
+  INCLUDES = -IC:/Users/afraa/Desktop/ProgectAP/Backend/library -IC:/Users/afraa/Desktop/ProgectAP/Backend/DataBase
+  OBJECT_DIR = CMakeFiles\BackendApp.dir
+  OBJECT_FILE_DIR = CMakeFiles\BackendApp.dir
+
+build CMakeFiles/BackendApp.dir/login.cpp.obj: CXX_COMPILER__BackendApp_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/login.cpp || cmake_object_order_depends_target_BackendApp
+  DEP_FILE = CMakeFiles\BackendApp.dir\login.cpp.obj.d
+  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  INCLUDES = -IC:/Users/afraa/Desktop/ProgectAP/Backend/library -IC:/Users/afraa/Desktop/ProgectAP/Backend/DataBase
+  OBJECT_DIR = CMakeFiles\BackendApp.dir
+  OBJECT_FILE_DIR = CMakeFiles\BackendApp.dir
+
+build CMakeFiles/BackendApp.dir/Message.cpp.obj: CXX_COMPILER__BackendApp_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/Message.cpp || cmake_object_order_depends_target_BackendApp
+  DEP_FILE = CMakeFiles\BackendApp.dir\Message.cpp.obj.d
+  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  INCLUDES = -IC:/Users/afraa/Desktop/ProgectAP/Backend/library -IC:/Users/afraa/Desktop/ProgectAP/Backend/DataBase
+  OBJECT_DIR = CMakeFiles\BackendApp.dir
+  OBJECT_FILE_DIR = CMakeFiles\BackendApp.dir
+
+build CMakeFiles/BackendApp.dir/User.cpp.obj: CXX_COMPILER__BackendApp_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/User.cpp || cmake_object_order_depends_target_BackendApp
+  DEP_FILE = CMakeFiles\BackendApp.dir\User.cpp.obj.d
+  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  INCLUDES = -IC:/Users/afraa/Desktop/ProgectAP/Backend/library -IC:/Users/afraa/Desktop/ProgectAP/Backend/DataBase
+  OBJECT_DIR = CMakeFiles\BackendApp.dir
+  OBJECT_FILE_DIR = CMakeFiles\BackendApp.dir
+
+build CMakeFiles/BackendApp.dir/Chat.cpp.obj: CXX_COMPILER__BackendApp_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/Chat.cpp || cmake_object_order_depends_target_BackendApp
+  DEP_FILE = CMakeFiles\BackendApp.dir\Chat.cpp.obj.d
+  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  INCLUDES = -IC:/Users/afraa/Desktop/ProgectAP/Backend/library -IC:/Users/afraa/Desktop/ProgectAP/Backend/DataBase
+  OBJECT_DIR = CMakeFiles\BackendApp.dir
+  OBJECT_FILE_DIR = CMakeFiles\BackendApp.dir
 
 
 # =============================================================================
-# Link build statements for EXECUTABLE target Backend
+# Link build statements for EXECUTABLE target BackendApp
 
 
 #############################################
-# Link the executable Backend.exe
+# Link the executable BackendApp.exe
 
-build Backend.exe: CXX_EXECUTABLE_LINKER__Backend_Debug CMakeFiles/Backend.dir/main.cpp.obj
+build BackendApp.exe: CXX_EXECUTABLE_LINKER__BackendApp_Debug CMakeFiles/BackendApp.dir/main.cpp.obj CMakeFiles/BackendApp.dir/login.cpp.obj CMakeFiles/BackendApp.dir/Message.cpp.obj CMakeFiles/BackendApp.dir/User.cpp.obj CMakeFiles/BackendApp.dir/Chat.cpp.obj | DataBase/libDataBaseLib.a || DataBase/libDataBaseLib.a
   FLAGS = -g
-  LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
-  OBJECT_DIR = CMakeFiles\Backend.dir
+  LINK_LIBRARIES = DataBase/libDataBaseLib.a  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
+  OBJECT_DIR = CMakeFiles\BackendApp.dir
   POST_BUILD = cd .
   PRE_LINK = cd .
-  TARGET_FILE = Backend.exe
-  TARGET_IMPLIB = libBackend.dll.a
-  TARGET_PDB = Backend.exe.dbg
+  TARGET_FILE = BackendApp.exe
+  TARGET_IMPLIB = libBackendApp.dll.a
+  TARGET_PDB = BackendApp.exe.dbg
 
 
 #############################################
@@ -97,9 +126,80 @@ build CMakeFiles/rebuild_cache.util: CUSTOM_COMMAND
 build rebuild_cache: phony CMakeFiles/rebuild_cache.util
 
 # =============================================================================
+# Write statements declared in CMakeLists.txt:
+# C:/Users/afraa/Desktop/ProgectAP/Backend/CMakeLists.txt
+# =============================================================================
+
+# =============================================================================
+# Object build statements for STATIC_LIBRARY target DataBaseLib
+
+
+#############################################
+# Order-only phony target for DataBaseLib
+
+build cmake_object_order_depends_target_DataBaseLib: phony || .
+
+build DataBase/CMakeFiles/DataBaseLib.dir/Database.cpp.obj: CXX_COMPILER__DataBaseLib_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/DataBase/Database.cpp || cmake_object_order_depends_target_DataBaseLib
+  DEP_FILE = DataBase\CMakeFiles\DataBaseLib.dir\Database.cpp.obj.d
+  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  INCLUDES = -IC:/Users/afraa/Desktop/ProgectAP/Backend/DataBase -IC:/Users/afraa/Desktop/ProgectAP/Backend/library
+  OBJECT_DIR = DataBase\CMakeFiles\DataBaseLib.dir
+  OBJECT_FILE_DIR = DataBase\CMakeFiles\DataBaseLib.dir
+
+build DataBase/CMakeFiles/DataBaseLib.dir/__/library/sqlite3.c.obj: C_COMPILER__DataBaseLib_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/library/sqlite3.c || cmake_object_order_depends_target_DataBaseLib
+  DEP_FILE = DataBase\CMakeFiles\DataBaseLib.dir\__\library\sqlite3.c.obj.d
+  FLAGS = -g -fdiagnostics-color=always
+  INCLUDES = -IC:/Users/afraa/Desktop/ProgectAP/Backend/DataBase -IC:/Users/afraa/Desktop/ProgectAP/Backend/library
+  OBJECT_DIR = DataBase\CMakeFiles\DataBaseLib.dir
+  OBJECT_FILE_DIR = DataBase\CMakeFiles\DataBaseLib.dir\__\library
+
+
+# =============================================================================
+# Link build statements for STATIC_LIBRARY target DataBaseLib
+
+
+#############################################
+# Link the static library DataBase\libDataBaseLib.a
+
+build DataBase/libDataBaseLib.a: CXX_STATIC_LIBRARY_LINKER__DataBaseLib_Debug DataBase/CMakeFiles/DataBaseLib.dir/Database.cpp.obj DataBase/CMakeFiles/DataBaseLib.dir/__/library/sqlite3.c.obj
+  LANGUAGE_COMPILE_FLAGS = -g
+  OBJECT_DIR = DataBase\CMakeFiles\DataBaseLib.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_FILE = DataBase\libDataBaseLib.a
+  TARGET_PDB = DataBaseLib.a.dbg
+
+
+#############################################
+# Utility command for edit_cache
+
+build DataBase/CMakeFiles/edit_cache.util: CUSTOM_COMMAND
+  COMMAND = C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\afraa\Desktop\ProgectAP\Backend\cmake-build-debug\DataBase && "C:\Program Files\JetBrains\CLion 2024.3.3\bin\cmake\win\x64\bin\cmake.exe" -E echo "No interactive CMake dialog available.""
+  DESC = No interactive CMake dialog available...
+  restat = 1
+
+build DataBase/edit_cache: phony DataBase/CMakeFiles/edit_cache.util
+
+
+#############################################
+# Utility command for rebuild_cache
+
+build DataBase/CMakeFiles/rebuild_cache.util: CUSTOM_COMMAND
+  COMMAND = C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\afraa\Desktop\ProgectAP\Backend\cmake-build-debug\DataBase && "C:\Program Files\JetBrains\CLion 2024.3.3\bin\cmake\win\x64\bin\cmake.exe" --regenerate-during-build -SC:\Users\afraa\Desktop\ProgectAP\Backend -BC:\Users\afraa\Desktop\ProgectAP\Backend\cmake-build-debug"
+  DESC = Running CMake to regenerate build system...
+  pool = console
+  restat = 1
+
+build DataBase/rebuild_cache: phony DataBase/CMakeFiles/rebuild_cache.util
+
+# =============================================================================
 # Target aliases.
 
-build Backend: phony Backend.exe
+build BackendApp: phony BackendApp.exe
+
+build DataBaseLib: phony DataBase/libDataBaseLib.a
+
+build libDataBaseLib.a: phony DataBase/libDataBaseLib.a
 
 # =============================================================================
 # Folder targets.
@@ -109,7 +209,14 @@ build Backend: phony Backend.exe
 #############################################
 # Folder: C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug
 
-build all: phony Backend.exe
+build all: phony BackendApp.exe DataBase/all
+
+# =============================================================================
+
+#############################################
+# Folder: C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/DataBase
+
+build DataBase/all: phony DataBase/libDataBaseLib.a
 
 # =============================================================================
 # Built-in targets
@@ -118,14 +225,14 @@ build all: phony Backend.exe
 #############################################
 # Re-run CMake if any of its inputs changed.
 
-build build.ninja: RERUN_CMAKE | C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeCXXInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeCommonLanguageInclude.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeGenericSystem.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeInitializeConfigs.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeLanguageInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeRCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeSystemSpecificInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeSystemSpecificInitialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/CMakeCommonCompilerMacros.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-C-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-CXX-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-Initialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-windres.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/WindowsPaths.cmake C$:/Users/afraa/Desktop/ProgectAP/Backend/CMakeLists.txt CMakeCache.txt CMakeFiles/3.30.5/CMakeCCompiler.cmake CMakeFiles/3.30.5/CMakeCXXCompiler.cmake CMakeFiles/3.30.5/CMakeRCCompiler.cmake CMakeFiles/3.30.5/CMakeSystem.cmake
+build build.ninja: RERUN_CMAKE | C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeCXXInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeCommonLanguageInclude.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeGenericSystem.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeInitializeConfigs.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeLanguageInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeRCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeSystemSpecificInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeSystemSpecificInitialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/CMakeCommonCompilerMacros.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-C-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-CXX-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-Initialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-windres.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/WindowsPaths.cmake C$:/Users/afraa/Desktop/ProgectAP/Backend/CMakeLists.txt C$:/Users/afraa/Desktop/ProgectAP/Backend/DataBase/CMakeLists.txt CMakeCache.txt CMakeFiles/3.30.5/CMakeCCompiler.cmake CMakeFiles/3.30.5/CMakeCXXCompiler.cmake CMakeFiles/3.30.5/CMakeRCCompiler.cmake CMakeFiles/3.30.5/CMakeSystem.cmake
   pool = console
 
 
 #############################################
 # A missing CMake input file is not an error.
 
-build C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeCXXInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeCommonLanguageInclude.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeGenericSystem.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeInitializeConfigs.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeLanguageInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeRCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeSystemSpecificInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeSystemSpecificInitialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/CMakeCommonCompilerMacros.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-C-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-CXX-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-Initialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-windres.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/WindowsPaths.cmake C$:/Users/afraa/Desktop/ProgectAP/Backend/CMakeLists.txt CMakeCache.txt CMakeFiles/3.30.5/CMakeCCompiler.cmake CMakeFiles/3.30.5/CMakeCXXCompiler.cmake CMakeFiles/3.30.5/CMakeRCCompiler.cmake CMakeFiles/3.30.5/CMakeSystem.cmake: phony
+build C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeCXXInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeCommonLanguageInclude.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeGenericSystem.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeInitializeConfigs.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeLanguageInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeRCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeSystemSpecificInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/CMakeSystemSpecificInitialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/CMakeCommonCompilerMacros.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Compiler/GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-C-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-CXX-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-Initialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows-windres.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/Windows.cmake C$:/Program$ Files/JetBrains/CLion$ 2024.3.3/bin/cmake/win/x64/share/cmake-3.30/Modules/Platform/WindowsPaths.cmake C$:/Users/afraa/Desktop/ProgectAP/Backend/CMakeLists.txt C$:/Users/afraa/Desktop/ProgectAP/Backend/DataBase/CMakeLists.txt CMakeCache.txt CMakeFiles/3.30.5/CMakeCCompiler.cmake CMakeFiles/3.30.5/CMakeCXXCompiler.cmake CMakeFiles/3.30.5/CMakeRCCompiler.cmake CMakeFiles/3.30.5/CMakeSystem.cmake: phony
 
 
 #############################################
