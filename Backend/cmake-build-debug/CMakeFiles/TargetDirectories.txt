@@ -1,0 +1,3 @@
+C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/CMakeFiles/Backend.dir
+C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/CMakeFiles/rebuild_cache.dir
