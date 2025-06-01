@@ -1,4 +1,4 @@
-import { Box, Stack, Typography } from '@mui/material';
+import { Box, IconButton, Stack, Typography } from '@mui/material';
 import React from 'react';
 
 const Chats = () => {
@@ -15,6 +15,14 @@ const Chats = () => {
                     boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.15)',
                     borderRadius: '8px'
                 }}>
+                    <Stack>
+                        <Typography variant='h5'>
+                            Chats
+                        </Typography>
+                        <IconButton>
+                            
+                        </IconButton>
+                    </Stack>
 
             </Box>
         </div>
