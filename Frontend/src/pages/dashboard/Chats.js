@@ -3,31 +3,21 @@ import React from 'react';
 
 const Chats = () => {
     return (
-        <Box sx={{ display: 'flex', height: '100vh' }}>
-            {/* نوار کناری یا داشبورد */}
+        <div>
             <Box
                 sx={{
-                    position: 'relative',
+                    position: 'fixed',
+                    width: 320,
                     height: '100vh',
-                    width: 320, // عرض برای باکس چت
+                    top: 0,
+                    left: 100,
                     backgroundColor: '#F8FAFF',
-                    boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.15)', // سایه برای برجسته کردن
-                    borderRadius: '8px',
-                    padding: 2,
-                    marginRight: 2, // فاصله بین نوار کناری و باکس چت
-                }}
-            >
-                <Stack direction="column" spacing={2}>
-                    <Typography variant="h5">Chats</Typography>
-                    {/* اینجا می‌توانید محتوای چت را قرار دهید */}
-                </Stack>
-            </Box>
+                    boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.15)',
+                    borderRadius: '8px'
+                }}>
 
-            {/* فضای اصلی برای محتوا */}
-            <Box sx={{ flexGrow: 1, backgroundColor: '#fff' }}>
-                {/* محتوای اصلی */}
             </Box>
-        </Box>
+        </div>
     );
 };
 
