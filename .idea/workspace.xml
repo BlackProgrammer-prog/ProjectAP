@@ -23,15 +23,7 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1228c8d5-ad34-4cd5-a192-11f4272d06e6" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/Backend/Registration.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Backend/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Backend/Chat.h" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Chat.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Backend/Message.h" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Message.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Backend/User.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Registration.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Backend/User.h" beforeDir="false" />
-    </list>
+    <list default="true" id="1228c8d5-ad34-4cd5-a192-11f4272d06e6" name="Changes" comment="add Registration.cpp&#10;add Registration.h" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -119,12 +111,26 @@
       <workItem from="1748875162716" duration="22000" />
       <workItem from="1748875336031" duration="6000" />
       <workItem from="1748875376391" duration="37000" />
-      <workItem from="1748875506008" duration="249000" />
+      <workItem from="1748875506008" duration="824000" />
     </task>
+    <task id="LOCAL-00001" summary="add Registration.cpp&#10;add Registration.h">
+      <option name="closed" value="true" />
+      <created>1748875942638</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1748875942638</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="VCPKGProject">
+    <isAutomaticCheckingOnLaunch value="false" />
+    <isAutomaticFoundErrors value="true" />
+    <isAutomaticReloadCMake value="true" />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">
@@ -148,5 +154,9 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="add Registration.cpp&#10;add Registration.h" />
+    <option name="LAST_COMMIT_MESSAGE" value="add Registration.cpp&#10;add Registration.h" />
   </component>
 </project>

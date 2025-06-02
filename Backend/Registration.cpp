@@ -3,7 +3,7 @@
 //
 
 #include "Registration.h"
-#include <functional> // برای std::hash
+#include <functional>
 #include <iostream>
 
 Registration::Registration(Database& database) : db(database) {}
@@ -32,7 +32,6 @@ bool Registration::registerUser(
 }
 
 std::string Registration::hashPassword(const std::string& password) {
-    // هش ساده برای نمونه؛ در پروژه واقعی از کتابخانه‌های امن‌تر استفاده کن
     return std::to_string(std::hash<std::string>{}(password));
 }
 
@@ -46,5 +45,5 @@ bool Registration::isDuplicate(const std::string& field, const std::string& valu
         return false;
     }
 
-    return !user.id.empty(); // یعنی کاربر پیدا شده
+    return !user.id.empty();
 }
