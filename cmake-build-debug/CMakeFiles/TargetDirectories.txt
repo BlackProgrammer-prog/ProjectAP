@@ -1,3 +1,0 @@
-C:/Users/Acer/Documents/GitHub/ProjectAP/cmake-build-debug/CMakeFiles/ProjectAP.dir
-C:/Users/Acer/Documents/GitHub/ProjectAP/cmake-build-debug/CMakeFiles/edit_cache.dir
-C:/Users/Acer/Documents/GitHub/ProjectAP/cmake-build-debug/CMakeFiles/rebuild_cache.dir
