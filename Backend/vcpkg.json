@@ -1,0 +1,8 @@
+{
+  "name": "backend-project",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "jwt-cpp",
+    "boost-asio"
+  ]
+}

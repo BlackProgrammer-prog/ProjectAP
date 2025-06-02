@@ -1,2 +1,33 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+# Ignore build directories
+cmake-build-*/
+build/
+CMakeFiles/
+Makefile
+CMakeCache.txt
+*.ninja
+*.obj
+*.exe
+*.out
+
+# vcpkg installed artifacts
+vcpkg_installed/
+installed/
+packages/
+
+# Editor/IDE files
+.idea/
+.vscode/
+*.user
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Backup and temp
+*~
+*.swp
