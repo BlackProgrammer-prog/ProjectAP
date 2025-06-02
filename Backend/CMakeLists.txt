@@ -11,7 +11,7 @@ add_executable(BackendApp
         main.cpp
         login.cpp login.h
         Message.cpp Message.h
-        User.cpp User.h
+        Registration.cpp Registration.h
         Chat.cpp Chat.h
 )
 

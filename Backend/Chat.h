@@ -6,7 +6,7 @@
 #define PROGECTAP_CHAT_H
 
 #include <vector>
-#include "User.h"
+#include "Registration.h"
 #include "Message.h"
 #include "DataBase/Database.h"
 #include <vector>
@@ -25,7 +25,7 @@ public:
     Chat(Database& dbRef);
     ~Chat();
 
-    fhfhsdfkj;
+
     bool registerUser(const std::string& name, const std::string& username, const std::string& password);
     bool login(const std::string& username, const std::string& password);
     void sendMessage(const std::string& content);

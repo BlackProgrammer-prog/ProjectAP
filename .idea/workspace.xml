@@ -24,7 +24,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1228c8d5-ad34-4cd5-a192-11f4272d06e6" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/Backend/Registration.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/CMakeLists.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Backend/Chat.h" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Chat.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/Message.h" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Message.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/User.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Registration.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/User.h" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -84,6 +90,11 @@
   }
 }</component>
   <component name="RunManager">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="ProjectAP" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="ProjectAP" TARGET_NAME="ProjectAP" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="ProjectAP" RUN_TARGET_NAME="ProjectAP">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -106,6 +117,9 @@
       <workItem from="1748874963673" duration="41000" />
       <workItem from="1748875012711" duration="52000" />
       <workItem from="1748875162716" duration="22000" />
+      <workItem from="1748875336031" duration="6000" />
+      <workItem from="1748875376391" duration="37000" />
+      <workItem from="1748875506008" duration="249000" />
     </task>
     <servers />
   </component>
