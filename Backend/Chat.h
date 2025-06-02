@@ -25,6 +25,7 @@ public:
     Chat(Database& dbRef);
     ~Chat();
 
+    fhfhsdfkj;
     bool registerUser(const std::string& name, const std::string& username, const std::string& password);
     bool login(const std::string& username, const std::string& password);
     void sendMessage(const std::string& content);
