@@ -75,4 +75,4 @@ jwt-cpp provides CMake targets:
   find_package(jwt-cpp CONFIG REQUIRED)
   target_link_libraries(main PRIVATE jwt-cpp::jwt-cpp)
 
-All requested installations completed successfully in: 1.36 ms
+All requested installations completed successfully in: 1.29 ms

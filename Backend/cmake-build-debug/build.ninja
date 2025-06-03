@@ -41,66 +41,80 @@ include CMakeFiles/rules.ninja
 
 cmake_ninja_workdir = C$:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/
 # =============================================================================
-# Object build statements for EXECUTABLE target BackendApp
+# Object build statements for EXECUTABLE target Backend
 
 
 #############################################
-# Order-only phony target for BackendApp
+# Order-only phony target for Backend
 
-build cmake_object_order_depends_target_BackendApp: phony || cmake_object_order_depends_target_DataBaseLib
+build cmake_object_order_depends_target_Backend: phony || cmake_object_order_depends_target_DataBaseLib
 
-build CMakeFiles/BackendApp.dir/main.cpp.obj: CXX_COMPILER__BackendApp_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/main.cpp || cmake_object_order_depends_target_BackendApp
-  DEP_FILE = CMakeFiles\BackendApp.dir\main.cpp.obj.d
+build CMakeFiles/Backend.dir/main.cpp.obj: CXX_COMPILER__Backend_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/main.cpp || cmake_object_order_depends_target_Backend
+  DEP_FILE = CMakeFiles\Backend.dir\main.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
   INCLUDES = -IC:/Users/afraa/Desktop/ProgectAP/Backend/library -IC:/Users/afraa/Desktop/ProgectAP/Backend/Socket -IC:/Users/afraa/Desktop/ProgectAP/Backend/DataBase -isystem C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/vcpkg_installed/x64-windows/include
-  OBJECT_DIR = CMakeFiles\BackendApp.dir
-  OBJECT_FILE_DIR = CMakeFiles\BackendApp.dir
+  OBJECT_DIR = CMakeFiles\Backend.dir
+  OBJECT_FILE_DIR = CMakeFiles\Backend.dir
 
-build CMakeFiles/BackendApp.dir/login.cpp.obj: CXX_COMPILER__BackendApp_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/login.cpp || cmake_object_order_depends_target_BackendApp
-  DEP_FILE = CMakeFiles\BackendApp.dir\login.cpp.obj.d
+build CMakeFiles/Backend.dir/login.cpp.obj: CXX_COMPILER__Backend_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/login.cpp || cmake_object_order_depends_target_Backend
+  DEP_FILE = CMakeFiles\Backend.dir\login.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
   INCLUDES = -IC:/Users/afraa/Desktop/ProgectAP/Backend/library -IC:/Users/afraa/Desktop/ProgectAP/Backend/Socket -IC:/Users/afraa/Desktop/ProgectAP/Backend/DataBase -isystem C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/vcpkg_installed/x64-windows/include
-  OBJECT_DIR = CMakeFiles\BackendApp.dir
-  OBJECT_FILE_DIR = CMakeFiles\BackendApp.dir
+  OBJECT_DIR = CMakeFiles\Backend.dir
+  OBJECT_FILE_DIR = CMakeFiles\Backend.dir
 
-build CMakeFiles/BackendApp.dir/User.cpp.obj: CXX_COMPILER__BackendApp_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/User.cpp || cmake_object_order_depends_target_BackendApp
-  DEP_FILE = CMakeFiles\BackendApp.dir\User.cpp.obj.d
+build CMakeFiles/Backend.dir/UrlCreate.cpp.obj: CXX_COMPILER__Backend_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/UrlCreate.cpp || cmake_object_order_depends_target_Backend
+  DEP_FILE = CMakeFiles\Backend.dir\UrlCreate.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
   INCLUDES = -IC:/Users/afraa/Desktop/ProgectAP/Backend/library -IC:/Users/afraa/Desktop/ProgectAP/Backend/Socket -IC:/Users/afraa/Desktop/ProgectAP/Backend/DataBase -isystem C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/vcpkg_installed/x64-windows/include
-  OBJECT_DIR = CMakeFiles\BackendApp.dir
-  OBJECT_FILE_DIR = CMakeFiles\BackendApp.dir
+  OBJECT_DIR = CMakeFiles\Backend.dir
+  OBJECT_FILE_DIR = CMakeFiles\Backend.dir
 
-build CMakeFiles/BackendApp.dir/Socket/JwtAuth.cpp.obj: CXX_COMPILER__BackendApp_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/Socket/JwtAuth.cpp || cmake_object_order_depends_target_BackendApp
-  DEP_FILE = CMakeFiles\BackendApp.dir\Socket\JwtAuth.cpp.obj.d
+build CMakeFiles/Backend.dir/sha256.cpp.obj: CXX_COMPILER__Backend_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/sha256.cpp || cmake_object_order_depends_target_Backend
+  DEP_FILE = CMakeFiles\Backend.dir\sha256.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
   INCLUDES = -IC:/Users/afraa/Desktop/ProgectAP/Backend/library -IC:/Users/afraa/Desktop/ProgectAP/Backend/Socket -IC:/Users/afraa/Desktop/ProgectAP/Backend/DataBase -isystem C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/vcpkg_installed/x64-windows/include
-  OBJECT_DIR = CMakeFiles\BackendApp.dir
-  OBJECT_FILE_DIR = CMakeFiles\BackendApp.dir\Socket
+  OBJECT_DIR = CMakeFiles\Backend.dir
+  OBJECT_FILE_DIR = CMakeFiles\Backend.dir
 
-build CMakeFiles/BackendApp.dir/Socket/WebSocketHandler.cpp.obj: CXX_COMPILER__BackendApp_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/Socket/WebSocketHandler.cpp || cmake_object_order_depends_target_BackendApp
-  DEP_FILE = CMakeFiles\BackendApp.dir\Socket\WebSocketHandler.cpp.obj.d
+build CMakeFiles/Backend.dir/Registration.cpp.obj: CXX_COMPILER__Backend_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/Registration.cpp || cmake_object_order_depends_target_Backend
+  DEP_FILE = CMakeFiles\Backend.dir\Registration.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
   INCLUDES = -IC:/Users/afraa/Desktop/ProgectAP/Backend/library -IC:/Users/afraa/Desktop/ProgectAP/Backend/Socket -IC:/Users/afraa/Desktop/ProgectAP/Backend/DataBase -isystem C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/vcpkg_installed/x64-windows/include
-  OBJECT_DIR = CMakeFiles\BackendApp.dir
-  OBJECT_FILE_DIR = CMakeFiles\BackendApp.dir\Socket
+  OBJECT_DIR = CMakeFiles\Backend.dir
+  OBJECT_FILE_DIR = CMakeFiles\Backend.dir
+
+build CMakeFiles/Backend.dir/Socket/JwtAuth.cpp.obj: CXX_COMPILER__Backend_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/Socket/JwtAuth.cpp || cmake_object_order_depends_target_Backend
+  DEP_FILE = CMakeFiles\Backend.dir\Socket\JwtAuth.cpp.obj.d
+  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  INCLUDES = -IC:/Users/afraa/Desktop/ProgectAP/Backend/library -IC:/Users/afraa/Desktop/ProgectAP/Backend/Socket -IC:/Users/afraa/Desktop/ProgectAP/Backend/DataBase -isystem C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/vcpkg_installed/x64-windows/include
+  OBJECT_DIR = CMakeFiles\Backend.dir
+  OBJECT_FILE_DIR = CMakeFiles\Backend.dir\Socket
+
+build CMakeFiles/Backend.dir/Socket/WebSocketHandler.cpp.obj: CXX_COMPILER__Backend_unscanned_Debug C$:/Users/afraa/Desktop/ProgectAP/Backend/Socket/WebSocketHandler.cpp || cmake_object_order_depends_target_Backend
+  DEP_FILE = CMakeFiles\Backend.dir\Socket\WebSocketHandler.cpp.obj.d
+  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  INCLUDES = -IC:/Users/afraa/Desktop/ProgectAP/Backend/library -IC:/Users/afraa/Desktop/ProgectAP/Backend/Socket -IC:/Users/afraa/Desktop/ProgectAP/Backend/DataBase -isystem C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/vcpkg_installed/x64-windows/include
+  OBJECT_DIR = CMakeFiles\Backend.dir
+  OBJECT_FILE_DIR = CMakeFiles\Backend.dir\Socket
 
 
 # =============================================================================
-# Link build statements for EXECUTABLE target BackendApp
+# Link build statements for EXECUTABLE target Backend
 
 
 #############################################
-# Link the executable BackendApp.exe
+# Link the executable Backend.exe
 
-build BackendApp.exe: CXX_EXECUTABLE_LINKER__BackendApp_Debug CMakeFiles/BackendApp.dir/main.cpp.obj CMakeFiles/BackendApp.dir/login.cpp.obj CMakeFiles/BackendApp.dir/User.cpp.obj CMakeFiles/BackendApp.dir/Socket/JwtAuth.cpp.obj CMakeFiles/BackendApp.dir/Socket/WebSocketHandler.cpp.obj | DataBase/libDataBaseLib.a vcpkg_installed/x64-windows/debug/lib/libssl.lib vcpkg_installed/x64-windows/debug/lib/libcrypto.lib || DataBase/libDataBaseLib.a
+build Backend.exe: CXX_EXECUTABLE_LINKER__Backend_Debug CMakeFiles/Backend.dir/main.cpp.obj CMakeFiles/Backend.dir/login.cpp.obj CMakeFiles/Backend.dir/UrlCreate.cpp.obj CMakeFiles/Backend.dir/sha256.cpp.obj CMakeFiles/Backend.dir/Registration.cpp.obj CMakeFiles/Backend.dir/Socket/JwtAuth.cpp.obj CMakeFiles/Backend.dir/Socket/WebSocketHandler.cpp.obj | DataBase/libDataBaseLib.a vcpkg_installed/x64-windows/debug/lib/libssl.lib vcpkg_installed/x64-windows/debug/lib/libcrypto.lib || DataBase/libDataBaseLib.a
   FLAGS = -g
   LINK_LIBRARIES = DataBase/libDataBaseLib.a  vcpkg_installed/x64-windows/debug/lib/libssl.lib  vcpkg_installed/x64-windows/debug/lib/libcrypto.lib  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
-  OBJECT_DIR = CMakeFiles\BackendApp.dir
-  POST_BUILD = C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\afraa\Desktop\ProgectAP\Backend\cmake-build-debug && C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -noprofile -executionpolicy Bypass -file C:/Users/afraa/Desktop/ProgectAP/Backend/vcpkg/scripts/buildsystems/msbuild/applocal.ps1 -targetBinary C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/BackendApp.exe -installedDir C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/vcpkg_installed/x64-windows/debug/bin -OutVariable out"
+  OBJECT_DIR = CMakeFiles\Backend.dir
+  POST_BUILD = C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\afraa\Desktop\ProgectAP\Backend\cmake-build-debug && C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -noprofile -executionpolicy Bypass -file C:/Users/afraa/Desktop/ProgectAP/Backend/vcpkg/scripts/buildsystems/msbuild/applocal.ps1 -targetBinary C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/Backend.exe -installedDir C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug/vcpkg_installed/x64-windows/debug/bin -OutVariable out"
   PRE_LINK = cd .
-  TARGET_FILE = BackendApp.exe
-  TARGET_IMPLIB = libBackendApp.dll.a
-  TARGET_PDB = BackendApp.exe.dbg
+  TARGET_FILE = Backend.exe
+  TARGET_IMPLIB = libBackend.dll.a
+  TARGET_PDB = Backend.exe.dbg
 
 
 #############################################
@@ -195,7 +209,7 @@ build DataBase/rebuild_cache: phony DataBase/CMakeFiles/rebuild_cache.util
 # =============================================================================
 # Target aliases.
 
-build BackendApp: phony BackendApp.exe
+build Backend: phony Backend.exe
 
 build DataBaseLib: phony DataBase/libDataBaseLib.a
 
@@ -209,7 +223,7 @@ build libDataBaseLib.a: phony DataBase/libDataBaseLib.a
 #############################################
 # Folder: C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug
 
-build all: phony BackendApp.exe DataBase/all
+build all: phony Backend.exe DataBase/all
 
 # =============================================================================
 

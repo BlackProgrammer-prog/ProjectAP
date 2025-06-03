@@ -77,7 +77,7 @@ jwt-cpp provides CMake targets:
   find_package(jwt-cpp CONFIG REQUIRED)
   target_link_libraries(main PRIVATE jwt-cpp::jwt-cpp)
 
-All requested installations completed successfully in: 1.36 ms
+All requested installations completed successfully in: 1.29 ms
 -- Running vcpkg install - done
 CMake Warning (dev) at cmake-build-debug/vcpkg_installed/x64-windows/share/boost/vcpkg-cmake-wrapper.cmake:3 (_find_package):
   Policy CMP0167 is not set: The FindBoost module is removed.  Run "cmake
@@ -86,9 +86,9 @@ CMake Warning (dev) at cmake-build-debug/vcpkg_installed/x64-windows/share/boost
 
 Call Stack (most recent call first):
   vcpkg/scripts/buildsystems/vcpkg.cmake:847 (include)
-  CMakeLists.txt:33 (find_package)
+  CMakeLists.txt:35 (find_package)
 This warning is for project developers.  Use -Wno-dev to suppress it.
 
--- Configuring done (4.0s)
+-- Configuring done (3.1s)
 -- Generating done (0.1s)
 -- Build files have been written to: C:/Users/afraa/Desktop/ProgectAP/Backend/cmake-build-debug

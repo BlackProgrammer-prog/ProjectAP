@@ -59,9 +59,9 @@
 			[
 				{
 					"directoryIndex" : 0,
-					"id" : "BackendApp::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-BackendApp-Debug-7e40378c08682868e6e2.json",
-					"name" : "BackendApp",
+					"id" : "Backend::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-Backend-Debug-59d4ffb240d2c23212b1.json",
+					"name" : "Backend",
 					"projectIndex" : 0
 				},
 				{

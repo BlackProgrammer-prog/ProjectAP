@@ -14,10 +14,12 @@ add_subdirectory(DataBase)
 
 # ────────────────────────────────
 # تعریف فایل اجرایی اصلی
-add_executable(BackendApp
+add_executable(Backend
         main.cpp
         login.cpp login.h
-        User.cpp User.h
+        UrlCreate.cpp UrlCreate.h
+        sha256.cpp sha256.h
+        Registration.cpp Registration.h
 
         Socket/JwtAuth.cpp Socket/JwtAuth.h
         Socket/WebSocketHandler.cpp Socket/WebSocketHandler.h
@@ -25,21 +27,21 @@ add_executable(BackendApp
 
 # ────────────────────────────────
 # لینک کردن به ماژول دیتابیس
-target_link_libraries(BackendApp PRIVATE DataBaseLib)
+target_link_libraries(Backend PRIVATE DataBaseLib)
 
 # ────────────────────────────────
 # لینک به کتابخانه‌های نصب‌شده توسط vcpkg
 find_package(jwt-cpp CONFIG REQUIRED)
 find_package(Boost REQUIRED)
 
-target_link_libraries(BackendApp PRIVATE
+target_link_libraries(Backend PRIVATE
         jwt-cpp::jwt-cpp
         Boost::boost
 )
 
 # ────────────────────────────────
 # اضافه کردن مسیرهای include برای کدهای داخلی
-target_include_directories(BackendApp PRIVATE
+target_include_directories(Backend PRIVATE
         ${CMAKE_SOURCE_DIR}/library        # کتابخانه‌های header-only مثل json.hpp
         ${CMAKE_SOURCE_DIR}/Socket           # ماژول‌های jwt و WebSocketHandler
 )
