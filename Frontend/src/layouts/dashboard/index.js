@@ -18,25 +18,26 @@ const DashboardLayout = () => {
   };
 
   return (
-    <>
+    <Stack >
       <Box sx={{
         backgroundColor: them.palette.background.paper,
         boxShadow: "0px 0px 2px rgba(0,0,0,0.2)",
         height: "100vh",
         width: 100,
         paddingTop: 1
+
       }}>
-        <Stack direction="column" alignItems={"center"} sx={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+        <Stack direction="column" alignItems={"center"} sx={{ width: "100%", height: "100%", flexDirection: "column", justifyContent: "space-between" }} >
           <Box sx={{
             backgroundColor: them.palette.primary.main,
             height: 64,
             width: 64,
-            borderRadius: 12
+            borderRadius: 12,
           }}>
             <img src={logo} alt="chat logo" />
           </Box>
 
-          <Stack sx={{ width: "max-content" }} direction="column" spacing={2}>
+          <Stack sx={{ width: "max-content", marginTop: 1 }} direction="column" spacing={2.5}>
             {Nav_Buttons.map((el) => (
               <Box
                 key={el.index}
@@ -86,7 +87,7 @@ const DashboardLayout = () => {
         </Stack>
       </Box>
       <Outlet />
-    </>
+    </Stack>
   );
 };
 
