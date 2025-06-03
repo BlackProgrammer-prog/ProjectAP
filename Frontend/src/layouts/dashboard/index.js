@@ -1,94 +1,168 @@
-import { Avatar, Box, Divider, IconButton, Stack, Switch, useTheme } from "@mui/material";
-import React, { useState } from "react";
-import { Outlet } from "react-router-dom";
-import logo from "../../assets/Images/logo.ico"
-import { Nav_Buttons } from "../../data/index";
-import { Gear } from "phosphor-react";
-import { faker } from "@faker-js/faker";
-import useSettings from '../../hooks/useSettings'
+import React, { useState } from 'react';
+import { Box, Stack, styled, Badge, Avatar, Typography, IconButton, Divider, TextField, InputAdornment, useTheme } from '@mui/material';
+import { faker } from '@faker-js/faker';
+import { CaretDown, MagnifyingGlass, PhoneCall, VideoCamera, Smiley, LinkSimple, PaperPlaneTilt } from 'phosphor-react'; // اطمینان حاصل کنید که این آیکون‌ها به درستی ایمپورت شده‌اند
 
+const StyleInput = styled(TextField)(({ theme }) => ({
+  '& .MuiInputBase-input': {
+    paddingTop: '12px',
+    paddingBottom: '12px',
+  },
+  '& .MuiFilledInput-root': {
+    borderRadius: '16px',  // برای ایجاد گوشه‌های گرد
+  }
+}));
 
-const DashboardLayout = () => {
-  const them = useTheme();
-  const { onToggleMode } = useSettings()
-  const [select, setSelect] = useState(null); // تغییر داده‌ام تا ابتدا هیچ دکمه‌ای انتخاب نشود
+const StyledBadge = styled(Badge)(({ theme }) => ({
+  '& .MuiBadge-badge': {
+    backgroundColor: '#44b700',
+    color: '#44b700',
+    boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
+    '&::after': {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      borderRadius: '50%',
+      animation: 'ripple 1.2s infinite ease-in-out',
+      border: '1px solid currentColor',
+      content: '""',
+    },
+  },
+  '@keyframes ripple': {
+    '0%': { transform: 'scale(.8)', opacity: 1 },
+    '100%': { transform: 'scale(2.4)', opacity: 0 },
+  },
+}));
 
-  const handleClick = (index) => {
-    setSelect(index); // با کلیک دکمه انتخاب می‌شود
-  };
+const Conversation = () => {
+  const theme = useTheme();
+  const [message, setMessage] = useState("");
 
   return (
-    <Stack >
-      <Box sx={{
-        backgroundColor: them.palette.background.paper,
-        boxShadow: "0px 0px 2px rgba(0,0,0,0.2)",
-        height: "100vh",
-        width: 100,
-        paddingTop: 1
+    <Stack>
+      {/* chat header */}
+      <Box
+        sx={{
+          height: "100px",
+          width: '100%',
+          backgroundColor: theme.palette.mode === 'light' ? "#F8FAFF" : theme.palette.background.paper,
+          boxShadow: "0px 0px 2px rgba(0,0,0,0.25)",
+          position: 'fixed',
+          top: 0,
+          left: 422,
+        }}
+      >
+        <Stack alignItems={'center'} direction={'row'} justifyContent={'space-between'} sx={{
+          width: '100%',
+          height: '100%'
+        }} />
+      </Box>
 
-      }}>
-        <Stack direction="column" alignItems={"center"} sx={{ width: "100%", height: "100%", flexDirection: "column", justifyContent: "space-between" }} >
-          <Box sx={{
-            backgroundColor: them.palette.primary.main,
-            height: 64,
-            width: 64,
-            borderRadius: 12,
-          }}>
-            <img src={logo} alt="chat logo" />
-          </Box>
-
-          <Stack sx={{ width: "max-content", marginTop: 1 }} direction="column" spacing={2.5}>
-            {Nav_Buttons.map((el) => (
-              <Box
-                key={el.index}
-                sx={{
-                  backgroundColor: select === el.index ? them.palette.primary.main : 'transparent',
-                  borderRadius: 1.5
-                }}
-              >
-                <IconButton
-                  onClick={() => handleClick(el.index)}
-                  sx={{
-                    width: "max-content",
-                    color: select === el.index ? "#fff" : "#000" // تغییر رنگ بر اساس انتخاب
-                  }}
-                >
-                  {el.icon}
-                </IconButton>
-              </Box>
-            ))}
-            <Divider />
-            {/* دکمه Gear */}
-            <IconButton
-              onClick={() => handleClick('gear')} // یک شناسه خاص برای Gear تنظیم کردیم
+      {/* msg */}
+      <Stack direction={'row'} justifyContent={'space-between'} alignItems={'center'} sx={{
+        position: 'fixed',
+        top: 30,
+        left: 460
+      }} >
+        <Stack spacing={2}>
+          <Box>
+            <StyledBadge overlap='circular' anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right'
+            }} variant='dot' >
+              <Avatar src={faker.image.avatar()} />
+            </StyledBadge>
+            <Stack sx={{
+              position: 'fixed',
+              top: 30,
+              left: 520
+            }}>
+              <Typography variant='subtitle2' spacing={0.2}>
+                meysam
+              </Typography>
+              <Stack sx={{
+                position: 'fixed',
+                top: 60
+              }}>
+                <Typography variant='caption'>Online</Typography>
+              </Stack>
+            </Stack>
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={4}
               sx={{
-                color: select === 'gear' ? "#fff" : "#000", // تغییر رنگ برای Gear
-                backgroundColor: select === 'gear' ? them.palette.primary.main : 'transparent',
-                borderRadius: 1.5
+                position: 'fixed',
+                right: 30,
+                top: 33
               }}
             >
-              <Gear />
-            </IconButton>
-          </Stack>
-
-          {/* جایگذاری Switch بالاتر از Avatar */}
-          <Box sx={{ marginTop: 'auto', marginBottom: 2 }}>
-            <Switch onChange={() => {
-              return (
-                onToggleMode()
-              )
-            }} defaultChecked />
-          </Box>
-
-          {/* Avatar در پایین‌تر از Switch */}
-          <Box sx={{ marginBottom: 2 }}>
-            <Avatar src={faker.image.avatar()} />
+              <IconButton>
+                <VideoCamera size={22} />
+              </IconButton>
+              <IconButton>
+                <PhoneCall />
+              </IconButton>
+              <IconButton>
+                <MagnifyingGlass />
+              </IconButton>
+              <Divider orientation="vertical" flexItem sx={{ mx: 2 }} />
+              <IconButton>
+                <CaretDown />
+              </IconButton>
+            </Stack>
           </Box>
         </Stack>
-      </Box>
-      <Outlet />
-    </Stack>
-  );
-};
+      </Stack >
 
-export default DashboardLayout;
+      {/* chat footer */}
+      <Box Box
+        sx={{
+          width: 'calc(100% - 40px)', // کاهش عرض TextField
+          maxWidth: '1088px',  // حداکثر عرض
+          backgroundColor: theme.palette.mode === 'light' ? "#F8FAFF" : theme.palette.background.paper,
+          boxShadow: '0px 0px 2px rgba(0,0,0,0.25)',
+          position: 'fixed',
+          bottom: 0,
+          left: '420px',
+          padding: '10px',
+          // گوشه‌های گرد
+        }}
+      >
+        <Stack direction="row" alignItems="center" spacing={2}>
+          <StyleInput
+            fullWidth
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Write a message..."
+            variant="filled"
+            InputProps={{
+              disableUnderline: true,
+              startAdornment: (
+                <InputAdornment sx={{ mr: 1.5 }}>
+                  <IconButton>
+                    <LinkSimple />
+                  </IconButton>
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment sx={{ mr: 1.5 }}>
+                  <IconButton>
+                    <Smiley />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+          <IconButton sx={{ backgroundColor: theme.palette.primary.main, borderRadius: '50%' }}>
+            <PaperPlaneTilt color="#fff" />
+          </IconButton>
+        </Stack>
+      </Box >
+    </Stack >
+  );
+}
+
+export default Conversation;
