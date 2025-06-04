@@ -19,7 +19,7 @@ const Profile_Menu = [
     icon: <Gear />,
   },
   {
-    title: "Profile",
+    title: "LogOut",
     icon: <SignOut />,
   },
 ];
@@ -50,8 +50,8 @@ const ChatList = [
   {
     id: 0,
     img: faker.image.avatar(),
-    name: faker.name.firstName(),
-    msg: faker.music.songName(),
+    name: "meysam",
+    msg: "سلام علی جون خوبی؟",
     time: "9:36",
     unread: 0,
     pinned: true,
@@ -60,8 +60,8 @@ const ChatList = [
   {
     id: 1,
     img: faker.image.avatar(),
-    name: faker.name.firstName(),
-    msg: faker.music.songName(),
+    name: " Parham",
+    msg: "سلام اقا علی ممنون تو خوبی؟",
     time: "12:02",
     unread: 2,
     pinned: true,
@@ -129,6 +129,7 @@ const ChatList = [
   },
 ];
 
+// ساخت داده‌های نمونه برای چت
 const Chat_History = [
   {
     type: "msg",
