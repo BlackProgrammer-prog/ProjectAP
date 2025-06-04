@@ -1,53 +1,94 @@
-import { Box, Stack } from '@mui/material';
-import React from 'react';
+// import Header from "./Header"
+// import Footer from "./Footer"
+// import { Stack, Box } from "@mui/material"
+// import Message from "./Message"
+// import { Timeline } from "./MsgType"
+
+// const Conversation = () => {
+//     return (
+//         <Stack>
+//             {/* chat header */}
+//             <Header />
+
+//             {/* Divider with "Today" text */}
+//             <Box
+//                 sx={{
+//                     position: "fixed",
+//                     top: "100px", // درست زیر هدر
+//                     left: 422,
+//                     width: "calc(100% - 422px)",
+//                     px: 2,
+//                 }}
+//             >
+//                 <Timeline text="Today" />
+//             </Box>
+
+//             <Stack
+//                 direction={"row"}
+//                 justifyContent={"space-between"}
+//                 alignItems={"center"}
+//                 sx={{
+//                     position: "fixed",
+//                     top: "150px", // بعد از دیوایدر
+//                     left: 0,
+//                     right: 0,
+//                     padding: "0 20px",
+//                 }}
+//             >
+//                 <Message />
+//             </Stack>
+
+//             {/* chat footer */}
+//             <Footer />
+//         </Stack>
+//     )
+// }
+
+// export default Conversation
+
+
+// ..........................................................MAIN
+
+import Header from "./Header"
+import Footer from "./Footer"
+import { Stack, Box } from "@mui/material"
+import Message from "./Message"
+import { Timeline } from "./MsgType"
 
 const Conversation = () => {
     return (
-        <Stack >
+        <Stack>
             {/* chat header */}
+            <Header />
+
+            {/* Messages area with Timeline */}
             <Box
                 sx={{
-                    height: "100px",
-                    width: '100%',
-                    backgroundColor: "#F8FAFF",
-                    boxShadow: "0px 0px 2px rgba(0,0,0,0.25)",
-                    position: 'fixed', // تنظیم به صورت ثابت در بالای صفحه
-                    top: 0,  // در بالای صفحه قرار می‌گیرد
-                    left: 420,
-                    // برای اینکه روی سایر بخش‌ها قرار بگیرد
+                    position: "fixed",
+                    top: "100px",
+                    left: 422,
+                    right: 0,
+                    bottom: "80px", // فضا برای footer
+                    overflowY: "auto",
+                    px: 2,
                 }}
             >
-                <Stack alignItems={'center'} direction={'row'} justifyContent={'space-between'} sx={{
-                    width: '100%',
-                    height: '100%'
-                }}>
-                    {/* Add your content for the header here */}
+                <Stack spacing={2} sx={{ pt: 2 }}>
+                    {/* Timeline در بالای پیام‌ها */}
+                    <Timeline text="Today" />
+                    <Message />
                 </Stack>
             </Box>
 
-            {/* msg */}
-            {/* <Box sx={{ width: '100%', flexGrow: 1, paddingTop: '100px' }}>
-
-               
-            </Box> */}
-
             {/* chat footer */}
-            <Box
-                sx={{
-                    height: "100px",
-                    width: '100%',
-                    backgroundColor: "#F8FAFF",
-                    boxShadow: '0px 0px 2px rgba(0,0,0,0.25)',
-                    position: 'fixed',  // قرار گرفتن در پایین صفحه
-                    bottom: 0,   // در پایین صفحه قرار می‌گیرد
-                    left: 418,
-                    // برای اینکه روی سایر بخش‌ها قرار بگیرد
-                }}
-            >
-                {/* Add your footer content here */}
-            </Box>
+            <Footer />
         </Stack>
-    );
+    )
 }
 
-export default Conversation;
+export default Conversation
+
+
+// ..................................................................................
+
+
