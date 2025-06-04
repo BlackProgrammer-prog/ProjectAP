@@ -1,33 +1,74 @@
-# Auto detect text files and perform LF normalization
+# ========================
+# Git Ignore for CMake + vcpkg + IDEs
+# ========================
+
+# Normalize text files
 * text=auto
-# Ignore build directories
-cmake-build-*/
-build/
-CMakeFiles/
-Makefile
+
+# ========================
+# Build folders (CMake, vcpkg, Make, Ninja)
+# ========================
+**/cmake-build-*/
+**/build/
+**/CMakeFiles/
+**/Debug/
+**/Release/
+**/out/
+**/bin/
+**/lib/
+
+# CMake-related
 CMakeCache.txt
+Makefile
 *.ninja
+*.ninja_log
+*.ninja_deps
 *.obj
+*.o
+*.lo
+*.a
+*.so
+*.dll
+*.lib
 *.exe
 *.out
 
-# vcpkg installed artifacts
-vcpkg_installed/
-installed/
-packages/
+# vcpkg artifacts
+vcpkg/
+**/vcpkg_installed/
+**/installed/
+**/packages/
 
-# Editor/IDE files
+# Logs and temporary files
+*.log
+*.swp
+*.tmp
+*~
+*.bak
+
+# ========================
+# IDE & Editor settings
+# ========================
+
+# CLion / IntelliJ / WebStorm / Android Studio
 .idea/
-.vscode/
-*.user
+**/.idea/
 
-# OS-specific
+# Visual Studio Code
+.vscode/
+**/.vscode/
+*.code-workspace
+
+# User-specific files
+*.user
+*.suo
+*.VC.db
+*.VC.VC.opendb
+
+# ========================
+# OS-specific junk
+# ========================
 .DS_Store
 Thumbs.db
-
-# Log files
-*.log
-
-# Backup and temp
-*~
-*.swp
+ehthumbs.db
+desktop.ini
