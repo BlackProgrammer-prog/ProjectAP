@@ -1,0 +1,84 @@
+/Backend/cmake-build-debug
+/Backend/cmake-build-debug
+/Backend/cmake-build-debug
+/Backend/.idea
+/Backend/cmake-build-debug
+# ========================
+# Git Ignore for CMake + vcpkg + IDEs
+# ========================
+
+# Normalize text files
+ text=auto
+
+# ========================
+# Build folders (CMake, vcpkg, Make, Ninja)
+# ========================
+/cmake-build-/
+*/build/
+/CMakeFiles/
+/Debug/
+/Release/
+/out/
+/bin/
+/lib/
+
+# CMake-related
+CMakeCache.txt
+Makefile
+.ninja
+.ninja_log
+.ninja_deps
+.obj
+.o
+.lo
+.a
+.so
+.dll
+.lib
+.exe
+.out
+
+# vcpkg artifacts
+vcpkg/
+/vcpkg_installed/
+/installed/
+/packages/
+
+# Logs and temporary files
+.log
+.swp
+.tmp
+~
+.bak
+
+# ========================
+# IDE & Editor settings
+# ========================
+
+# CLion / IntelliJ / WebStorm / Android Studio
+.idea/
+*/.idea/
+
+# Visual Studio Code
+.vscode/
+/.vscode/
+.code-workspace
+
+# User-specific files
+.user
+.suo
+.VC.db
+.VC.VC.opendb
+
+# ========================
+# OS-specific junk
+# ========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+/Backend/.idea
+/Backend/cmake-build-debug
+/Backend/cmake-build-debug/.cmake/api/v1/reply
+Backend/cmake-build-debug/.cmake/api/v1/reply/target-BackendApp-Debug-37984e25c431cd85a217.json
+Backend/cmake-build-debug/.cmake/api/v1/reply/target-DataBaseLib-Debug-87aa156bce7720024d35.json

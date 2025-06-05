@@ -1,12 +1,18 @@
-import React from 'react'
-import LoginRegister from './Component/LoginRegister'
+import React from 'react';
+// import { AuthProvider } from './context/AuthContext';
+import {AuthProvider} from "./Component/Context/AuthContext";
+// import LoginRegister from './components/LoginRegister/LoginRegister';
+import LoginRegister from "./Component/LoginRegister";
+import './App.css';
 
-const App = () => {
-  return (
-    <div>
-      <LoginRegister />
-    </div>
-  )
+function App() {
+    return (
+        <AuthProvider>
+            <div className="App">
+                <LoginRegister />
+            </div>
+        </AuthProvider>
+    );
 }
 
-export default App
+export default App;
