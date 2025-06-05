@@ -3,7 +3,7 @@
 //
 
 #include "JwtAuth.h"
-#include <jwt.h>
+#include <jwt-cpp/jwt.h>
 #include <stdexcept>
 #include <unordered_set>
 
@@ -89,13 +89,20 @@ std::map<std::string, std::string> JwtAuth::getAllClaims(const std::string& toke
     auto decoded = jwt::decode(token);
     std::map<std::string, std::string> claims;
 
-    for (const auto& [key, value] : decoded.get_payload_claims()) {
-        claims[key] = value.as_string();
+    // لیست کلیدهایی که می‌خوای از توکن بخونی
+    const std::vector<std::string> keys = {"user_id", "role", "exp", "iat", "iss", "sub", "aud"};
+
+    for (const auto& key : keys) {
+        try {
+            claims[key] = decoded.get_payload_claim(key).as_string();
+        } catch (...) {
+            // اگر کلید وجود نداشت یا فرمت نادرست بود، مقدار خالی قرار می‌گیره
+            claims[key] = "";
+        }
     }
 
     return claims;
 }
-
 void JwtAuth::invalidateToken(const std::string& token) {
     impl_->invalidateToken(token);
 }
