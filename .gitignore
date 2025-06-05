@@ -3,4 +3,5 @@
 /Backend/.idea
 /Backend/vcpkg
 /Backend/cmake-build-debug
+/UI-Login/node_modules
 /UI-Login/.idea
