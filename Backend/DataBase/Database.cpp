@@ -120,6 +120,7 @@ bool Database::createUser(const std::string& email,
     return executeQueryWithParams(sql, params).success;
 }
 
+
 User Database::getUserById(const std::string& userId) {
     return pImpl->getUser("id", userId);
 }
@@ -128,7 +129,7 @@ User Database::getUserByUsername(const std::string& username) {
     return pImpl->getUser("username", username);
 }
 
-User Database::getUserByEmail(const std::string& email) {
+[[maybe_unused]] User Database::getUserByEmail(const std::string& email) {
     return pImpl->getUser("email", email);
 }
 
