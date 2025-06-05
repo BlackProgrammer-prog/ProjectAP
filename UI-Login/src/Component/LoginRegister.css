@@ -148,7 +148,7 @@ form .register-link {
     align-items: center;
     justify-content: center; 
     overflow: hidden;
-    transition: height .2 ease;
+    transition: height .2s ease;
 }
 .wrapper.active {
     height: 520px;
