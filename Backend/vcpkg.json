@@ -1,8 +1,9 @@
 {
-  "name": "backend-project",
-  "version-string": "0.1.0",
+  "name": "socket-module",
+  "version": "0.1.0",
   "dependencies": [
-    "jwt-cpp",
-    "boost-asio"
+    "boost-beast",
+    "boost-asio",
+    "jwt-cpp"
   ]
 }

@@ -1,75 +1,63 @@
-//
-// Created by afraa on 6/1/2025.
-//
-
+// WebSocketHandler.cpp
 #include "WebSocketHandler.h"
-#include "server_ws.hpp"
+#include <boost/asio.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/websocket.hpp>
+#include <boost/asio/strand.hpp>
 #include <thread>
 #include <mutex>
-#include <unordered_map>
+#include <iostream>
 
-using WsServer = SimpleWeb::SocketServer<SimpleWeb::WS>;
+using tcp = boost::asio::ip::tcp;
+namespace websocket = boost::beast::websocket;
+namespace beast = boost::beast;
+using json = nlohmann::json;
 
 class WebSocketServer::Impl {
 public:
     Impl(int port, const std::string& jwt_secret)
             : port_(port),
-              server_(std::make_shared<WsServer>()),
-              jwt_auth_(SimpleJwtAuth::create(jwt_secret)) {
-
-        server_->config.port = port_;
-        setupEndpoints();
-    }
+              jwt_auth_(JwtAuth::create(jwt_secret)),
+              acceptor_(ioc_, tcp::endpoint(tcp::v4(), port_)) {}
 
     void start() {
-        if (running_) return;
-        running_ = true;
-        server_thread_ = std::thread([this]() {
-            server_->start();
-        });
+        doAccept();
+        thread_ = std::thread([this]() { ioc_.run(); });
     }
 
     void stop() {
-        if (!running_) return;
-        server_->stop();
-        if (server_thread_.joinable()) {
-            server_thread_.join();
-        }
-        running_ = false;
+        ioc_.stop();
+        if (thread_.joinable())
+            thread_.join();
     }
 
     void on(const std::string& message_type,
             std::function<json(const json&, const std::string&)> handler) {
         std::lock_guard<std::mutex> lock(handlers_mutex_);
-        handlers_[message_type] = handler;
+        handlers_[message_type] = std::move(handler);
     }
 
     void sendToClient(const std::string& client_id, const json& message) {
         std::lock_guard<std::mutex> lock(clients_mutex_);
-        if (connections_.count(client_id)) {
-            auto connection = connections_[client_id].lock();
-            if (connection) {
-                connection->send(message.dump());
-            } else {
-                connections_.erase(client_id);
+        auto it = connections_.find(client_id);
+        if (it != connections_.end()) {
+            try {
+                it->second->text(true);
+                it->second->write(boost::asio::buffer(message.dump()));
+            } catch (const std::exception& e) {
+                std::cerr << "Send error: " << e.what() << std::endl;
             }
         }
     }
 
     std::string getClientUserId(const std::string& client_id) {
         std::lock_guard<std::mutex> lock(clients_mutex_);
-        if (client_sessions_.count(client_id)) {
-            return client_sessions_[client_id].user_id;
-        }
-        return "";
+        return client_sessions_[client_id].user_id;
     }
 
     std::string getClientRole(const std::string& client_id) {
         std::lock_guard<std::mutex> lock(clients_mutex_);
-        if (client_sessions_.count(client_id)) {
-            return client_sessions_[client_id].role;
-        }
-        return "";
+        return client_sessions_[client_id].role;
     }
 
 private:
@@ -79,74 +67,78 @@ private:
         std::string token;
     };
 
-    void setupEndpoints() {
-        auto& endpoint = server_->endpoint["^/?$"];
-
-        endpoint.on_message = [this](auto connection, auto message) {
-            handleMessage(connection, message);
-        };
-
-        endpoint.on_open = [this](auto connection) {
-            handleConnectionOpen(connection);
-        };
-
-        endpoint.on_close = [this](auto connection, int status, const std::string& reason) {
-            handleConnectionClose(connection, status, reason);
-        };
+    void doAccept() {
+        acceptor_.async_accept([this](boost::system::error_code ec, tcp::socket socket) {
+            if (!ec) {
+                std::make_shared<Session>(std::move(socket), *this)->start();
+            }
+            doAccept();
+        });
     }
 
-    void handleMessage(std::shared_ptr<WsServer::Connection> connection,
-                       std::shared_ptr<WsServer::Message> message) {
-        try {
-            json data = json::parse(message->string());
-            std::string client_id = connection->remote_endpoint_address();
+    class Session : public std::enable_shared_from_this<Session> {
+    public:
+        Session(tcp::socket socket, Impl& server)
+                : ws_(std::move(socket)), server_(server) {}
 
-            // احراز هویت برای پیام‌های غیر از login و register
-            if (data["type"] != "login" && data["type"] != "register") {
-                if (!authenticateClient(client_id, data)) {
-                    connection->send(json{{"status", "error"}, {"message", "Unauthorized"}}.dump());
-                    return;
+        void start() {
+            ws_.async_accept([self = shared_from_this()](boost::system::error_code ec) {
+                if (!ec) self->read();
+            });
+        }
+
+    private:
+        void read() {
+            ws_.async_read(buffer_, [self = shared_from_this()](boost::system::error_code ec, std::size_t) {
+                if (!ec) self->handleMessage();
+            });
+        }
+
+        void handleMessage() {
+            try {
+                std::string msg = boost::beast::buffers_to_string(buffer_.data());
+                json data = json::parse(msg);
+                std::string client_id = remoteIp();
+
+                if (data["type"] != "login" && data["type"] != "register") {
+                    if (!server_.authenticate(client_id, data)) {
+                        ws_.write(boost::asio::buffer(json{{"status", "error"}, {"message", "Unauthorized"}}.dump()));
+                        return;
+                    }
                 }
+
+                std::lock_guard<std::mutex> lock(server_.handlers_mutex_);
+                auto it = server_.handlers_.find(data["type"]);
+                if (it != server_.handlers_.end()) {
+                    json response = it->second(data, client_id);
+                    ws_.write(boost::asio::buffer(response.dump()));
+                } else {
+                    ws_.write(boost::asio::buffer(json{{"status", "error"}, {"message", "Unknown message type"}}.dump()));
+                }
+            } catch (const std::exception& e) {
+                ws_.write(boost::asio::buffer(json{{"status", "error"}, {"message", e.what()}}.dump()));
             }
 
-            std::lock_guard<std::mutex> lock(handlers_mutex_);
-            if (handlers_.count(data["type"])) {
-                json response = handlers_[data["type"]](data, client_id);
-                connection->send(response.dump());
-            } else {
-                connection->send(json{{"status", "error"}, {"message", "Unknown message type"}}.dump());
-            }
-        } catch (const std::exception& e) {
-            connection->send(json{{"status", "error"}, {"message", e.what()}}.dump());
+            buffer_.consume(buffer_.size());
+            read();
         }
-    }
 
-    void handleConnectionOpen(std::shared_ptr<WsServer::Connection> connection) {
-        std::string client_id = connection->remote_endpoint_address();
-        std::lock_guard<std::mutex> lock(clients_mutex_);connections_[client_id] = connection;
-    }
-
-    void handleConnectionClose(std::shared_ptr<WsServer::Connection> connection,
-                               int status, const std::string& reason) {
-        std::string client_id = connection->remote_endpoint_address();
-        std::lock_guard<std::mutex> lock(clients_mutex_);
-
-        if (client_sessions_.count(client_id)) {
-            jwt_auth_->invalidateToken(client_sessions_[client_id].token);
-            client_sessions_.erase(client_id);
+        std::string remoteIp() const {
+            return ws_.next_layer().remote_endpoint().address().to_string();
         }
-        connections_.erase(client_id);
-    }
 
-    bool authenticateClient(const std::string& client_id, const json& data) {
+        websocket::stream<tcp::socket> ws_;
+        beast::flat_buffer buffer_;
+        Impl& server_;
+    };
+
+    bool authenticate(const std::string& client_id, const json& data) {
         std::lock_guard<std::mutex> lock(clients_mutex_);
-
         if (!data.contains("token")) return false;
 
         std::string token = data["token"];
         if (!jwt_auth_->isValidToken(token)) return false;
 
-        // ذخیره اطلاعات کاربر
         if (!client_sessions_.count(client_id)) {
             ClientSession session;
             session.user_id = jwt_auth_->getUserId(token);
@@ -159,20 +151,20 @@ private:
     }
 
     int port_;
-    bool running_ = false;
-    std::shared_ptr<WsServer> server_;
-    std::thread server_thread_;
-    std::shared_ptr<SimpleJwtAuth> jwt_auth_;
+    boost::asio::io_context ioc_;
+    tcp::acceptor acceptor_;
+    std::thread thread_;
 
+    std::shared_ptr<JwtAuth> jwt_auth_;
     std::unordered_map<std::string, std::function<json(const json&, const std::string&)>> handlers_;
     std::mutex handlers_mutex_;
 
-    std::unordered_map<std::string, std::weak_ptr<WsServer::Connection>> connections_;
+    std::unordered_map<std::string, std::shared_ptr<websocket::stream<tcp::socket>>> connections_;
     std::unordered_map<std::string, ClientSession> client_sessions_;
     std::mutex clients_mutex_;
 };
 
-// Implementations of WebSocketServer
+// رابط عمومی
 WebSocketServer::WebSocketServer(int port, const std::string& jwt_secret)
         : impl_(std::make_unique<Impl>(port, jwt_secret)) {}
 
