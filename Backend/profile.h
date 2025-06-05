@@ -2,7 +2,7 @@
 #define PROFILE_H
 
 #include <string>
-#include <nlohmann/json.hpp>
+#include "json.hpp"
 
 class Profile {
 public:

@@ -20,6 +20,9 @@ add_executable(Backend
         UrlCreate.cpp UrlCreate.h
         sha256.cpp sha256.h
         Registration.cpp Registration.h
+        profile.cpp profile.h
+        Settings.h Settings.cpp
+        user.h user.cpp
 
         Socket/JwtAuth.cpp Socket/JwtAuth.h
         Socket/WebSocketHandler.cpp Socket/WebSocketHandler.h

@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-#include <nlohmann/json.hpp>
+#include "json.hpp"
 #include "Profile.h"
 #include "Settings.h"
 

@@ -46,7 +46,8 @@ public:
 
     User getUserById(const std::string& userId);
     User getUserByUsername(const std::string& username);
-    User getUserByEmail(const std::string& email);
+
+    [[maybe_unused]] User getUserByEmail(const std::string& email);
 
     bool updateUser(const User& user);
     bool deleteUser(const std::string& userId);
