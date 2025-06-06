@@ -1,23 +1,26 @@
-# CMakeLists.txt for socket module
-
+# ایجاد کتابخانه SocketLib
 add_library(SocketLib
         JwtAuth.cpp
         WebSocketHandler.cpp
-
         JwtAuth.h
         WebSocketHandler.h
 )
 
-# استفاده از کتابخانه‌های نصب‌شده با vcpkg
+# پیدا کردن پکیج‌های مورد نیاز
 find_package(jwt-cpp CONFIG REQUIRED)
-find_package(Boost REQUIRED COMPONENTS beast asio)
+find_package(Boost REQUIRED COMPONENTS system thread)
 
+# لینک کردن کتابخانه‌ها
 target_link_libraries(SocketLib
         PRIVATE
         jwt-cpp::jwt-cpp
-        Boost::beast
-        Boost::asio
+        Boost::system
+        Boost::thread
 )
 
-# مسیر اینکلودها
-target_include_directories(SocketLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+# مسیرهای اینکلود برای boost (ضروری اگر با beast یا asio مستقیم کار می‌کنی)
+target_include_directories(SocketLib
+        PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${Boost_INCLUDE_DIRS}
+)

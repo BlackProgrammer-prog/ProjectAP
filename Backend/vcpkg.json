@@ -4,6 +4,8 @@
   "dependencies": [
     "boost-beast",
     "boost-asio",
-    "jwt-cpp"
+    "jwt-cpp",
+    "boost-system",
+    "boost-thread"
   ]
 }

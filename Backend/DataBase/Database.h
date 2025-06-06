@@ -8,13 +8,13 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include "library/json.hpp"
+#include "json.hpp"
 
 using json = nlohmann::json;
 using namespace std;
 
 
-struct User {
+struct DBUser {
     string id;
     string email;
     string username;
@@ -44,12 +44,13 @@ public:
                     const json& settings = json::object(),
                     const std::string& customUrl = "");
 
-    User getUserById(const std::string& userId);
-    User getUserByUsername(const std::string& username);
 
-    [[maybe_unused]] User getUserByEmail(const std::string& email);
+    DBUser getUserById(const std::string& userId);
+    DBUser getUserByUsername(const std::string& username);
 
-    bool updateUser(const User& user);
+    [[maybe_unused]] DBUser getUserByEmail(const std::string& email);
+
+    bool updateUser(const DBUser& user);
     bool deleteUser(const std::string& userId);
 
     QueryResult executeQuery(const std::string& query);
@@ -58,6 +59,9 @@ public:
 
     bool backupDatabase(const std::string& backupPath);
     bool restoreDatabase(const std::string& backupPath);
+
+    bool userExistsByEmail(const std::string& email);
+    bool userExistsByUsername(const std::string& username);
 
 private:
     struct Impl;

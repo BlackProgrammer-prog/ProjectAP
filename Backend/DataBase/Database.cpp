@@ -50,8 +50,8 @@ struct Database::Impl {
         return true;
     }
 
-    User getUser(const std::string& field, const std::string& value) {
-        User user;
+    DBUser getUser(const std::string& field, const std::string& value) {
+        DBUser user;
         std::string sql = "SELECT * FROM users WHERE " + field + " = ? LIMIT 1";
 
         sqlite3_stmt* stmt = nullptr;
@@ -121,19 +121,19 @@ bool Database::createUser(const std::string& email,
 }
 
 
-User Database::getUserById(const std::string& userId) {
+DBUser Database::getUserById(const std::string& userId) {
     return pImpl->getUser("id", userId);
 }
 
-User Database::getUserByUsername(const std::string& username) {
+DBUser Database::getUserByUsername(const std::string& username) {
     return pImpl->getUser("username", username);
 }
 
-[[maybe_unused]] User Database::getUserByEmail(const std::string& email) {
+[[maybe_unused]] DBUser Database::getUserByEmail(const std::string& email) {
     return pImpl->getUser("email", email);
 }
 
-bool Database::updateUser(const User& user) {
+bool Database::updateUser(const DBUser& user) {
     std::string sql = R"(
         UPDATE users SET
         email = ?,
@@ -209,4 +209,14 @@ bool Database::backupDatabase(const std::string& backupPath) {
 
 bool Database::restoreDatabase(const std::string& backupPath) {
     return false; // پیاده‌سازی در صورت نیاز
+}
+
+bool Database::userExistsByEmail(const std::string& email) {
+    DBUser user = getUserByEmail(email);
+    return !user.id.empty();
+}
+
+bool Database::userExistsByUsername(const std::string& username) {
+    DBUser user = getUserByUsername(username);
+    return !user.id.empty();
 }

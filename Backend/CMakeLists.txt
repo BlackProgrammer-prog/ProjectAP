@@ -42,9 +42,16 @@ target_link_libraries(Backend PRIVATE
         Boost::boost
 )
 
+if(WIN32)
+    target_link_libraries(Backend PRIVATE ws2_32 mswsock)
+endif()
+
+
+
 # ────────────────────────────────
 # اضافه کردن مسیرهای include برای کدهای داخلی
 target_include_directories(Backend PRIVATE
         ${CMAKE_SOURCE_DIR}/library        # کتابخانه‌های header-only مثل json.hpp
         ${CMAKE_SOURCE_DIR}/Socket           # ماژول‌های jwt و WebSocketHandler
 )
+target_compile_options(Backend PRIVATE -Wa,-mbig-obj)
