@@ -1,49 +1,66 @@
-//
-// Created by afraa on 5/22/2025.
-//
-
 #include "Registration.h"
-#include <functional>
-#include <iostream>
+#include <stdexcept>
+#include <chrono>
+#include <random>
+#include <sstream>
+#include "json.hpp"
 
-Registration::Registration(Database& database) : db(database) {}
+Registration::Registration(Database& db, WebSocketServer& server)
+        : db_(db), server_(server) {}
 
-bool Registration::registerUser(
-        const std::string& email,
-        const std::string& username,
-        const std::string& password,
-        const json& profile,
-        const json& settings
-) {
-    if (isDuplicate("email", email)) {
-        std::cerr << "Email already exists.\n";
-        return false;
-    }
-
-    if (isDuplicate("username", username)) {
-        std::cerr << "Username already exists.\n";
-        return false;
-    }
-
-    std::string hashedPassword = hashPassword(password);
-    std::string customUrl = urlCreator.createUrl(email);
-
-    return db.createUser(email, username, hashedPassword, profile, settings, customUrl);
+void Registration::setupRoutes() {
+    server_.on("register", [this](const json& data, const std::string& clientId) {
+        return handleRegistration(data, clientId);
+    });
 }
 
-std::string Registration::hashPassword(const std::string& password) {
-    return std::to_string(std::hash<std::string>{}(password));
-}
+json Registration::handleRegistration(const json& data, const std::string& clientId) {
 
-bool Registration::isDuplicate(const std::string& field, const std::string& value) {
-    User user;
-    if (field == "email") {
-        user = db.getUserByEmail(value);
-    } else if (field == "username") {
-        user = db.getUserByUsername(value);
-    } else {
-        return false;
+    if (!data.contains("email")  !data.contains("password")  !data.contains("username")) {
+        return {{"status", "error"}, {"message", "فیلدهای ضروری پر نشده‌اند"}};
     }
 
-    return !user.id.empty();
+    std::string email = data["email"];
+    std::string password = data["password"];
+    std::string username = data["username"];
+
+
+    if (db_.userExistsByEmail(email)) {
+        return {{"status", "error"}, {"message", "این ایمیل قبلاً ثبت شده است"}};
+    }
+
+
+    if (db_.userExistsByUsername(username)) {
+        return {{"status", "error"}, {"message", "این نام کاربری قبلاً انتخاب شده است"}};
+    }
+
+
+    std::string passwordHash = sha256(password);
+
+
+    std::string customUrl = urlCreator_.createUrl(email);
+
+
+    Profile defaultProfile;
+    Settings defaultSettings = Settings::defaultSettings();
+
+
+
+    json profileJson = defaultProfile.toJson();
+    json settingsJson = defaultSettings.toJson();
+    json contactsJson = json::array();
+
+
+    if (!db_.createUser(
+            email,
+            username,
+            passwordHash,
+            profileJson,
+            settingsJson,
+            customUrl
+    )) {
+        return {{"status", "error"}, {"message", "خطا در ایجاد حساب کاربری"}};
+    }
+
+    return {{"status", "success"}, {"message", "ثبت‌نام با موفقیت انجام شد"}};
 }

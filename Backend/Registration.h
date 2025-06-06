@@ -1,33 +1,27 @@
-//
-// Created by afraa on 5/22/2025.
-//
-
 #ifndef REGISTRATION_H
 #define REGISTRATION_H
 
-#include <string>
-#include "DataBase/Database.h"
+#include "WebSocketHandler.h"
+#include "Database.h"
+#include "User.h"
 #include "UrlCreate.h"
+#include "sha256.h"
+#include <functional>
+#include <json.hpp>
+
+using json = nlohmann::json;
 
 class Registration {
 public:
-    explicit Registration(Database& database);
-
-    bool registerUser(
-            const std::string& email,
-            const std::string& username,
-            const std::string& password,
-            const json& profile = json::object(),
-            const json& settings = json::object()
-    );
+    Registration(Database& db, WebSocketServer& server);
+    void setupRoutes();
 
 private:
-    Database& db;
-    UrlCreate urlCreator;
+    json handleRegistration(const json& data, const std::string& clientId);
 
-    std::string hashPassword(const std::string& password);
-    bool isDuplicate(const std::string& field, const std::string& value);
+    Database& db_;
+    WebSocketServer& server_;
+    UrlCreate urlCreator_;
 };
 
 #endif // REGISTRATION_H
-

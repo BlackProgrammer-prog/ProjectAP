@@ -1,25 +1,29 @@
-//
-// Created by Acer on 5/28/2025.
-//
-
 #ifndef LOGIN_H
 #define LOGIN_H
 
-#include <string>
-#include "DataBase/Database.h"
+#include "WebSocketHandler.h"
+#include "Database.h"
+#include "JwtAuth.h"
+#include "sha256.h"
+#include <functional>
+#include <json.hpp>
+#include "user.h"
+#include "Settings.h"
+#include "UrlCreate.h"
+
+
 
 class Login {
 public:
-    explicit Login(Database& database);
-
-    bool authenticate(const std::string& credential, const std::string& password);
-
-    User getUserData(const std::string& credential);
+    Login(Database& db, WebSocketServer& server, std::shared_ptr<JwtAuth> jwtAuth);
+    void setupRoutes();
 
 private:
-    Database& db;
+    nlohmann::json handleLogin(const nlohmann::json& data, const std::string& clientId);
 
-    std::string hashPassword(const std::string& password);
+    Database& db_;
+    WebSocketServer& server_;
+    std::shared_ptr<JwtAuth> jwtAuth_;
 };
 
 #endif // LOGIN_H
