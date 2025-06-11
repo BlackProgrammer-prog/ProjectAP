@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Box, Stack, styled, Badge, Avatar, Typography, IconButton, Divider, TextField, InputAdornment, useTheme } from '@mui/material';
 import { faker } from '@faker-js/faker';
 import { CaretDown, MagnifyingGlass, PhoneCall, VideoCamera, Smiley, LinkSimple, PaperPlaneTilt } from 'phosphor-react'; // اطمینان حاصل کنید که این آیکون‌ها به درستی ایمپورت شده‌اند
-
+// import { dispatch } from '../../redux/store';
+// import { ToggleSidebar } from '../../redux/slices/app';
+// import { useDispatch } from 'react-redux';
 
 const StyledBadge = styled(Badge)(({ theme }) => ({
     '& .MuiBadge-badge': {
@@ -29,6 +31,7 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
 
 const Header = () => {
     const theme = useTheme();
+    // const dispatch = useDispatch()
     return (
         <Stack>
             <Box

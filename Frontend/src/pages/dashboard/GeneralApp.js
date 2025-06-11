@@ -31,11 +31,16 @@ import Chats from "./Chats"
 import { Box, Stack } from "@mui/material"
 import Conversation from "../../components/Conversation"
 import { useTheme } from "@mui/material/styles"
+import Contact from "../../components/Contact"
+// import { useSelector } from "react-redux"
 
 const Cat = lazy(() => import("../../components/Cat"))
 
 const GeneralApp = () => {
   const theme = useTheme()
+  // const app =  useSelector((store)=> store.app);
+  // console.log(app , 'app');
+
   return (
     <Stack direction={"row"} >
       {/* Sidebar چت‌ها */}
@@ -54,7 +59,9 @@ const GeneralApp = () => {
         }}
       >
         <Conversation />
+        <Contact />
       </Box>
+
     </Stack>
   )
 }
