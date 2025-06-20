@@ -62,8 +62,8 @@ const GeneralApp = () => {
         <Conversation />
 
       </Box>
-
-
+      
+      
 
     </Stack>
   )
@@ -75,43 +75,3 @@ export default GeneralApp
 // ...........................................................................................
 
 
-// "use client"
-
-// import { Box, Stack } from "@mui/material"
-// import { useTheme } from "@mui/material/styles"
-// import Chats from "./Chats"
-// import Conversation from "../../components/Conversation/Chat"
-// import Contact from "../../components/Contact"
-// import { useState } from "react"
-
-// const GeneralApp = () => {
-//   const theme = useTheme()
-//   const [showContact, setShowContact] = useState(true)
-
-//   return (
-//     <Stack direction="row">
-//       {/* Sidebar for chats */}
-//       <Chats />
-
-//       {/* Main conversation area */}
-//       <Box
-//         sx={{
-//           position: "fixed",
-//           top: 30,
-//           left: 420,
-//           height: "100vh",
-//           width: showContact ? "calc(100vw - 420px - 320px)" : "calc(100vw - 420px)",
-//           backgroundColor: theme.palette.mode === "light" ? "#F0F4FA" : theme.palette.background.paper,
-//           transition: "width 0.3s ease",
-//         }}
-//       >
-//         <Conversation onToggleContact={() => setShowContact(!showContact)} />
-//       </Box>
-
-//       {/* Contact/Details panel */}
-//       {showContact && <Contact />}
-//     </Stack>
-//   )
-// }
-
-// export default GeneralApp
