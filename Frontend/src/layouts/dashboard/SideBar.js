@@ -12,6 +12,7 @@ import { faker } from "@faker-js/faker";
 import useSettings from '../../hooks/useSettings';
 import Profile from "./Profile";
 import UserProfile from "./UserProfile";
+import Settings from "../../pages/dashboard/Settings";
 
 const SideBar = () => {
     const them = useTheme();
@@ -21,10 +22,25 @@ const SideBar = () => {
     const [profileMenuAnchor, setProfileMenuAnchor] = useState(null);
     const [showProfile, setShowProfile] = useState(false);
     const profileMenuOpen = Boolean(profileMenuAnchor);
-
-    const handleClick = (index) => {
-        setSelect(index);
+    const [selectedIcon, setSelectedIcon] = useState(null);
+    const [openSettings, setOpenSettings] = useState(false);
+    const handleToggleSettings = () => {
+        if (openSettings) {
+            // اگر تنظیمات باز است، آن را ببند
+            setOpenSettings(false);
+            setSelectedIcon(null);
+        } else {
+            // اگر تنظیمات بسته است، آن را باز کن
+            setOpenSettings(true);
+            setSelectedIcon('gear');
+        }
     };
+    // const handleOpenSettings = () => {
+    //     setOpenSettings(true)
+    // }
+    // const handleCloseSettings = () => {
+    //     setOpenSettings(true)
+    // }
 
     const handleProfileClick = (event) => {
         setProfileMenuAnchor(event.currentTarget);
@@ -76,7 +92,7 @@ const SideBar = () => {
                                 }}
                             >
                                 <IconButton
-                                    onClick={() => handleClick(el.index)}
+                                    onClick={() => { }}
                                     sx={{
                                         width: "max-content",
                                         color: select === el.index ? "#fff" : "#000"
@@ -88,7 +104,8 @@ const SideBar = () => {
                         ))}
                         <Divider />
                         <IconButton
-                            onClick={() => handleClick('gear')}
+                            onClick={() => handleToggleSettings('gear')}
+                            onClose={() => handleToggleSettings('gear')}
                             sx={{
                                 color: select === 'gear' ? "#fff" : "#000",
                                 backgroundColor: select === 'gear' ? them.palette.primary.main : 'transparent',
@@ -200,6 +217,7 @@ const SideBar = () => {
             <Outlet />
             {/* {showProfile && <Profile />} */}
             {showProfile && <Profile onClose={() => setShowProfile(false)} />}
+            {openSettings && <Settings onClose={() => setOpenSettings(false)} />}
             {/* {showUserProfile && (
                 <UserProfile onClose={() => setShowUserProfile(false)} />
             )} */}
