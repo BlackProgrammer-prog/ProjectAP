@@ -1,7 +1,7 @@
 #include "Message.h"
-#include <boost/uuid/uuid.h>
-#include <boost/uuid/uuid_generators.h>
-#include <boost/uuid/uuid_io.h>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 #include <chrono>
 
 std::string Message::generateUUID() {

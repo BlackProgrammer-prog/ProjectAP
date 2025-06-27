@@ -2,7 +2,7 @@
 
 #include <string>
 #include <ctime>
-#include <nlohmann/json.h>
+#include <json.hpp>
 #include <stdexcept>
 
 using json = nlohmann::json;

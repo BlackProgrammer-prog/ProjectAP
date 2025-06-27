@@ -5,8 +5,8 @@ set(CMAKE_CXX_STANDARD 20)
 
 # ────────────────────────────────
 # vcpkg toolchain (برای استفاده با vcpkg.json)
-set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake"
-        CACHE STRING "Vcpkg toolchain file")
+#set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+#        CACHE STRING "Vcpkg toolchain file")
 
 # ────────────────────────────────
 # افزودن ماژول دیتابیس
@@ -23,6 +23,8 @@ add_executable(Backend
         profile.cpp profile.h
         Settings.h Settings.cpp
         user.h user.cpp
+        Message.h Message.cpp
+        UserStatusManager.h UserStatusManager.cpp
 
         Socket/JwtAuth.cpp Socket/JwtAuth.h
         Socket/WebSocketHandler.cpp Socket/WebSocketHandler.h
@@ -35,12 +37,21 @@ target_link_libraries(Backend PRIVATE DataBaseLib)
 # ────────────────────────────────
 # لینک به کتابخانه‌های نصب‌شده توسط vcpkg
 find_package(jwt-cpp CONFIG REQUIRED)
-find_package(Boost REQUIRED)
+#find_package(Boost REQUIRED)
+
+find_package(Boost REQUIRED COMPONENTS uuid system thread)
 
 target_link_libraries(Backend PRIVATE
         jwt-cpp::jwt-cpp
-        Boost::boost
+        Boost::uuid
+        Boost::system
+        Boost::thread
 )
+
+#target_link_libraries(Backend PRIVATE
+#        jwt-cpp::jwt-cpp
+#        Boost::boost
+#)
 
 if(WIN32)
     target_link_libraries(Backend PRIVATE ws2_32 mswsock)

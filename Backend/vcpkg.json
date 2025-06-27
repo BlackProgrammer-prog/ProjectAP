@@ -6,6 +6,7 @@
     "boost-asio",
     "jwt-cpp",
     "boost-system",
-    "boost-thread"
+    "boost-thread",
+    "boost-uuid"
   ]
 }
