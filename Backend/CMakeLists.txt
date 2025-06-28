@@ -11,8 +11,9 @@ set(CMAKE_CXX_STANDARD 20)
 # ────────────────────────────────
 # افزودن ماژول دیتابیس
 add_subdirectory(DataBase)
-
 # ────────────────────────────────
+
+add_subdirectory(Socket)
 # تعریف فایل اجرایی اصلی
 add_executable(Backend
         main.cpp
@@ -26,8 +27,14 @@ add_executable(Backend
         Message.h Message.cpp
         UserStatusManager.h UserStatusManager.cpp
 
-        Socket/JwtAuth.cpp Socket/JwtAuth.h
-        Socket/WebSocketHandler.cpp Socket/WebSocketHandler.h
+#        Socket/JwtAuth.cpp Socket/JwtAuth.h
+#        Socket/WebSocketHandler.cpp Socket/WebSocketHandler.h
+        PrivateChatManager.cpp
+        PrivateChatManager.h
+        SessionManager.cpp
+        SessionManager.h
+        ContactManager.cpp
+        ContactManager.h
 )
 
 # ────────────────────────────────
@@ -35,6 +42,9 @@ add_executable(Backend
 target_link_libraries(Backend PRIVATE DataBaseLib)
 
 # ────────────────────────────────
+
+target_link_libraries(Backend PRIVATE SocketLib)
+
 # لینک به کتابخانه‌های نصب‌شده توسط vcpkg
 find_package(jwt-cpp CONFIG REQUIRED)
 #find_package(Boost REQUIRED)

@@ -22,5 +22,5 @@ target_link_libraries(SocketLib
 target_include_directories(SocketLib
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${Boost_INCLUDE_DIRS}
+        ${Boost_INCLUDE_DIRS}/library
 )
