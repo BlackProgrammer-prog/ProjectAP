@@ -13,13 +13,14 @@ using json = nlohmann::json;
 
 class Registration {
 public:
-    Registration(Database& db, WebSocketServer& server);
+    Registration(std::shared_ptr<Database> db, WebSocketServer& server);
     void setupRoutes();
 
 private:
     json handleRegistration(const json& data, const std::string& clientId);
 
-    Database& db_;
+    std::shared_ptr<Database> db_;
+//    Database& db_;
     WebSocketServer& server_;
     UrlCreate urlCreator_;
 };

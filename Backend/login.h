@@ -15,13 +15,14 @@
 
 class Login {
 public:
-    Login(Database& db, WebSocketServer& server, std::shared_ptr<JwtAuth> jwtAuth);
+    Login(std::shared_ptr<Database> db, WebSocketServer& server, std::shared_ptr<JwtAuth> jwtAuth);
     void setupRoutes();
 
 private:
     nlohmann::json handleLogin(const nlohmann::json& data, const std::string& clientId);
 
-    Database& db_;
+    std::shared_ptr<Database> db_;
+//    Database& db_;
     WebSocketServer& server_;
     std::shared_ptr<JwtAuth> jwtAuth_;
 };

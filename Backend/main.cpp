@@ -10,6 +10,11 @@
 #include "JwtAuth.h"
 #include "Registration.h"
 #include "Login.h"
+#include "ContactManager.h"
+#include "UserStatusManager.h"
+#include "SessionManager.h"
+#include "PrivateChatManager.h"
+#include "NotificationManager.h"
 
 int main() {
     // تنظیمات اولیه
@@ -18,31 +23,55 @@ int main() {
     const std::string JWT_SECRET = "your_strong_jwt_secret_here";
 
     try {
-        // اتصال به دیتابیس
-        Database db(DB_PATH);
+        // 1. اتصال به دیتابیس
+        auto db = std::make_shared<Database>(DB_PATH);
 
-        // راه‌اندازی احراز هویت JWT
+        // 2. راه‌اندازی سرویس‌های اصلی
         auto jwtAuth = JwtAuth::create(JWT_SECRET);
         if (!jwtAuth) {
             std::cerr << "خطا در ایجاد سرویس احراز هویت" << std::endl;
             return 1;
         }
 
-        // راه‌اندازی سرور WebSocket (با توجه به سازنده جدید)
-        WebSocketServer server(WS_PORT, JWT_SECRET);
+        // 3. ایجاد ماژول‌های مدیریتی
+        auto session_manager = std::make_shared<SessionManager>();
+        auto status_manager = std::make_shared<UserStatusManager>();
+        auto contact_manager = std::make_shared<ContactManager>(db);
+        auto chat_manager = std::make_shared<PrivateChatManager>(db);
 
-        // ثبت هندلرهای ثبت‌نام و ورود
+        // 4. راه‌اندازی سرور WebSocket با وابستگی‌های جدید
+        WebSocketServer server(
+            WS_PORT,
+            JWT_SECRET,
+            contact_manager,
+            status_manager,
+            session_manager
+        );
+
+        // 5. ایجاد و تنظیم NotificationManager
+        auto notification_manager = std::make_shared<NotificationManager>(
+                server,
+            session_manager,
+            chat_manager
+        );
+
+        // 6. ثبت هندلرهای اصلی
         Registration registrationHandler(db, server);
         registrationHandler.setupRoutes();
 
         Login loginHandler(db, server, jwtAuth);
         loginHandler.setupRoutes();
 
-        // شروع سرور
-        server.start();
-        std::cout << "سرور WebSocket روی پورت " << WS_PORT << " راه‌اندازی شد" << std::endl;
+        // 7. تنظیم هندلرهای چت و مخاطبین
+        server.setupHandlers(); // این متد تمام هندلرهای چت را ثبت می‌کند
 
-        // نگه‌داشتن برنامه در حالت اجرا
+        // 8. شروع سرور
+        server.start();
+        std::cout << "سرور چت روی پورت " << WS_PORT << " راه‌اندازی شد" << std::endl;
+        std::cout << "ماژول‌های فعال:" << std::endl;
+        std::cout << "- سیستم چت خصوصی\n- مدیریت مخاطبین\n- وضعیت کاربران\n- اطلاع‌رسانی بلادرنگ" << std::endl;
+
+        // 9. نگه‌داشتن برنامه در حالت اجرا
         while (true) {
             std::this_thread::sleep_for(std::chrono::hours(1));
         }

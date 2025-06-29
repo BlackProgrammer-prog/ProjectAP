@@ -35,6 +35,8 @@ add_executable(Backend
         SessionManager.h
         ContactManager.cpp
         ContactManager.h
+        NotificationManager.cpp
+        NotificationManager.h
 )
 
 # ────────────────────────────────

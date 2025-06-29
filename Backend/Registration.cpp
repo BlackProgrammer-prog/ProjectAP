@@ -5,7 +5,7 @@
 #include <sstream>
 #include "json.hpp"
 
-Registration::Registration(Database& db, WebSocketServer& server)
+Registration::Registration(std::shared_ptr<Database> db, WebSocketServer& server)
         : db_(db), server_(server) {}
 
 void Registration::setupRoutes() {
@@ -16,7 +16,7 @@ void Registration::setupRoutes() {
 
 json Registration::handleRegistration(const json& data, const std::string& clientId) {
 
-    if (!data.contains("email")  !data.contains("password")  !data.contains("username")) {
+    if (!data.contains("email") && !data.contains("password") && !data.contains("username")) {
         return {{"status", "error"}, {"message", "فیلدهای ضروری پر نشده‌اند"}};
     }
 
@@ -25,12 +25,12 @@ json Registration::handleRegistration(const json& data, const std::string& clien
     std::string username = data["username"];
 
 
-    if (db_.userExistsByEmail(email)) {
+    if (db_->userExistsByEmail(email)) {
         return {{"status", "error"}, {"message", "این ایمیل قبلاً ثبت شده است"}};
     }
 
 
-    if (db_.userExistsByUsername(username)) {
+    if (db_->userExistsByUsername(username)) {
         return {{"status", "error"}, {"message", "این نام کاربری قبلاً انتخاب شده است"}};
     }
 
@@ -51,7 +51,7 @@ json Registration::handleRegistration(const json& data, const std::string& clien
     json contactsJson = json::array();
 
 
-    if (!db_.createUser(
+    if (!db_->createUser(
             email,
             username,
             passwordHash,

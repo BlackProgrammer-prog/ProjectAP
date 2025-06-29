@@ -36,7 +36,7 @@ static User convertDBUserToUser(const DBUser& dbUser) {
     return user;
 }
 
-Login::Login(Database& db, WebSocketServer& server, std::shared_ptr<JwtAuth> jwtAuth)
+Login::Login(std::shared_ptr<Database> db, WebSocketServer& server, std::shared_ptr<JwtAuth> jwtAuth)
         : db_(db), server_(server), jwtAuth_(jwtAuth) {}
 
 void Login::setupRoutes() {
@@ -54,7 +54,7 @@ nlohmann::json Login::handleLogin(const nlohmann::json& data, const std::string&
     std::string password = data["password"];
 
     // Get user by email
-    DBUser dbUser = db_.getUserByEmail(email);
+    DBUser dbUser = db_->getUserByEmail(email);
     if (dbUser.id.empty()) { // Check if user was found
         return {{"status", "error"}, {"message", "Invalid email or password"}};
     }
