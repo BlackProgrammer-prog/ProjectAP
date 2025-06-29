@@ -1,33 +1,59 @@
-// WebSocketHandler.h
-#ifndef BACKEND_WEBSOCKETHANDLER_H
-#define BACKEND_WEBSOCKETHANDLER_H
-
+#pragma once
+#include <boost/asio.hpp>
+#include <boost/beast.hpp>
+#include <boost/beast/websocket.hpp>
 #include <memory>
 #include <string>
 #include <functional>
-#include <unordered_map>
+#include <json.hpp>
 #include "JwtAuth.h"
-#include "json.hpp"
+#include "SessionManager.h"
+#include "ContactManager.h"
+#include "UserStatusManager.h"
+#include "PrivateChatManager.h"
+
+using json = nlohmann::json;
 
 class WebSocketServer {
 public:
-    WebSocketServer(int port, const std::string& jwt_secret);
+    WebSocketServer(int port,
+                    const std::string& jwt_secret,
+                    std::shared_ptr<ContactManager> contact_manager,
+                    std::shared_ptr<UserStatusManager> status_manager,
+                    std::shared_ptr<SessionManager> session_manager);
     ~WebSocketServer();
 
     void start();
     void stop();
 
     void on(const std::string& message_type,
-            std::function<nlohmann::json(const nlohmann::json&, const std::string&)> handler);
+            std::function<json(const json&, const std::string&)> handler);
 
-    void sendToClient(const std::string& client_id, const nlohmann::json& message);
-
+    void sendToClient(const std::string& client_id, const json& message);
     std::string getClientUserId(const std::string& client_id);
     std::string getClientRole(const std::string& client_id);
 
-private:
-    class Impl;
-    std::unique_ptr<Impl> impl_;
-};
+    void setupHandlers();
 
-#endif // BACKEND_WEBSOCKETHANDLER_H
+private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+
+    // Handlers
+    json handleSendMessage(const json& data, const std::string& client_id);
+    json handleAddContact(const json& data, const std::string& client_id);
+    json handleRemoveContact(const json& data, const std::string& client_id);
+    json handleGetContacts(const json& data, const std::string& client_id);
+    json handleStatusUpdate(const json& data, const std::string& client_id);
+    json handleMarkAsRead(const json& data, const std::string& client_id);
+    json handleEditMessage(const json& data, const std::string& client_id);
+    json handleDeleteMessage(const json& data, const std::string& client_id);
+    json handleSearchMessages(const json& data, const std::string& client_id);
+
+    // Dependencies
+    std::shared_ptr<JwtAuth> jwt_auth_;
+    std::shared_ptr<ContactManager> contact_manager_;
+    std::shared_ptr<UserStatusManager> status_manager_;
+    std::shared_ptr<SessionManager> session_manager_;
+    std::shared_ptr<PrivateChatManager> chat_manager_;
+};

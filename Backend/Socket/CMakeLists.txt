@@ -1,4 +1,3 @@
-# ایجاد کتابخانه SocketLib
 add_library(SocketLib
         JwtAuth.cpp
         WebSocketHandler.cpp
@@ -6,21 +5,23 @@ add_library(SocketLib
         WebSocketHandler.h
 )
 
-# پیدا کردن پکیج‌های مورد نیاز
 find_package(jwt-cpp CONFIG REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system thread)
 
-# لینک کردن کتابخانه‌ها
 target_link_libraries(SocketLib
+        PUBLIC
+        DataBaseLib             # اگر WebSocketHandler به دیتابیس ارجاع می‌ده
         PRIVATE
         jwt-cpp::jwt-cpp
         Boost::system
         Boost::thread
 )
 
-# مسیرهای اینکلود برای boost (ضروری اگر با beast یا asio مستقیم کار می‌کنی)
 target_include_directories(SocketLib
         PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${Boost_INCLUDE_DIRS}/library
+        ${CMAKE_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}            # هدرهای Socket
+        ${CMAKE_SOURCE_DIR}/library            # اگر json.hpp یا sqlite3 اینجاست
+        ${CMAKE_SOURCE_DIR}/SomeOtherModuleDir # مسیر هر هدر دیگری که نیاز دارید
+        ${Boost_INCLUDE_DIRS}
 )

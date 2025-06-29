@@ -1,23 +1,27 @@
-// WebSocketHandler.cpp
 #include "WebSocketHandler.h"
-#include <boost/asio.hpp>
-#include <boost/beast/core.hpp>
-#include <boost/beast/websocket.hpp>
+#include "PrivateChatManager.h"
 #include <boost/asio/strand.hpp>
 #include <thread>
 #include <mutex>
 #include <iostream>
+#include "json.hpp"
 
-using tcp = boost::asio::ip::tcp;
-namespace websocket = boost::beast::websocket;
 namespace beast = boost::beast;
-using json = nlohmann::json;
+namespace websocket = beast::websocket;
+using tcp = boost::asio::ip::tcp;
 
 class WebSocketServer::Impl {
 public:
-    Impl(int port, const std::string& jwt_secret)
+    Impl(int port,
+         const std::string& jwt_secret,
+         std::shared_ptr<ContactManager> contact_manager,
+         std::shared_ptr<UserStatusManager> status_manager,
+         std::shared_ptr<SessionManager> session_manager)
             : port_(port),
               jwt_auth_(JwtAuth::create(jwt_secret)),
+              contact_manager_(contact_manager),
+              status_manager_(status_manager),
+              session_manager_(session_manager),
               acceptor_(ioc_, tcp::endpoint(tcp::v4(), port_)) {}
 
     void start() {
@@ -52,12 +56,35 @@ public:
 
     std::string getClientUserId(const std::string& client_id) {
         std::lock_guard<std::mutex> lock(clients_mutex_);
-        return client_sessions_[client_id].user_id;
+        if (client_sessions_.count(client_id)) {
+            return client_sessions_[client_id].user_id;
+        }
+        return "";
     }
 
-    std::string getClientRole(const std::string& client_id) {
-        std::lock_guard<std::mutex> lock(clients_mutex_);
-        return client_sessions_[client_id].role;
+    void updateUserStatus(const std::string& client_id, int status) {
+        std::string user_id = getClientUserId(client_id);
+        if(!user_id.empty()) {
+            status_manager_->setStatus(user_id, static_cast<UserStatusManager::Status>(status));
+            notifyContactStatusChange(user_id, status);
+        }
+    }
+
+    void notifyContactStatusChange(const std::string& user_id, int status) {
+        json payload = {
+                {"type", "contact_status_change"},
+                {"user_id", user_id},
+                {"status", status}
+        };
+
+        auto contacts = contact_manager_->getContacts(user_id);
+        for(const auto& email : contacts) {
+            std::string contact_id = contact_manager_->findUserByEmail(email);
+            auto client_ids = session_manager_->getClientIds(contact_id);
+            for(const auto& cid : client_ids) {
+                sendToClient(cid, payload);
+            }
+        }
     }
 
 private:
@@ -96,9 +123,12 @@ private:
 
         void handleMessage() {
             try {
-                std::string msg = boost::beast::buffers_to_string(buffer_.data());
-                json data = json::parse(msg);
+                std::string msg = beast::buffers_to_string(buffer_.data());
+                json jsondata = json::parse(msg);
+                json data = jsondata; // 👈 اضافه شده
                 std::string client_id = remoteIp();
+
+                server_.updateUserStatus(client_id, 0); // 0 = ONLINE
 
                 if (data["type"] != "login" && data["type"] != "register") {
                     if (!server_.authenticate(client_id, data)) {
@@ -116,11 +146,11 @@ private:
                     ws_.write(boost::asio::buffer(json{{"status", "error"}, {"message", "Unknown message type"}}.dump()));
                 }
             } catch (const std::exception& e) {
-                ws_.write(boost::asio::buffer(json{{"status", "error"}, {"message", e.what()}}.dump()));
+                ws_.write(boost::asio::buffer(json{
+                        {"status", "error"},
+                        {"message", std::string("Exception: ") + e.what()}
+                }.dump()));
             }
-
-            buffer_.consume(buffer_.size());
-            read();
         }
 
         std::string remoteIp() const {
@@ -145,6 +175,9 @@ private:
             session.role = jwt_auth_->getUserRole(token);
             session.token = token;
             client_sessions_[client_id] = session;
+
+            // Add to session manager
+            session_manager_->addSession(client_id, session.user_id);
         }
 
         return true;
@@ -156,6 +189,10 @@ private:
     std::thread thread_;
 
     std::shared_ptr<JwtAuth> jwt_auth_;
+    std::shared_ptr<ContactManager> contact_manager_;
+    std::shared_ptr<UserStatusManager> status_manager_;
+    std::shared_ptr<SessionManager> session_manager_;
+
     std::unordered_map<std::string, std::function<json(const json&, const std::string&)>> handlers_;
     std::mutex handlers_mutex_;
 
@@ -164,15 +201,26 @@ private:
     std::mutex clients_mutex_;
 };
 
-// رابط عمومی
-WebSocketServer::WebSocketServer(int port, const std::string& jwt_secret)
-        : impl_(std::make_unique<Impl>(port, jwt_secret)) {}
+// Public interface implementation
+WebSocketServer::WebSocketServer(int port,
+                                 const std::string& jwt_secret,
+                                 std::shared_ptr<ContactManager> contact_manager,
+                                 std::shared_ptr<UserStatusManager> status_manager,
+                                 std::shared_ptr<SessionManager> session_manager)
+        : impl_(std::make_unique<Impl>(port, jwt_secret, contact_manager, status_manager, session_manager)),
+          contact_manager_(contact_manager),
+          status_manager_(status_manager),
+          session_manager_(session_manager)
+{
+    jwt_auth_ = JwtAuth::create(jwt_secret);
+}
 
 WebSocketServer::~WebSocketServer() {
     stop();
 }
 
 void WebSocketServer::start() {
+    setupHandlers();
     impl_->start();
 }
 
@@ -193,6 +241,173 @@ std::string WebSocketServer::getClientUserId(const std::string& client_id) {
     return impl_->getClientUserId(client_id);
 }
 
-std::string WebSocketServer::getClientRole(const std::string& client_id) {
-    return impl_->getClientRole(client_id);
+// Handler implementations
+void WebSocketServer::setupHandlers() {
+    impl_->on("send_message", [this](const json& data, const std::string& clientId) {
+        return handleSendMessage(data, clientId);
+    });
+
+    impl_->on("add_contact", [this](const json& data, const std::string& clientId) {
+        return handleAddContact(data, clientId);
+    });
+
+    impl_->on("remove_contact", [this](const json& data, const std::string& clientId) {
+        return handleRemoveContact(data, clientId);
+    });
+
+    impl_->on("get_contacts", [this](const json& data, const std::string& clientId) {
+        return handleGetContacts(data, clientId);
+    });
+
+    impl_->on("update_status", [this](const json& data, const std::string& clientId) {
+        return handleStatusUpdate(data, clientId);
+    });
+
+    impl_->on("mark_as_read", [this](const json& data, const std::string& clientId) {
+        return handleMarkAsRead(data, clientId);
+    });
+
+    impl_->on("edit_message", [this](const json& data, const std::string& clientId) {
+        return handleEditMessage(data, clientId);
+    });
+
+    impl_->on("delete_message", [this](const json& data, const std::string& clientId) {
+        return handleDeleteMessage(data, clientId);
+    });
+
+    impl_->on("search_messages", [this](const json& data, const std::string& clientId) {
+        return handleSearchMessages(data, clientId);
+    });
 }
+
+json WebSocketServer::handleSendMessage(const json& data, const std::string& client_id) {
+    if(!jwt_auth_->isValidToken(data["token"])) {
+        return {{"status", "error"}, {"message", "Invalid token"}};
+    }
+
+    std::string sender_id = jwt_auth_->getUserId(data["token"]);
+    std::string receiver_email = data["to"];
+
+    // Check if receiver is in contacts
+    if(!contact_manager_->isContact(sender_id, receiver_email)) {
+        return {{"status", "error"}, {"message", "User not in contacts"}};
+    }
+
+    std::string receiver_id = contact_manager_->findUserByEmail(receiver_email);
+    if(receiver_id.empty()) {
+        return {{"status", "error"}, {"message", "User not found"}};
+    }
+
+    Message msg;
+    msg.id = Message::generateUUID();
+    msg.sender_id = sender_id;
+    msg.receiver_id = receiver_id;
+    msg.content = data["message"];
+    msg.timestamp = std::time(nullptr);
+    msg.type = MessageType::PRIVATE;
+    msg.status = MessageStatus::SENT;
+
+    if(chat_manager_->sendMessage(msg)) {
+        // Notify receiver
+        json payload = {
+                {"type", "new_message"},
+                {"message", msg.toJson()}
+        };
+
+        auto client_ids = session_manager_->getClientIds(receiver_id);
+        for (const auto& cid : client_ids) {
+            sendToClient(cid, payload);
+        }
+
+        return {{"status", "success"}, {"message_id", msg.id}};
+    }
+
+    return {{"status", "error"}, {"message", "Failed to send message"}};
+}
+
+json WebSocketServer::handleAddContact(const json& data, const std::string& client_id) {
+    if(!jwt_auth_->isValidToken(data["token"])) {
+        return {{"status", "error"}, {"message", "Invalid token"}};
+    }
+
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    std::string contact_email = data["email"];
+
+    if(contact_manager_->addContact(user_id, contact_email)) {
+        // Notify contact about status
+        auto status = status_manager_->getStatus(user_id);
+        std::string contact_id = contact_manager_->findUserByEmail(contact_email);
+        auto contact_clients = session_manager_->getClientIds(contact_id);
+
+        json payload = {
+                {"type", "contact_status_change"},
+                {"user_id", user_id},
+                {"status", static_cast<int>(status)}
+        };
+
+        for(const auto& cid : contact_clients) {
+            sendToClient(cid, payload);
+        }
+
+        return {{"status", "success"}};
+    }
+
+    return {{"status", "error"}, {"message", "Failed to add contact"}};
+}
+
+json WebSocketServer::handleRemoveContact(const json& data, const std::string& client_id) {
+    if(!jwt_auth_->isValidToken(data["token"])) {
+        return {{"status", "error"}, {"message", "Invalid token"}};
+    }
+
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    std::string contact_email = data["email"];
+
+    if(contact_manager_->removeContact(user_id, contact_email)) {
+        return {{"status", "success"}};
+    }
+
+    return {{"status", "error"}, {"message", "Failed to remove contact"}};
+}
+
+json WebSocketServer::handleGetContacts(const json& data, const std::string& client_id) {
+    if(!jwt_auth_->isValidToken(data["token"])) {
+        return {{"status", "error"}, {"message", "Invalid token"}};
+    }
+
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    auto contacts = contact_manager_->getContacts(user_id);
+
+    json contacts_with_status = json::array();
+    for(const auto& email : contacts) {
+        std::string contact_id = contact_manager_->findUserByEmail(email);
+        auto status = status_manager_->getStatus(contact_id);
+
+        contacts_with_status.push_back({
+                                               {"email", email},
+                                               {"status", static_cast<int>(status)},
+                                               {"last_active", status_manager_->getLastActive(contact_id)}
+                                       });
+    }
+
+    return {{"status", "success"}, {"contacts", contacts_with_status}};
+}
+
+json WebSocketServer::handleStatusUpdate(const json& data, const std::string& client_id) {
+    if(!jwt_auth_->isValidToken(data["token"])) {
+        return {{"status", "error"}, {"message", "Invalid token"}};
+    }
+
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    int status_value = data["status"];
+
+    if(status_value >= 0 && status_value <= 3) {
+        status_manager_->setStatus(user_id, static_cast<UserStatusManager::Status>(status_value));
+        impl_->notifyContactStatusChange(user_id, status_value);
+        return {{"status", "success"}};
+    }
+
+    return {{"status", "error"}, {"message", "Invalid status value"}};
+}
+
+// Other handlers (mark_as_read, edit_message, etc.) would be implemented similarly
