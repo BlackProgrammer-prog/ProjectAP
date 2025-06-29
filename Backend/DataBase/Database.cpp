@@ -1,14 +1,8 @@
-//
-// Created by afraa on 5/31/2025.
-//
-
 #include "Database.h"
 #include "sqlite3.h"
 #include <iostream>
-#include "json.hpp"
-
-
-using json = nlohmann::json;
+#include <sstream>
+#include <stdexcept>
 
 struct Database::Impl {
     sqlite3* db;
@@ -26,6 +20,8 @@ struct Database::Impl {
 
     void initializeDatabase() {
         const char* sql = R"(
+            PRAGMA foreign_keys = ON;
+            
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
                 email TEXT UNIQUE NOT NULL,
@@ -36,6 +32,38 @@ struct Database::Impl {
                 custom_url TEXT UNIQUE NOT NULL,
                 contacts_json TEXT
             );
+            
+            CREATE TABLE IF NOT EXISTS contacts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                contact_user_id TEXT NOT NULL,
+                added_at INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (contact_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE(user_id, contact_user_id)
+            );
+            
+            CREATE TABLE IF NOT EXISTS private_messages (
+                id TEXT PRIMARY KEY,
+                sender_id TEXT NOT NULL,
+                receiver_id TEXT NOT NULL,
+                content TEXT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                delivered INTEGER DEFAULT 0,
+                read INTEGER DEFAULT 0,
+                deleted INTEGER DEFAULT 0,
+                edited_timestamp INTEGER DEFAULT 0,
+                status INTEGER DEFAULT 0,
+                FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            
+            CREATE INDEX idx_msg_sender ON private_messages(sender_id);
+            CREATE INDEX idx_msg_receiver ON private_messages(receiver_id);
+            CREATE INDEX idx_msg_timestamp ON private_messages(timestamp);
+            
+            CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts 
+            USING fts5(sender_id, receiver_id, content);
         )";
         executeQueryInternal(sql);
     }
@@ -81,8 +109,7 @@ struct Database::Impl {
             try {
                 user.settings = json::parse(get_safe(stmt, 5));
             } catch (...) {
-                user.settings = json::object();
-            }
+                user.settings = json::object();}
 
             try {
                 user.contacts = json::parse(get_safe(stmt, 7));
@@ -96,6 +123,7 @@ struct Database::Impl {
     }
 };
 
+// Implementations
 Database::Database(const std::string& databasePath)
         : pImpl(std::make_unique<Impl>(databasePath)) {}
 
@@ -129,7 +157,7 @@ DBUser Database::getUserByUsername(const std::string& username) {
     return pImpl->getUser("username", username);
 }
 
-[[maybe_unused]] DBUser Database::getUserByEmail(const std::string& email) {
+DBUser Database::getUserByEmail(const std::string& email) {
     return pImpl->getUser("email", email);
 }
 
@@ -203,13 +231,13 @@ QueryResult Database::executeQueryWithParams(const std::string& query, const std
     return result;
 }
 
-bool Database::backupDatabase(const std::string& backupPath) {
-    return false; // پیاده‌سازی در صورت نیاز
-}
-
-bool Database::restoreDatabase(const std::string& backupPath) {
-    return false; // پیاده‌سازی در صورت نیاز
-}
+//bool Database::backupDatabase(const std::string& backupPath) {
+//    return false;
+//}
+//
+//bool Database::restoreDatabase(const std::string& backupPath) {
+//    return false;
+//}
 
 bool Database::userExistsByEmail(const std::string& email) {
     DBUser user = getUserByEmail(email);
@@ -219,4 +247,102 @@ bool Database::userExistsByEmail(const std::string& email) {
 bool Database::userExistsByUsername(const std::string& username) {
     DBUser user = getUserByUsername(username);
     return !user.id.empty();
+}
+
+// Contact methods
+bool Database::addContact(const std::string& user_id, const std::string& contact_email) {
+    DBUser contact = getUserByEmail(contact_email);
+    if(contact.id.empty()) return false;
+
+    std::string sql = R"(
+        INSERT INTO contacts (user_id, contact_user_id, added_at)
+        VALUES (?, ?, ?)
+    )";
+
+    return executeQueryWithParams(sql, {
+            user_id,
+            contact.id,
+            std::to_string(std::time(nullptr))
+    }).success;
+}
+
+bool Database::removeContact(const std::string& user_id, const std::string& contact_email) {
+    DBUser contact = getUserByEmail(contact_email);
+    if(contact.id.empty()) return false;
+
+    std::string sql = "DELETE FROM contacts WHERE user_id = ? AND contact_user_id = ?";
+    return executeQueryWithParams(sql, {user_id, contact.id}).success;
+}
+
+std::vector<std::string> Database::getContacts(const std::string& user_id) {
+    std::vector<std::string> contacts;
+    std::string sql = R"(
+        SELECT u.email
+        FROM contacts c
+        JOIN users u ON c.contact_user_id = u.id
+        WHERE c.user_id = ?
+    )";
+
+    auto result = executeQueryWithParams(sql, {user_id});
+    for(size_t i = 0; i < result.data.size(); i++) {
+        contacts.push_back(result.data[i]);
+    }
+    return contacts;
+}
+
+// Message methods
+bool Database::storeMessage(const std::string& id,
+                            const std::string& sender_id,
+                            const std::string& receiver_id,
+                            const std::string& content,
+                            time_t timestamp,
+                            bool delivered,
+                            bool read) {
+    std::string sql = R"(
+        INSERT INTO private_messages
+        (id, sender_id, receiver_id, content, timestamp, delivered, read)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    )";
+
+    return executeQueryWithParams(sql, {
+            id,
+            sender_id,
+            receiver_id,
+            content,
+            std::to_string(timestamp),
+            delivered ? "1" : "0",
+            read ? "1" : "0"
+    }).success;
+}
+
+std::vector<std::vector<std::string>> Database::getMessagesBetweenUsers(
+        const std::string& user1,
+        const std::string& user2,
+        int limit
+) {
+    std::vector<std::vector<std::string>> messages;
+    std::string sql = R"(
+        SELECT id, sender_id, receiver_id, content, timestamp, delivered, read
+        FROM private_messages
+        WHERE (sender_id = ? AND receiver_id = ?)
+        OR (sender_id = ? AND receiver_id = ?)
+        ORDER BY timestamp DESC
+        LIMIT ?
+    )";
+
+    auto result = executeQueryWithParams(sql, {
+            user1, user2, user2, user1, std::to_string(limit)
+    });
+
+    // Group results into rows of 7 columns
+    for(size_t i = 0; i < result.data.size(); i += 7) {
+        std::vector<std::string> row;
+        for(int j = 0; j < 7; j++) {
+            if(i+j < result.data.size()) {
+                row.push_back(result.data[i+j]);
+            }
+        }
+        messages.push_back(row);
+    }
+    return messages;
 }
