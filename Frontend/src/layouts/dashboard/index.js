@@ -10,10 +10,10 @@ import SideBar from "./SideBar";
 
 
 const DashboardLayout = () => {
-
+  
   return (
     <Stack>
-      <SideBar />
+      <SideBar/>
     </Stack>
   );
 };

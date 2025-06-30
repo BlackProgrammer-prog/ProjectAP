@@ -68,13 +68,14 @@ const Message = () => {
 
                             case "doc":
                                 //doc msg
-                                return <DocMsg key={index} el={el} />
+                                return <DocMsg key={index} el={el}/>
                             case "link":
                                 //link msg
                                 <LinkMsg key={index} el={el} />
 
-                            case "reply":
-                                return <ReplyMsg key={index} el={el} />
+                            // case "reply":
+                            //     return <ReplyMsg key={index} el={el} />
+                            //Add Reply in component MsgType coment shode
 
                             default:
                                 return <TextMsg key={index} el={el} />
@@ -94,3 +95,46 @@ export default Message
 
 
 // ........................................................................
+
+// "use client"
+
+// import { Stack } from "@mui/material"
+// import { TextMsg, DocMsg, LinkMsg, MediaMsg, ReplyMsg } from "./MsgType"
+// import { Chat_History } from "@/src/data"
+
+// const Message = () => {
+//   return (
+//     <Stack spacing={2}>
+//       {Chat_History.map((el, index) => {
+//         switch (el.type) {
+//           case "divider":
+//             return null
+
+//           case "msg":
+//             switch (el.subtype) {
+//               case "img":
+//                 return <MediaMsg key={index} el={el} />
+
+//               case "doc":
+//                 return <DocMsg key={index} el={el} />
+
+//               case "link":
+//                 return <LinkMsg key={index} el={el} />
+
+//               case "reply":
+//                 return <ReplyMsg key={index} el={el} />
+
+//               default:
+//                 return <TextMsg key={index} el={el} />
+//             }
+
+//           default:
+//             return null
+//         }
+//       })}
+//     </Stack>
+//   )
+// }
+
+// export default Message
+

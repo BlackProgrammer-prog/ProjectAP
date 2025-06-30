@@ -92,3 +92,43 @@ export default Conversation
 // ..................................................................................
 
 
+// "use client"
+
+// import { Stack, Box } from "@mui/material"
+// import Header from "./Header"
+// import Footer from "./Footer"
+// import Message from "./Message"
+// import { Timeline } from "./MsgType"
+
+// const Conversation = ({ onToggleContact }) => {
+//     return (
+//         <Stack>
+//             {/* Chat header */}
+//             <Header onToggleContact={onToggleContact} />
+
+//             {/* Messages area with Timeline */}
+//             <Box
+//                 sx={{
+//                     position: "fixed",
+//                     top: "100px",
+//                     left: 422,
+//                     right: 320,
+//                     bottom: "80px",
+//                     overflowY: "auto",
+//                     px: 2,
+//                 }}
+//             >
+//                 <Stack spacing={2} sx={{ pt: 2 }}>
+//                     {/* Timeline at the top of messages */}
+//                     <Timeline text="Today" />
+//                     <Message />
+//                 </Stack>
+//             </Box>
+
+//             {/* Chat footer */}
+//             <Footer />
+//         </Stack>
+//     )
+// }
+
+// export default Conversation

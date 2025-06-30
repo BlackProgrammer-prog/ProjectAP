@@ -64,6 +64,8 @@ export default function Router() {
         { element: <Navigate to={DEFAULT_PATH} replace />, index: true },
         { path: "app", element: <GeneralApp /> },
         { path: "settings", element: <Settings /> },
+        { path: "group", element: <GroupPage /> },
+        { path: "call", element: <CallPage /> },
         { path: "app/chat/:id", element: <ChatPage /> }, // اضافه کردن روت برای چت شخصی
         { path: "404", element: <Page404 /> },
         { path: "*", element: <Navigate to="/404" replace /> },
@@ -75,5 +77,7 @@ export default function Router() {
 
 const GeneralApp = Loadable(lazy(() => import("../pages/dashboard/GeneralApp")));
 const Settings = Loadable(lazy(() => import("../pages/dashboard/Settings")));
-const ChatPage = Loadable(lazy(() => import("../pages/dashboard/ChatPage"))); 
+const ChatPage = Loadable(lazy(() => import("../pages/dashboard/ChatPage")));
+const CallPage = Loadable(lazy(() => import("../pages/dashboard/Call")));
+const GroupPage = Loadable(lazy(() => import("../pages/dashboard/Group")))
 const Page404 = Loadable(lazy(() => import("../pages/Page404")));
