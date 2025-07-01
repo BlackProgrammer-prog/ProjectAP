@@ -13,10 +13,14 @@ Message::Message(const std::string& sender,
                  const std::string& receiver,
                  MessageType msg_type,
                  const std::string& msg_content)
-    : id(generateUUID()),
-      sender_id(sender),
-      receiver_id(receiver),
-      type(msg_type),
-      content(msg_content),
-      timestamp(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()))
+        : id(generateUUID())
+        , sender_id(sender)
+        , receiver_id(receiver)
+        , type(msg_type)
+        , content(msg_content)
+        , timestamp(std::chrono::system_clock::to_time_t(
+                std::chrono::system_clock::now()))
+        , edited_timestamp(timestamp)
+        , status(MessageStatus::SENT)
+        , deleted(false)
 {}
