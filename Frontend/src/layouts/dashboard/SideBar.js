@@ -1,344 +1,12 @@
 
-
-// // // ................................................................
-
-// import { Avatar, Box, Divider, IconButton, Stack, Switch, useTheme, Menu, MenuItem, Typography } from "@mui/material";
-// import React, { useState } from "react";
-// import { Outlet } from "react-router-dom";
-// import logo from "../../assets/Images/logo.ico";
-// import { Nav_Buttons, Profile_Menu } from "../../data/index";
-// import { ChatCircleDots, Gear, Phone, Users } from "phosphor-react";
-// import { faker } from "@faker-js/faker";
-// import useSettings from '../../hooks/useSettings';
-// import Profile from "./Profile";
-// import UserProfile from "./UserProfile";
-// import Settings from "../../pages/dashboard/Settings";
-// import Group from "../../pages/dashboard/Group";
-// import Chats from "../../pages/dashboard/Chats";
-// import Call from "../../pages/dashboard/Call";
-// import { useNavigate } from "react-router-dom";
-
-// const SideBar = () => {
-//     const them = useTheme();
-//     const navigate = useNavigate();
-//     const { onToggleMode } = useSettings();
-//     const [select, setSelect] = useState(null);
-//     const [showUserProfile, setShowUserProfile] = useState(false);
-//     const [profileMenuAnchor, setProfileMenuAnchor] = useState(null);
-//     const [showProfile, setShowProfile] = useState(false);
-//     const profileMenuOpen = Boolean(profileMenuAnchor);
-//     const [selectedIcon, setSelectedIcon] = useState(null);
-//     const [openSettings, setOpenSettings] = useState(false);
-//     const [showSettings, setShowSettings] = useState(false);
-//     const handleToggleSettings = () => {
-//         if (openSettings) {
-//             // اگر تنظیمات باز است، آن را ببند
-//             setOpenSettings(false);
-//             setSelectedIcon(null);
-//         } else {
-//             // اگر تنظیمات بسته است، آن را باز کن
-//             setOpenSettings(true);
-//             setSelectedIcon('gear');
-//         }
-//     };
-
-
-//     const [openGroup, setOpenGroup] = useState(false);
-//     const handleToggleGroup = () => {
-//         if (openGroup) {
-//             // اگر گروه باز است، آن را ببند
-//             setOpenGroup(false);
-//             setSelectedIcon(null);
-//         } else {
-//             // اگر گروه بسته است، آن را باز کن
-//             setOpenGroup(true);
-//             setSelectedIcon('gear');
-//         }
-//     };
-
-
-//     const [openChat, setOpenChat] = useState(false);
-//     const handleToggleChat = () => {
-//         if (openChat) {
-//             // اگر گروه باز است، آن را ببند
-//             setOpenChat(false);
-//             setSelectedIcon(null);
-//         } else {
-//             // اگر گروه بسته است، آن را باز کن
-//             setOpenChat(true);
-//             setSelectedIcon('gear');
-//         }
-//     };
-
-
-//     const [openCall, setOpenCall] = useState(false);
-//     const handleToggleCall = () => {
-//         if (openCall) {
-//             // اگر گروه باز است، آن را ببند
-//             setOpenCall(false);
-//             setSelectedIcon(null);
-//         } else {
-//             // اگر گروه بسته است، آن را باز کن
-//             setOpenCall(true);
-//             setSelectedIcon('gear');
-//         }
-//     };
-
-
-//     const handleProfileClick = (event) => {
-//         setProfileMenuAnchor(event.currentTarget);
-//     };
-
-//     const handleProfileMenuClose = () => {
-//         setProfileMenuAnchor(null);
-//     };
-
-//     const handleMenuItemClick = (option) => {
-//         console.log(`Selected: ${option.title}`);
-//         if (option.title === 'Profile') {
-//             setShowProfile(!showProfile);  // Toggle visibility of Profile
-//         }
-//         handleProfileMenuClose();
-//     };
-
-//     const handleUserProfileToggle = () => {
-//         setShowUserProfile(!showUserProfile);
-//         setProfileMenuAnchor(null);
-//     };
-
-//     return (
-//         <Stack>
-//             <Box sx={{
-//                 backgroundColor: them.palette.background.paper,
-//                 boxShadow: "0px 0px 2px rgba(0,0,0,0.2)",
-//                 height: "100vh",
-//                 width: 100,
-//                 paddingTop: 1
-//             }}>
-//                 <Stack direction="column" alignItems={"center"} sx={{ width: "100%", height: "100%", flexDirection: "column", justifyContent: "space-between" }}>
-//                     <Box sx={{
-//                         backgroundColor: them.palette.primary.main,
-//                         height: 64,
-//                         width: 64,
-//                         borderRadius: 12,
-//                     }}>
-//                         <img src={logo || "/placeholder.svg"} alt="chat logo" />
-//                     </Box>
-
-//                     <Stack sx={{ width: "max-content", marginTop: 1 }} direction="column" spacing={2.5}>
-//                         {/* {Nav_Buttons.map((el) => (
-//                             <Box
-//                                 key={el.index}
-//                                 sx={{
-//                                     backgroundColor: select === el.index ? them.palette.primary.main : 'transparent',
-//                                     borderRadius: 1.5
-//                                 }}
-//                             >
-//                                 <IconButton
-//                                     onClick={() => handleToggleGroup('gear')}
-//                                     sx={{
-//                                         width: "max-content",
-//                                         color: select === el.index ? "#fff" : "#000"
-//                                     }}
-//                                 >
-//                                     {el.icon}
-//                                 </IconButton>
-//                             </Box>
-//                         ))} */}
-//                         <Box
-//                             sx={{
-//                                 backgroundColor: select ? them.palette.primary.main : 'transparent',
-//                                 borderRadius: 1.5
-//                             }}
-//                         >
-//                             <IconButton
-//                                 onClick={() => { handleToggleChat('gear') }}
-//                                 sx={{
-//                                     width: "max-content",
-//                                     color: select ? "#fff" : "#000"
-//                                 }}
-//                             >
-//                                 <ChatCircleDots />
-//                             </IconButton>
-//                         </Box>
-//                         <Box
-//                             sx={{
-//                                 backgroundColor: select ? them.palette.primary.main : 'transparent',
-//                                 borderRadius: 1.5
-//                             }}
-//                         >
-//                             <IconButton
-//                                 onClick={() => handleToggleGroup()}
-//                                 sx={{
-//                                     width: "max-content",
-//                                     color: select ? "#fff" : "#000"
-//                                 }}
-//                             >
-//                                 <Users />
-//                             </IconButton>
-//                         </Box>
-//                         <Box
-//                             sx={{
-//                                 backgroundColor: select ? them.palette.primary.main : 'transparent',
-//                                 borderRadius: 1.5
-//                             }}
-//                         >
-//                             <IconButton
-//                                 onClick={() => { handleToggleCall() }}
-//                                 sx={{
-//                                     width: "max-content",
-//                                     color: select ? "#fff" : "#000"
-//                                 }}
-//                             >
-//                                 <Phone />
-//                             </IconButton>
-//                         </Box>
-//                         <Divider />
-//                         <IconButton
-//                             onClick={() => handleToggleSettings('gear')}
-//                             onClose={() => handleToggleSettings('gear')}
-//                             sx={{
-//                                 color: select === 'gear' ? "#fff" : "#000",
-//                                 backgroundColor: select === 'gear' ? them.palette.primary.main : 'transparent',
-//                                 borderRadius: 1.5
-//                             }}
-//                         >
-//                             <Gear />
-//                         </IconButton>
-//                     </Stack>
-
-//                     <Box sx={{ marginTop: 'auto', marginBottom: 2 }}>
-//                         <Switch onChange={() => onToggleMode()} defaultChecked />
-//                     </Box>
-
-//                     <Box sx={{ marginBottom: 2, position: 'relative' }}>
-//                         <Avatar
-//                             src={faker.image.avatar()}
-//                             onClick={handleProfileClick}
-//                             sx={{
-//                                 cursor: 'pointer',
-//                                 transition: 'all 0.3s ease',
-//                                 '&:hover': {
-//                                     transform: 'scale(1.05)',
-//                                     boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-//                                 }
-//                             }}
-//                         />
-//                         <Menu
-//                             anchorEl={profileMenuAnchor}
-//                             open={profileMenuOpen}
-//                             onClose={handleProfileMenuClose}
-//                             anchorOrigin={{
-//                                 vertical: 'top',
-//                                 horizontal: 'right',
-//                             }}
-//                             transformOrigin={{
-//                                 vertical: 'bottom',
-//                                 horizontal: 'left',
-//                             }}
-//                             PaperProps={{
-//                                 sx: {
-//                                     borderRadius: 3,
-//                                     minWidth: 180,
-//                                     boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-//                                     border: `1px solid ${them.palette.divider}`,
-//                                     ml: 1.5,
-//                                     mt: -0.5,
-//                                     background: them.palette.mode === 'light'
-//                                         ? 'linear-gradient(145deg, #ffffff 0%, #f8faff 100%)'
-//                                         : them.palette.background.paper,
-//                                     backdropFilter: 'blur(10px)',
-//                                 },
-//                             }}
-//                         >
-//                             <Stack spacing={0.5} py={1.5}>
-//                                 {Profile_Menu.map((option, index) => (
-//                                     <MenuItem
-//                                         key={index}
-//                                         onClick={() => {
-//                                             handleMenuItemClick(option);
-//                                             // اضافه کردن این خط برای مدیریت نمایش تنظیمات
-//                                             if (option.title === 'Settings') setShowSettings(true);
-//                                         }}
-//                                         sx={{
-//                                             mx: 1.5,
-//                                             borderRadius: 2,
-//                                             fontSize: '0.875rem',
-//                                             display: 'flex',
-//                                             alignItems: 'center',
-//                                             gap: 2,
-//                                             py: 1.5,
-//                                             px: 2,
-//                                             transition: 'all 0.2s ease',
-//                                             position: 'relative',
-//                                             overflow: 'hidden',
-//                                             '&:hover': {
-//                                                 backgroundColor: them.palette.mode === 'light'
-//                                                     ? 'rgba(25, 118, 210, 0.08)'
-//                                                     : 'rgba(144, 202, 249, 0.08)',
-//                                                 transform: 'translateX(4px)',
-//                                             },
-//                                         }}
-//                                     >
-//                                         <Box
-//                                             className="menu-icon"
-//                                             sx={{
-//                                                 color: them.palette.text.secondary,
-//                                                 display: 'flex',
-//                                                 alignItems: 'center',
-//                                                 transition: 'all 0.2s ease',
-//                                             }}
-//                                         >
-//                                             {option.icon}
-//                                         </Box>
-//                                         <Typography
-//                                             variant="body2"
-//                                             sx={{
-//                                                 fontWeight: 500,
-//                                                 color: them.palette.text.primary,
-//                                                 letterSpacing: '0.025em'
-//                                             }}
-//                                         >
-//                                             {option.title}
-//                                         </Typography>
-//                                     </MenuItem>
-//                                 ))}
-//                             </Stack>
-//                         </Menu>
-//                     </Box>
-//                 </Stack>
-//             </Box>
-
-//             <Outlet />
-//             {showProfile && <Profile onClose={() => setShowProfile(false)} />}
-//             {openSettings && <Settings onClose={() => setOpenSettings(false)} />}
-//             {openGroup && <Group onClose={() => setOpenGroup(false)} />}
-//             {openChat && <Chats onClose={() => setOpenChat(false)} />}
-//             {openCall && <Call onClose={() => setOpenCall(false)} />}
-//             {showSettings && <Settings onClose={() => setShowSettings(false)} />}
-
-//         </Stack>
-//     );
-// };
-
-// export default SideBar;
-
-
-
-// // ..........................................................
-
-
-
-
-
 // // ................................................................
 
 import { Avatar, Box, Divider, IconButton, Stack, Switch, useTheme, Menu, MenuItem, Typography } from "@mui/material";
 import React, { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import logo from "../../assets/Images/logo.ico";
-import { Nav_Buttons, Profile_Menu } from "../../data/index";
-import { Brain, ChatCircleDots, Gear, Phone, Robot, Users } from "phosphor-react";
+import { getProfileMenu, Nav_Buttons, Profile_Menu } from "../../data/index";
+import { Brain, ChatCircleDots, Gear, Phone, Robot, SignOut, User, Users } from "phosphor-react";
 import { faker } from "@faker-js/faker";
 import useSettings from '../../hooks/useSettings';
 import Profile from "./Profile";
@@ -350,10 +18,17 @@ import Call from "../../pages/dashboard/Call";
 import { useNavigate } from "react-router-dom";
 import { OpenAiLogoIcon } from "@phosphor-icons/react";
 
+
+
+
 const SideBar = () => {
+    // const Profile_Menu = getProfileMenu(navigate);
     const them = useTheme();
     const navigate = useNavigate();
     const { onToggleMode } = useSettings();
+    const location = useLocation();
+
+    const [openChat, setOpenChat] = useState(false);
     const [select, setSelect] = useState(null);
     const [showUserProfile, setShowUserProfile] = useState(false);
     const [profileMenuAnchor, setProfileMenuAnchor] = useState(null);
@@ -362,10 +37,15 @@ const SideBar = () => {
     const [selectedIcon, setSelectedIcon] = useState(null);
     const [openSettings, setOpenSettings] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
-    const location = useLocation();
+
+    if (location.pathname.startsWith("/Login-Register")) {
+        return <Outlet />; // فقط محتوای صفحه را نمایش بده
+    }
+
     const handleToggleSettings = () => {
         navigate("/settings");
     };
+
 
 
     const handleToggleGroup = () => {
@@ -377,7 +57,7 @@ const SideBar = () => {
     };
 
 
-    const [openChat, setOpenChat] = useState(false);
+
     const handleToggleChat = () => {
         if (openChat) {
             // اگر گروه باز است، آن را ببند
@@ -587,7 +267,7 @@ const SideBar = () => {
                             }}
                         >
                             <Stack spacing={0.5} py={1.5}>
-                                {Profile_Menu.map((option, index) => (
+                                {/* {Profile_Menu.map((option, index) => (
                                     <MenuItem
                                         key={index}
                                         onClick={() => {
@@ -637,7 +317,141 @@ const SideBar = () => {
                                             {option.title}
                                         </Typography>
                                     </MenuItem>
-                                ))}
+                                ))} */}
+                                <MenuItem
+
+                                    sx={{
+                                        mx: 1.5,
+                                        borderRadius: 2,
+                                        fontSize: '0.875rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 2,
+                                        py: 1.5,
+                                        px: 2,
+                                        transition: 'all 0.2s ease',
+                                        position: 'relative',
+                                        overflow: 'hidden',
+                                        '&:hover': {
+                                            backgroundColor: them.palette.mode === 'light'
+                                                ? 'rgba(25, 118, 210, 0.08)'
+                                                : 'rgba(144, 202, 249, 0.08)',
+                                            transform: 'translateX(4px)',
+                                        },
+                                    }}
+                                >
+                                    <Box
+                                        className="menu-icon"
+                                        sx={{
+                                            color: them.palette.text.secondary,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            transition: 'all 0.2s ease',
+                                        }}
+                                    >
+                                        <User />
+                                    </Box>
+                                    <Typography
+                                        variant="body2"
+                                        sx={{
+                                            fontWeight: 500,
+                                            color: them.palette.text.primary,
+                                            letterSpacing: '0.025em'
+                                        }}
+                                    >
+                                        Profile
+                                    </Typography>
+                                </MenuItem>
+                                <MenuItem
+
+                                    sx={{
+                                        mx: 1.5,
+                                        borderRadius: 2,
+                                        fontSize: '0.875rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 2,
+                                        py: 1.5,
+                                        px: 2,
+                                        transition: 'all 0.2s ease',
+                                        position: 'relative',
+                                        overflow: 'hidden',
+                                        '&:hover': {
+                                            backgroundColor: them.palette.mode === 'light'
+                                                ? 'rgba(25, 118, 210, 0.08)'
+                                                : 'rgba(144, 202, 249, 0.08)',
+                                            transform: 'translateX(4px)',
+                                        },
+                                    }}
+                                >
+                                    <Box
+                                        className="menu-icon"
+                                        sx={{
+                                            color: them.palette.text.secondary,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            transition: 'all 0.2s ease',
+                                        }}
+                                    >
+                                        <Gear />
+                                    </Box>
+                                    <Typography
+                                        variant="body2"
+                                        sx={{
+                                            fontWeight: 500,
+                                            color: them.palette.text.primary,
+                                            letterSpacing: '0.025em'
+                                        }}
+                                    >
+                                        Settings
+                                    </Typography>
+                                </MenuItem>
+                                <MenuItem
+                                    onClick={() => {
+                                        navigate('/Login-Register')
+                                    }}
+                                    sx={{
+                                        mx: 1.5,
+                                        borderRadius: 2,
+                                        fontSize: '0.875rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 2,
+                                        py: 1.5,
+                                        px: 2,
+                                        transition: 'all 0.2s ease',
+                                        position: 'relative',
+                                        overflow: 'hidden',
+                                        '&:hover': {
+                                            backgroundColor: them.palette.mode === 'light'
+                                                ? 'rgba(25, 118, 210, 0.08)'
+                                                : 'rgba(144, 202, 249, 0.08)',
+                                            transform: 'translateX(4px)',
+                                        },
+                                    }}
+                                >
+                                    <Box
+                                        className="menu-icon"
+                                        sx={{
+                                            color: them.palette.text.secondary,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            transition: 'all 0.2s ease',
+                                        }}
+                                    >
+                                        <SignOut />
+                                    </Box>
+                                    <Typography
+                                        variant="body2"
+                                        sx={{
+                                            fontWeight: 500,
+                                            color: them.palette.text.primary,
+                                            letterSpacing: '0.025em'
+                                        }}
+                                    >
+                                        LogOut
+                                    </Typography>
+                                </MenuItem>
                             </Stack>
                         </Menu>
                     </Box>

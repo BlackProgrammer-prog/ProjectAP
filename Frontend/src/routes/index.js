@@ -67,6 +67,7 @@ export default function Router() {
         { path: "group", element: <GroupPage /> },
         { path: "call", element: <CallPage /> },
         { path: "AI", element: <ChatGPT /> },
+        { path: "Login-Register", element: <Login /> },
         { path: "app/chat/:id", element: <ChatPage /> }, // اضافه کردن روت برای چت شخصی
         { path: "404", element: <Page404 /> },
         { path: "*", element: <Navigate to="/404" replace /> },
