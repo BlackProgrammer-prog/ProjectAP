@@ -113,7 +113,8 @@ import { Avatar, Box, Divider, IconButton, Stack, Typography, useTheme } from '@
 import { CaretLeft, Bell, Lock, Key, PencilCircle, Image, Note, Keyboard, Info } from 'phosphor-react';
 import { useNavigate } from 'react-router-dom';
 import { faker } from '@faker-js/faker';
-import Shortcuts from '../../Secctions/settings/Shortcuts';
+// import Shortcuts from '../../Secctions/settings/Shortcuts';
+import Shortcuts from "../../Section/Settings/Shortcuts";
 
 const Settings = () => {
     const theme = useTheme();
