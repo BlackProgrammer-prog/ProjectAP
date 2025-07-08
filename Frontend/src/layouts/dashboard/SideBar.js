@@ -338,7 +338,7 @@ import React, { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import logo from "../../assets/Images/logo.ico";
 import { Nav_Buttons, Profile_Menu } from "../../data/index";
-import { ChatCircleDots, Gear, Phone, Users } from "phosphor-react";
+import { Brain, ChatCircleDots, Gear, Phone, Robot, Users } from "phosphor-react";
 import { faker } from "@faker-js/faker";
 import useSettings from '../../hooks/useSettings';
 import Profile from "./Profile";
@@ -348,6 +348,7 @@ import Group from "../../pages/dashboard/Group";
 import Chats from "../../pages/dashboard/Chats";
 import Call from "../../pages/dashboard/Call";
 import { useNavigate } from "react-router-dom";
+import { OpenAiLogoIcon } from "@phosphor-icons/react";
 
 const SideBar = () => {
     const them = useTheme();
@@ -389,12 +390,19 @@ const SideBar = () => {
         }
     };
 
-
     const handleToggleCall = () => {
         if (location.pathname === "/call") {
             navigate("/app"); // اگر در مسیر call هستیم، به app برگردیم
         } else {
             navigate("/call"); // اگر نیستیم، به call برویم
+        }
+    };
+
+    const handleToggleAI = () => {
+        if (location.pathname === "/AI") {
+            navigate("/app"); // اگر در مسیر call هستیم، به app برگردیم
+        } else {
+            navigate("/AI"); // اگر نیستیم، به call برویم
         }
     };
 
@@ -465,7 +473,7 @@ const SideBar = () => {
                             }}
                         >
                             <IconButton
-                                // onClick={() => { handleToggleChat('gear') }}
+                                onClick={() => navigate("/app")}
                                 sx={{
                                     width: "max-content",
                                     color: select ? "#fff" : "#000"
@@ -517,6 +525,21 @@ const SideBar = () => {
                         >
                             <Gear />
                         </IconButton>
+                        <IconButton sx={{
+                            width: "max-content",
+                            color: select ? "#fff" : "#000"
+                        }}>
+                            <Robot size={27} />
+                        </IconButton>
+                        <IconButton
+                            onClick={() => { handleToggleAI() }}
+                            sx={{
+                                width: "max-content",
+                                color: select ? "#fff" : "#000"
+                            }}>
+                            <OpenAiLogoIcon size={27} />
+                        </IconButton>
+
                     </Stack>
 
                     <Box sx={{ marginTop: 'auto', marginBottom: 2 }}>

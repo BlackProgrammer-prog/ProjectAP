@@ -56,7 +56,7 @@ import { DocMsg, LinkMsg, MediaMsg, ReplyMsg, TextMsg } from "./MsgType"
 const Message = () => {
     return (
         <Stack spacing={2}>
-            {Chat_History.map((el, index) => {
+            {/* {Chat_History.map((el, index) => {
                 switch (el.type) {
                     case "divider":
                         return null // دیوایدر را در index.js نمایش می‌دهیم
@@ -86,7 +86,7 @@ const Message = () => {
                         break
                 }
                 return null
-            })}
+            })} */}
         </Stack>
     )
 }

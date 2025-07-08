@@ -332,25 +332,25 @@ export const TextMsg = ({ el }) => {
     )
 }
 
-export const Timeline = ({ text = "Today" }) => {
-    return (
-        <Stack direction="row" alignItems="center" spacing={2} sx={{ width: "100%", my: 3 }}>
-            <Divider sx={{ flexGrow: 1 }} />
-            <Typography
-                variant="caption"
-                sx={{
-                    color: "#65676B",
-                    fontWeight: 500,
-                    fontSize: "0.75rem",
-                    px: 2,
-                }}
-            >
-                {text}
-            </Typography>
-            <Divider sx={{ flexGrow: 1 }} />
-        </Stack>
-    )
-}
+// export const Timeline = ({ text = "Today" }) => {
+//     return (
+//         <Stack direction="row" alignItems="center" spacing={2} sx={{ width: "100%", my: 3 }}>
+//             <Divider sx={{ flexGrow: 1 }} />
+//             <Typography
+//                 variant="caption"
+//                 sx={{
+//                     color: "#65676B",
+//                     fontWeight: 500,
+//                     fontSize: "0.75rem",
+//                     px: 2,
+//                 }}
+//             >
+//                 {text}
+//             </Typography>
+//             <Divider sx={{ flexGrow: 1 }} />
+//         </Stack>
+//     )
+// }
 
 
 // .................................................................................

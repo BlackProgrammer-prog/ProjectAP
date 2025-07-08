@@ -75,7 +75,7 @@ const Conversation = () => {
             >
                 <Stack spacing={2} sx={{ pt: 2 }}>
                     {/* Timeline در بالای پیام‌ها */}
-                    <Timeline text="Today" />
+                    {/* <Timeline text="Today" /> */}
                     <Message />
                 </Stack>
             </Box>
