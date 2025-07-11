@@ -6,7 +6,7 @@ import React, { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import logo from "../../assets/Images/logo.ico";
 import { getProfileMenu, Nav_Buttons, Profile_Menu } from "../../data/index";
-import { Brain, ChatCircleDots, Gear, Phone, Robot, SignOut, User, Users } from "phosphor-react";
+import { Brain, ChatCircleDots, GameController, Gear, Phone, Robot, SignOut, User, Users } from "phosphor-react";
 import { faker } from "@faker-js/faker";
 import useSettings from '../../hooks/useSettings';
 import Profile from "./Profile";
@@ -28,6 +28,7 @@ const SideBar = () => {
     const { onToggleMode } = useSettings();
     const location = useLocation();
 
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [openChat, setOpenChat] = useState(false);
     const [select, setSelect] = useState(null);
     const [showUserProfile, setShowUserProfile] = useState(false);
@@ -85,6 +86,13 @@ const SideBar = () => {
             navigate("/AI"); // اگر نیستیم، به call برویم
         }
     };
+    const handleToggleGame = () => {
+        if (location.pathname === "/AI") {
+            navigate("/app"); // اگر در مسیر call هستیم، به app برگردیم
+        } else {
+            navigate("/game"); // اگر نیستیم، به call برویم
+        }
+    };
 
     const handleProfileClick = (event) => {
         setProfileMenuAnchor(event.currentTarget);
@@ -107,6 +115,13 @@ const SideBar = () => {
         setProfileMenuAnchor(null);
     };
 
+    const handleOpenProfile = () => {
+        setIsProfileOpen(true);
+    };
+
+    const handleCloseProfile = () => {
+        setIsProfileOpen(false);
+    };
     return (
         <Stack>
             <Box sx={{
@@ -211,6 +226,15 @@ const SideBar = () => {
                         }}>
                             <Robot size={27} />
                         </IconButton>
+                        <IconButton
+                            onClick={() => { handleToggleGame() }}
+                            sx={{
+                                width: "max-content",
+                                color: select ? "#fff" : "#000"
+                            }}>
+                            <GameController size={27} />
+                        </IconButton>
+
                         <IconButton
                             onClick={() => { handleToggleAI() }}
                             sx={{
@@ -318,8 +342,9 @@ const SideBar = () => {
                                         </Typography>
                                     </MenuItem>
                                 ))} */}
+                                {/* .................................. */}
                                 <MenuItem
-
+                                    onClick={handleOpenProfile}
                                     sx={{
                                         mx: 1.5,
                                         borderRadius: 2,
@@ -363,7 +388,9 @@ const SideBar = () => {
                                     </Typography>
                                 </MenuItem>
                                 <MenuItem
-
+                                    onClick={() => {
+                                        navigate('/settings')
+                                    }}
                                     sx={{
                                         mx: 1.5,
                                         borderRadius: 2,
@@ -459,8 +486,9 @@ const SideBar = () => {
             </Box>
 
             <Outlet />
-            {showProfile && <Profile onClose={() => setShowProfile(false)} />}
+            {/* {showProfile && <Profile onClose={() => setShowProfile(false)} />} */}
             {openChat && <Chats onClose={() => setOpenChat(false)} />}
+            {isProfileOpen && <Profile onClose={handleCloseProfile} />}
         </Stack>
     );
 };
