@@ -81,7 +81,7 @@ const GeneralApp = Loadable(lazy(() => import("../pages/dashboard/GeneralApp")))
 const Settings = Loadable(lazy(() => import("../pages/dashboard/Settings")));
 const ChatPage = Loadable(lazy(() => import("../pages/dashboard/ChatPage")));
 const CallPage = Loadable(lazy(() => import("../pages/dashboard/Call")));
-const ChatGPT = Loadable(lazy(() => import("../components/AI/ChatGPTAPI")));
+const ChatGPT = Loadable(lazy(() => import("../AI/ChatGPTAPI.js")));
 const Login = Loadable(lazy(() => import("../Login/LoginRegister")));
 const GroupPage = Loadable(lazy(() => import("../pages/dashboard/Group")))
 const Page404 = Loadable(lazy(() => import("../pages/Page404")));
