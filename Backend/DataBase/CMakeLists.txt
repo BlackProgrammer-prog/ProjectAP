@@ -1,6 +1,7 @@
 # ساخت کتابخانه دیتابیس به عنوان کتابخانه جدا
 add_library(DataBaseLib
         Database.cpp
+        Database.h
         ${CMAKE_SOURCE_DIR}/library/sqlite3.c
 )
 

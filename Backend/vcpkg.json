@@ -1,0 +1,12 @@
+{
+  "name": "socket-module",
+  "version": "0.1.0",
+  "dependencies": [
+    "boost-beast",
+    "boost-asio",
+    "jwt-cpp",
+    "boost-system",
+    "boost-thread",
+    "boost-uuid"
+  ]
+}
