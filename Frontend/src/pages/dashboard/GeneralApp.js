@@ -59,7 +59,7 @@ const GeneralApp = () => {
 
         }}
       >
-        <Conversation />
+        <Conversation   />
 
       </Box>
       

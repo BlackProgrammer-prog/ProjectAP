@@ -196,7 +196,7 @@
 // ==============================================================
 
 import { alpha, Avatar, Badge, Box, Divider, IconButton, InputBase, Stack, styled, Typography, useTheme } from '@mui/material';
-import { MagnifyingGlass, Plus, Users } from 'phosphor-react';
+import { CaretLeft, MagnifyingGlass, Plus, Users } from 'phosphor-react';
 import React, { useState } from 'react';
 import { faker } from '@faker-js/faker';
 import { ChatList } from '../../data';
@@ -335,7 +335,7 @@ const Group = () => {
                     <Stack direction={'row'} alignItems={'center'} justifyContent={'space-between'}>
                         <Typography variant='h5'>Groups</Typography>
                         <IconButton onClick={() => navigate("/app")}>
-                            <Users />
+                            <CaretLeft size={25} />
                         </IconButton>
                     </Stack>
                     <Stack sx={{ width: "100%" }}>
@@ -351,8 +351,8 @@ const Group = () => {
                             <Typography variant='subtitle2' component={Link}>
                                 Create New Group
                             </Typography>
-                            <IconButton onClick={() => setOpenDialog(true)}>
-                                <Plus style={{ color: Theme.palette.primary.main }} />
+                            <IconButton style={{marginLeft:100}} onClick={() => setOpenDialog(true)}>
+                                <Plus style={{ color: Theme.palette.primary.main}} />
                             </IconButton>
                         </Stack>
                         <Divider />

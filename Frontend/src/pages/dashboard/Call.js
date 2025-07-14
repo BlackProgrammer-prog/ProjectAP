@@ -196,9 +196,12 @@
 // ========================================================================
 
 import { alpha, Box, Divider, IconButton, InputBase, Stack, styled, Typography, useTheme } from '@mui/material';
-import { MagnifyingGlass, Phone, Plus } from 'phosphor-react';
+import { CaretLeft, MagnifyingGlass, Phone, PhoneCall, Plus } from 'phosphor-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CallLogElement } from '../../components/CallElement';
+import { CallList } from '../../data';
+import StartCall from '../../Secctions/main/StartCall';
 
 const Search = styled("div")(({ theme }) => ({
     position: 'relative',
@@ -230,8 +233,10 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 const Call = () => {
     const Theme = useTheme();
     const navigate = useNavigate();
-    const [openCall, setOpenCall] = useState(false);
-
+    const [openDialog, setOpenDialog] = useState(false);
+    const handleCloseDialog = ()=>{
+        setOpenDialog(false)
+    }
     return (
         <>
             <Box
@@ -249,9 +254,9 @@ const Call = () => {
             >
                 <Stack sx={{ padding: 3 }} spacing={1}>
                     <Stack direction={'row'} alignItems={'center'} justifyContent={'space-between'}>
-                        <Typography variant='h5'>Calls</Typography>
+                        <Typography variant='h5'>Call Logs</Typography>
                         <IconButton onClick={() => navigate("/app")}>
-                            <Phone />
+                            <CaretLeft size={25} />
                         </IconButton>
                     </Stack>
                     <Stack sx={{ width: "100%" }}>
@@ -265,21 +270,26 @@ const Call = () => {
                     <Stack spacing={2.5}>
                         <Stack direction={'row'} alignItems={'center'} spacing={11.3} sx={{ paddingTop: 1, paddingLeft: 1 }}>
                             <Typography variant='subtitle2'>
-                                Create New Call
+                                Start new call
                             </Typography>
-                            <IconButton onClick={() => setOpenCall(true)}>
-                                <Plus style={{ color: Theme.palette.primary.main }} />
-                            </IconButton>
+                            <Stack>
+                                <IconButton style={{ marginLeft: 39 }} onClick={() => setOpenDialog(true)}>
+                                    <PhoneCall style={{ color: Theme.palette.primary.main }} size={25} />
+                                </IconButton>
+                            </Stack>
                         </Stack>
                         <Divider />
                     </Stack>
                     <Stack direction={"column"} sx={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'scroll' }}>
                         <Stack spacing={2.4}>
-                            <Typography variant='subtitle2' sx={{ color: '#676767' }}>All Calls</Typography>
+                            {/* <Typography variant='subtitle2' sx={{ color: '#676767' }}>All Calls</Typography> */}
+                            {/* Call Logs */}
+                            {CallList.map((el) => <CallLogElement {...el} />)}
                         </Stack>
                     </Stack>
                 </Stack>
             </Box>
+            {openDialog && <StartCall  open={openDialog} handleClose={handleCloseDialog} />}
         </>
     );
 };

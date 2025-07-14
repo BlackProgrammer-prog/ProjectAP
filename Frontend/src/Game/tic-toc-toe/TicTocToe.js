@@ -3,8 +3,8 @@ import Board from './Board'
 import GameOver from './GameOver'
 import GameState from './GameState'
 import Reset from './Reset'
-import gameOverSoundAssist from '../sounds/GameOver.wav'
-import clickSoundAssist from '../sounds/Click.wav'
+import gameOverSoundAssist from '../../sounds/GameOver.wav'
+import clickSoundAssist from '../../sounds/Click.wav'
 import './style.css'
 import { CaretLeft, MagnifyingGlass, Plus, Users } from 'phosphor-react';
 import { Avatar, Box, Divider, IconButton, Stack, Switch, useTheme, Menu, MenuItem, Typography } from "@mui/material";
@@ -112,7 +112,7 @@ const TicTocToe = () => {
                 left: '120px',
                 top: '10px'
             }}>
-                <IconButton onClick={() => navigate("/app")}>
+                <IconButton onClick={() => navigate("/games")}>
                     <CaretLeft size={32} />
                 </IconButton>
             </Stack>

@@ -3,6 +3,8 @@ import { Box, Stack, styled, Badge, Avatar, Typography, IconButton, Divider, use
 import { faker } from '@faker-js/faker';
 import { CaretDown, MagnifyingGlass, PhoneCall, VideoCamera } from 'phosphor-react';
 import UserProfile from '../../layouts/dashboard/UserProfile'; // فرض می‌کنیم UserProfile در همان دایرکتوری قرار دارد
+import { useParams } from 'react-router-dom';
+import { ChatList } from '../../data';
 
 const StyledBadge = styled(Badge)(({ theme }) => ({
     '& .MuiBadge-badge': {
@@ -27,9 +29,10 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
     },
 }));
 
-const Header = () => {
+const Header = ({ name, img }) => {
     const theme = useTheme();
     const [showUserProfile, setShowUserProfile] = useState(false);
+
 
     const handleAvatarClick = () => {
         setShowUserProfile(true);
@@ -73,8 +76,7 @@ const Header = () => {
                             variant='dot'
                         >
                             <Avatar
-                                src={faker.image.avatar()}
-                                onClick={handleAvatarClick}
+                                src={img} onClick={handleAvatarClick}
                                 sx={{
                                     cursor: 'pointer',
                                     '&:hover': {
@@ -91,7 +93,7 @@ const Header = () => {
                             left: 520
                         }}>
                             <Typography variant='subtitle2' spacing={0.2}>
-                                meysam
+                                {name}
                             </Typography>
                             <Stack sx={{
                                 position: 'fixed',
@@ -140,3 +142,15 @@ export default Header;
 
 // ................................................................
 
+// import { Avatar, Typography, Stack } from "@mui/material";
+
+// const Header = ({ name, img }) => {
+//     return (
+//         <Stack direction={"row"} alignItems={"center"} spacing={2}>
+//             <Avatar src={img} />
+//             <Typography variant="h6">{name}</Typography>  {/* نمایش نام مخاطب */}
+//         </Stack>
+//     );
+// };
+
+// export default Header;

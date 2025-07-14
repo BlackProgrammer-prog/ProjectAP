@@ -1,13 +1,17 @@
 import { useParams } from "react-router-dom";
 import { ChatList } from "../../data";
 
-const Conversation = () => {
+const Conversation = ({ username, chatData, messages, onSend }) => {
     const { id } = useParams();
     const currentChat = ChatList.find(chat => chat.id === id);
 
     return (
         <Stack sx={{ height: "100vh", position: "relative" }}>
-            <Header chatData={currentChat} />
+            <Header chatData={currentChat}  username={username} />
+
+            {/* <Header name={chatData.name} img={chatData.img} /> */}
+
+
 
             <Box
                 sx={{
@@ -23,7 +27,7 @@ const Conversation = () => {
                 <Stack spacing={3}>
                     <Timeline text="Today" />
                     {currentChat ? (
-                        <Message chatId={id} />
+                        <Message messages={messages} />
                     ) : (
                         <Typography variant="h6" sx={{ textAlign: 'center', mt: 4 }}>
                             مخاطب مورد نظر یافت نشد
@@ -32,7 +36,7 @@ const Conversation = () => {
                 </Stack>
             </Box>
 
-            <Footer chatId={id} />
+            <Footer username={username} onSend={onSend} />
         </Stack>
     );
 };

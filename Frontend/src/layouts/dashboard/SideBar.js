@@ -5,16 +5,16 @@ import { Avatar, Box, Divider, IconButton, Stack, Switch, useTheme, Menu, MenuIt
 import React, { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import logo from "../../assets/Images/logo.ico";
-import { getProfileMenu, Nav_Buttons, Profile_Menu } from "../../data/index";
-import { Brain, ChatCircleDots, GameController, Gear, Phone, Robot, SignOut, User, Users } from "phosphor-react";
+// import { getProfileMenu, Nav_Buttons, Profile_Menu } from "../../data/index";
+import { ChatCircleDots, CirclesThreePlus, GameController, Gear, Phone, Robot, SignOut, User, Users } from "phosphor-react";
 import { faker } from "@faker-js/faker";
 import useSettings from '../../hooks/useSettings';
 import Profile from "./Profile";
-import UserProfile from "./UserProfile";
-import Settings from "../../pages/dashboard/Settings";
-import Group from "../../pages/dashboard/Group";
+// import UserProfile from "./UserProfile";
+// import Settings from "../../pages/dashboard/Settings";
+// import Group from "../../pages/dashboard/Group";
 import Chats from "../../pages/dashboard/Chats";
-import Call from "../../pages/dashboard/Call";
+// import Call from "../../pages/dashboard/Call";
 import { useNavigate } from "react-router-dom";
 import { OpenAiLogoIcon } from "@phosphor-icons/react";
 
@@ -36,8 +36,8 @@ const SideBar = () => {
     const [showProfile, setShowProfile] = useState(false);
     const profileMenuOpen = Boolean(profileMenuAnchor);
     const [selectedIcon, setSelectedIcon] = useState(null);
-    const [openSettings, setOpenSettings] = useState(false);
-    const [showSettings, setShowSettings] = useState(false);
+    // const [openSettings, setOpenSettings] = useState(false);
+    // const [showSettings, setShowSettings] = useState(false);
 
     if (location.pathname.startsWith("/Login-Register")) {
         return <Outlet />; // فقط محتوای صفحه را نمایش بده
@@ -59,17 +59,17 @@ const SideBar = () => {
 
 
 
-    const handleToggleChat = () => {
-        if (openChat) {
-            // اگر گروه باز است، آن را ببند
-            setOpenChat(false);
-            setSelectedIcon(null);
-        } else {
-            // اگر گروه بسته است، آن را باز کن
-            setOpenChat(true);
-            setSelectedIcon('gear');
-        }
-    };
+    // const handleToggleChat = () => {
+    //     if (openChat) {
+    //         // اگر گروه باز است، آن را ببند
+    //         setOpenChat(false);
+    //         setSelectedIcon(null);
+    //     } else {
+    //         // اگر گروه بسته است، آن را باز کن
+    //         setOpenChat(true);
+    //         setSelectedIcon('gear');
+    //     }
+    // };
 
     const handleToggleCall = () => {
         if (location.pathname === "/call") {
@@ -80,17 +80,24 @@ const SideBar = () => {
     };
 
     const handleToggleAI = () => {
-        if (location.pathname === "/AI") {
+        if (location.pathname === "/AI/state") {
             navigate("/app"); // اگر در مسیر call هستیم، به app برگردیم
         } else {
-            navigate("/AI"); // اگر نیستیم، به call برویم
+            navigate("/AI/state"); // اگر نیستیم، به call برویم
         }
     };
     const handleToggleGame = () => {
-        if (location.pathname === "/AI") {
+        if (location.pathname === "/games") {
             navigate("/app"); // اگر در مسیر call هستیم، به app برگردیم
         } else {
-            navigate("/game"); // اگر نیستیم، به call برویم
+            navigate("/games"); // اگر نیستیم، به call برویم
+        }
+    };
+    const handleToggleServices = () => {
+        if (location.pathname === "/services") {
+            navigate("/app"); // اگر در مسیر call هستیم، به app برگردیم
+        } else {
+            navigate("/services"); // اگر نیستیم، به call برویم
         }
     };
 
@@ -102,18 +109,18 @@ const SideBar = () => {
         setProfileMenuAnchor(null);
     };
 
-    const handleMenuItemClick = (option) => {
-        console.log(`Selected: ${option.title}`);
-        if (option.title === 'Profile') {
-            setShowProfile(!showProfile);  // Toggle visibility of Profile
-        }
-        handleProfileMenuClose();
-    };
+    // const handleMenuItemClick = (option) => {
+    //     console.log(`Selected: ${option.title}`);
+    //     if (option.title === 'Profile') {
+    //         setShowProfile(!showProfile);  // Toggle visibility of Profile
+    //     }
+    //     handleProfileMenuClose();
+    // };
 
-    const handleUserProfileToggle = () => {
-        setShowUserProfile(!showUserProfile);
-        setProfileMenuAnchor(null);
-    };
+    // const handleUserProfileToggle = () => {
+    //     setShowUserProfile(!showUserProfile);
+    //     setProfileMenuAnchor(null);
+    // };
 
     const handleOpenProfile = () => {
         setIsProfileOpen(true);
@@ -220,13 +227,16 @@ const SideBar = () => {
                         >
                             <Gear />
                         </IconButton>
-                        <IconButton sx={{
-                            width: "max-content",
-                            color: select ? "#fff" : "#000"
-                        }}>
-                            <Robot size={27} />
+                        <IconButton
+                            onClick={() => { handleToggleServices() }}
+                            sx={{
+                                width: "max-content",
+                                color: select ? "#fff" : "#000"
+                            }}>
+                            <CirclesThreePlus size={27} />
                         </IconButton>
                         <IconButton
+
                             onClick={() => { handleToggleGame() }}
                             sx={{
                                 width: "max-content",

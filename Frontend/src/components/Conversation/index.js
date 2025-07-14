@@ -54,12 +54,14 @@ import Footer from "./Footer"
 import { Stack, Box } from "@mui/material"
 import Message from "./Message"
 import { Timeline } from "./MsgType"
+import { useParams } from "react-router-dom"
 
 const Conversation = () => {
+    const {username} = useParams()
     return (
         <Stack>
             {/* chat header */}
-            <Header />
+            <Header  />
 
             {/* Messages area with Timeline */}
             <Box

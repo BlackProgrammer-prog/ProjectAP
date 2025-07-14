@@ -60,11 +60,13 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
 }));
 
 
-const ChatElement = ({ id, name, msg, time, unread, img, online }) => {
+const ChatElement = ({ id, name, msg, time, unread, img, online  ,username}) => {
   const Theme = useTheme();
+  // to = { PATH_DASHBOARD.general.chat(id) }
   return (
     <Link
-      to={PATH_DASHBOARD.general.chat(id)} // استفاده از تابع chat از PATH_DASHBOARD
+      to={PATH_DASHBOARD.general.chat(username)}
+      // استفاده از تابع chat از PATH_DASHBOARD
       style={{
         textDecoration: 'none',
         display: 'block',
@@ -91,7 +93,7 @@ const ChatElement = ({ id, name, msg, time, unread, img, online }) => {
                 <Avatar src={img || avatar} /> {/* استفاده از تصویر مخاطب اگر وجود دارد */}
               </StyledBadge>
             ) : (
-              <Avatar src={img || avatar} /> 
+              <Avatar src={img || avatar} />
             )}
 
             <Stack spacing={0.3}>
@@ -154,13 +156,13 @@ const Chats = () => {
             <Stack spacing={2.4}>
               <Typography variant='subtitle2' sx={{ color: '#676767' }}>Pinned</Typography>
               {ChatList.filter((el) => el.pinned).map((el) => (
-                <ChatElement {...el} />
+                <ChatElement key={el.id} {...el} username={el.username} />
               ))}
             </Stack>
             <Stack spacing={2.4}>
               <Typography variant='subtitle2' sx={{ color: '#676767' }}>All Chat</Typography>
               {ChatList.filter((el) => !el.pinned).map((el) => (
-                <ChatElement {...el} />
+                <ChatElement key={el.id} {...el} username={el.username} />
               ))}
             </Stack>
           </Stack>
