@@ -107,28 +107,27 @@
 // export default Settings;
 
 // ==========================================================
-//
+
 // import React, { useState } from 'react';
 // import { Avatar, Box, Divider, IconButton, Stack, Typography, useTheme } from '@mui/material';
 // import { CaretLeft, Bell, Lock, Key, PencilCircle, Image, Note, Keyboard, Info } from 'phosphor-react';
 // import { useNavigate } from 'react-router-dom';
 // import { faker } from '@faker-js/faker';
-// // import Shortcuts from '../../Secctions/settings/Shortcuts';
-// import Shortcuts from "../../Section/Settings/Shortcuts";
-//
+// import Shortcuts from '../../Secctions/settings/Shortcuts';
+
 // const Settings = () => {
 //     const theme = useTheme();
 //     const navigate = useNavigate();
 //     const [openShortcuts, setOpenShortcuts] = useState(false);
-//
+
 //     const handleOpenShortcuts = () => {
 //         setOpenShortcuts(true);
 //     };
-//
+
 //     const handleCloseShortcuts = () => {
 //         setOpenShortcuts(false);
 //     };
-//
+
 //     // تابع جدید برای مدیریت بازگشت
 //     const handleBack = () => {
 //         navigate(-1); // بازگشت به صفحه قبل
@@ -143,7 +142,7 @@
 //         { key: 6, icon: <Keyboard size={20} />, title: "Keyboard Shortcuts", onclick: handleOpenShortcuts },
 //         { key: 7, icon: <Info size={20} />, title: "Help", onclick: () => { } },
 //     ];
-//
+
 //     return (
 //         <>
 //             <Stack sx={{
@@ -168,7 +167,7 @@
 //                     </IconButton>
 //                     <Typography variant='h5'>Settings</Typography>
 //                 </Stack>
-//
+
 //                 {/* Profile */}
 //                 <Stack direction="row" spacing={2} sx={{ p: 3, alignItems: 'center' }}>
 //                     <Avatar sx={{ width: 60, height: 60 }} src={faker.image.avatar()} alt='A' />
@@ -179,7 +178,7 @@
 //                         </Typography>
 //                     </Stack>
 //                 </Stack>
-//
+
 //                 {/* Settings List */}
 //                 <Box sx={{ overflowY: 'auto', flexGrow: 1 }}>
 //                     {list.map((item, index) => (
@@ -212,9 +211,11 @@
 //         </>
 //     );
 // };
-//
+
 // export default Settings;
-//----------------------------------------------------------------------------------------------------------------
+
+// =================================================================MAIN
+
 import React, { useState, useRef } from 'react';
 import {
     Avatar, Box, Divider, IconButton, Stack,
@@ -228,7 +229,8 @@ import Shortcuts from '../../Secctions/settings/Shortcuts';
 // =======
 import Webcam from 'react-webcam';
 import axios from 'axios';
-import Shortcuts from "../../Section/Settings/Shortcuts";
+import Help from '../../Secctions/help/help';
+// import Shortcuts from "../../Section/Settings/Shortcuts";
 // >>>>>>> 90a019c9be9d997c87283da3a0386c119010ecdf
 
 const Settings = () => {
@@ -240,10 +242,19 @@ const Settings = () => {
     const [openShortcuts, setOpenShortcuts] = useState(false);
     const [openCamera, setOpenCamera] = useState(false);
 
+    const [showHelp, setShowHelp] = useState(false);
     const handleBack = () => navigate(-1);
 
     const handleOpenShortcuts = () => setOpenShortcuts(true);
     const handleCloseShortcuts = () => setOpenShortcuts(false);
+    const [open, setOpen] = useState(false);
+    const handleClickOpen = () => {
+        setOpen(true);
+    };
+
+    const handleClose = () => {
+        setOpen(false);
+    };
 
     const captureAndSend = async () => {
         const imageSrc = webcamRef.current.getScreenshot();
@@ -271,6 +282,9 @@ const Settings = () => {
             console.error("❌ خطا در ارسال تصویر:", err);
         }
     };
+    const handleHelpClick = () => {
+        setShowHelp(true);  // نمایش کامپوننت Help
+    };
 
     const list = [
         { key: 0, icon: <Bell size={20} />, title: 'Notifications', onclick: () => { } },
@@ -280,7 +294,7 @@ const Settings = () => {
         { key: 4, icon: <Image size={20} />, title: "Chat Wallpaper", onclick: () => { } },
         { key: 5, icon: <Note size={20} />, title: "Request Account Info", onclick: () => { } },
         { key: 6, icon: <Keyboard size={20} />, title: "Keyboard Shortcuts", onclick: handleOpenShortcuts },
-        { key: 7, icon: <Info size={20} />, title: "Help", onclick: () => { } },
+        { key: 7, icon: <Info size={20} />, title: "Help", onclick: handleClickOpen },
     ];
 
     return (
@@ -347,6 +361,7 @@ const Settings = () => {
 
             {/* Shortcuts Panel */}
             {openShortcuts && <Shortcuts open={openShortcuts} handleClose={handleCloseShortcuts} />}
+            {open && <Help open={open} handleClose={handleClose} />}
 
             {/* Camera Modal */}
             <Dialog open={openCamera} onClose={() => setOpenCamera(false)} maxWidth="sm">
