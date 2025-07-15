@@ -60,7 +60,7 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
 }));
 
 
-const ChatElement = ({ id, name, msg, time, unread, img, online  ,username}) => {
+const ChatElement = ({ id, name, msg, time, unread, img, online, username }) => {
   const Theme = useTheme();
   // to = { PATH_DASHBOARD.general.chat(id) }
   return (
