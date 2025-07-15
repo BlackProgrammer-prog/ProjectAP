@@ -30,6 +30,7 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
 }));
 
 const Header = ({ name, img }) => {
+    const { username } = useParams()
     const theme = useTheme();
     const [showUserProfile, setShowUserProfile] = useState(false);
 
@@ -92,9 +93,7 @@ const Header = ({ name, img }) => {
                             top: 30,
                             left: 520
                         }}>
-                            <Typography variant='subtitle2' spacing={0.2}>
-                                {name}
-                            </Typography>
+                            <Typography variant="h6">{username ? username : "Select a Contact"}</Typography>
                             <Stack sx={{
                                 position: 'fixed',
                                 top: 60
