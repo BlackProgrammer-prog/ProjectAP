@@ -223,13 +223,13 @@ import {
 import { CaretLeft, Bell, Lock, Key, PencilCircle, Image, Note, Keyboard, Info } from 'phosphor-react';
 import { useNavigate } from 'react-router-dom';
 import { faker } from '@faker-js/faker';
-<<<<<<< HEAD
+// <<<<<<< HEAD
 import Shortcuts from '../../Secctions/settings/Shortcuts';
-=======
+// =======
 import Webcam from 'react-webcam';
 import axios from 'axios';
-import Shortcuts from "../../Section/Settings/Shortcuts";
->>>>>>> 90a019c9be9d997c87283da3a0386c119010ecdf
+// import Shortcuts from "../../Section/Settings/Shortcuts";
+// >>>>>>> 90a019c9be9d997c87283da3a0386c119010ecdf
 
 const Settings = () => {
     const theme = useTheme();
