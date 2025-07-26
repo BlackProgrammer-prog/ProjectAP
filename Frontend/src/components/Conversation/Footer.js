@@ -29,15 +29,16 @@ const ActionButton = styled(Fab)(({ theme }) => ({
     boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
 }))
 
-const ChatInput = ({ setOpenPicker, openActions, setOpenActions, username }) => {
+const ChatInput = ({ setOpenPicker, openActions, setOpenActions, username, onSend }) => {
     const [message, setMessage] = useState("")
     const theme = useTheme()
+
     const handleSend = () => {
         if (!message.trim()) {
             return;
         }
-        console.log(`${username}`);
-        setMessage('')
+        onSend(message); // ارسال پیام به والد
+        setMessage(''); // پاک کردن فیلد
     }
 
     const handleActionClick = () => {
@@ -74,7 +75,7 @@ const ChatInput = ({ setOpenPicker, openActions, setOpenActions, username }) => 
                     </ActionButton>
                 ))}
             </Box>
-            {/* input message  */}
+          {/* input message  */}  
             <StyleInput
                 fullWidth
                 value={message}
@@ -147,7 +148,7 @@ const Action = [
     },
 ]
 
-const Footer = ({ username }) => {
+const Footer = ({ username, onSend }) => {
     const theme = useTheme()
     const [openPicker, setOpenPicker] = useState(false)
     const [openActions, setOpenActions] = useState(false)
@@ -157,8 +158,8 @@ const Footer = ({ username }) => {
         if (!message.trim()) {
             return;
         }
-        console.log(`${username}`);
-        setMessage('')
+        onSend(message); // ارسال پیام به والد
+        setMessage(''); // پاک کردن فیلد
     }
     return (
         <Stack>
@@ -199,7 +200,13 @@ const Footer = ({ username }) => {
                             />
                         </Box>
 
-                        <ChatInput  username={username} setOpenPicker={setOpenPicker} openActions={openActions} setOpenActions={setOpenActions}  />
+                        <ChatInput
+                            username={username}
+                            setOpenPicker={setOpenPicker}
+                            openActions={openActions}
+                            setOpenActions={setOpenActions}
+                            onSend={onSend}
+                        />
                     </Stack>
 
                     {/* Send Button */}

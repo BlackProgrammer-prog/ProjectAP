@@ -1,73 +1,44 @@
-// import { useParams } from "react-router-dom";
-// import { Box, Stack } from "@mui/material";
-// import Conversation from "../../components/Conversation";
-// import { useTheme } from "@mui/material/styles";
-// import { ChatList } from "../../data";
-// import Header from "../../components/Conversation/Header";
-// import Message from "../../components/Conversation/Message";
-// import Footer from "../../components/Conversation/Footer";
-
-// const ChatPage = () => {
-//     const theme = useTheme();
-//     // const { username } = useParams(); // دریافت ID مخاطب از URL
-//     // const chat = ChatList.find((chat) => chat.username === username); // یافتن مخاطب بر اساس ID
-//     const { username } = useParams();
-//     const chat = ChatList.find((chat) => chat.username === username);
-
-
-//     if (!chat) {
-//         return <div>مخاطب یافت نشد</div>;
-//     }
-
-//     return (
-//         <Stack direction={"row"}>
-//             {/* ناحیه اصلی مکالمه */}
-//             <Box
-//                 sx={{
-//                     position: 'fixed',
-//                     top: 30,
-//                     left: 420,
-//                     height: "100vh",
-//                     width: "calc(100vw - 420px)",
-//                     backgroundColor: theme.palette.mode === "light" ? "#F0F4FA" : theme.palette.background.paper,
-//                 }}
-//             >
-//                 <Conversation chatData={chat} username={username} /> {/* ارسال اطلاعات مخاطب به کامپوننت Conversation */}
-//             </Box>
-//         </Stack>
-//     );
-// };
-
-// export default ChatPage;
-
-//===========================================
-
 import { useParams } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Box, Stack } from "@mui/material";
 import { ChatList, Chat_History } from "../../data";
 import Conversation from "../../components/Conversation";
+import Chats from "./Chats";
+import { savePrivateChat, loadPrivateChat } from "../../utils/chatStorage";
 
 const ChatPage = () => {
     const { username } = useParams();
     const chat = ChatList.find((c) => c.username === username);
 
-    const [messages, setMessages] = useState(Chat_History); // استیت پیام‌ها
+    // پیام‌های چت خصوصی بین کاربر فعلی و کاربر انتخاب شده
+    const [messages, setMessages] = useState(() => loadPrivateChat(username) || Chat_History);
 
+    // اگر username تغییر کرد، پیام‌های چت خصوصی جدید را لود کن
+    useEffect(() => {
+        setMessages(loadPrivateChat(username) || Chat_History);
+    }, [username]);
+
+    // ذخیره پیام جدید در چت خصوصی
     const handleSendMessage = (text) => {
         const newMessage = {
             type: "msg",
             message: text,
             incoming: false,
             outgoing: true,
+            sender: "me", // کاربر فعلی
+            receiver: username, // کاربر مقابل
+            timestamp: new Date().toISOString(),
         };
-        setMessages((prev) => [...prev, newMessage]);
+        const updated = [...messages, newMessage];
+        setMessages(updated);
+        savePrivateChat(username, updated);
     };
 
     if (!chat) return <div>مخاطب یافت نشد</div>;
 
     return (
         <Stack direction={"row"}>
+            <Chats />
             <Box
                 sx={{
                     position: "fixed",

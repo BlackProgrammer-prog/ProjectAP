@@ -9,6 +9,7 @@ import {
   Users,
 } from "phosphor-react";
 import { useNavigate } from "react-router-dom";
+import { loadPrivateChat } from "../utils/chatStorage";
 
 // const navigate = useNavigate()
 
@@ -52,90 +53,104 @@ const Nav_Setting = [
   },
 ];
 
+// تابع برای دریافت آخرین پیام از چت خصوصی هر کاربر
+const getLastMessage = (username) => {
+  try {
+    const privateChat = loadPrivateChat(username);
+    if (privateChat && privateChat.length > 0) {
+      const lastMessage = privateChat[privateChat.length - 1];
+      return lastMessage.message || "No messages yet";
+    }
+  } catch (error) {
+    console.error("Error loading last message:", error);
+  }
+  return "No messages yet";
+};
+
 const ChatList = [
   {
-    id:0,
-    username:"parham" ,
+    id: 0,
+    username: "parham",
     img: faker.image.avatar(),
     name: "parham",
-    msg: "سلام علی جون خوبی؟",
+    msg: getLastMessage("parham"),
     time: "9:36",
     unread: 0,
     pinned: true,
     online: true,
   },
   {
-    id:1,
-    username:"mmd" ,
+    id: 1,
+    username: "mmd",
     img: faker.image.avatar(),
     name: "mmd",
-    msg: "سلام اقا علی ممنون تو خوبی؟",
+    msg: getLastMessage("mmd"),
     time: "12:02",
     unread: 2,
     pinned: true,
     online: false,
   },
   {
-    id:2,
-    username:"mahdi" ,
+    id: 2,
+    username: "mahdi",
     img: faker.image.avatar(),
     name: "mahdi",
-    msg: faker.music.songName(),
+    msg: getLastMessage("mahdi"),
     time: "10:35",
     unread: 3,
     pinned: false,
     online: true,
   },
   {
-    id:3,
-    username:"meysam" ,
+    id: 3,
+    username: "meysam",
     img: faker.image.avatar(),
-    name: "meysam" ,
-    msg: faker.music.songName(),
+    name: "meysam",
+    msg: getLastMessage("meysam"),
     time: "04:00",
     unread: 0,
     pinned: false,
     online: true,
   },
   {
-    id:4,
-    username:"misagh" ,
+    id: 4,
+    username: "misagh",
     img: faker.image.avatar(),
     name: "misagh",
-    msg: faker.music.songName(),
+    msg: getLastMessage("misagh"),
     time: "08:42",
     unread: 0,
     pinned: false,
     online: false,
   },
   {
-    id:5,
-    username:"jdhjkchd" ,
+    id: 5,
+    username: "jdhjkchd",
     img: faker.image.avatar(),
     name: "jdhjkchd",
-    msg: faker.music.songName(),
+    msg: getLastMessage("jdhjkchd"),
     time: "08:42",
     unread: 0,
     pinned: false,
     online: false,
   },
   {
-    id:6,
-    username:"jdjkh" ,
+    id: 6,
+    username: "jdjkh",
     img: faker.image.avatar(),
     name: "jdjkh",
-    msg: faker.music.songName(),
+    msg: getLastMessage("jdjkh"),
     time: "08:42",
     unread: 0,
     pinned: false,
     online: false,
   },
   {
-    id:7,
-    username:"cgfcf" ,
+    id: 7,
+    username: "cgfcf",
     img: faker.image.avatar(),
-    name:"cgfcf",
-    msg: faker.music.songName(),
+    name: "cgfcf",
+    msg: getLastMessage("cgfcf"),
     time: "08:42",
     unread: 0,
     pinned: false,
@@ -394,73 +409,73 @@ const MembersList = [
 ]
 
 const Chat_History = [
-  {
-    type: "msg",
-    message: "Hi 👋🏻, How are ya ?",
-    incoming: true,
-    outgoing: false,
-  },
-  {
-    type: "divider",
-    text: "Today",
-  },
-  {
-    type: "msg",
-    message: "Hi 👋 Panda, not bad, u ?",
-    incoming: false,
-    outgoing: true,
-  },
-  {
-    type: "msg",
-    message: "Can you send me an abstarct image?",
-    incoming: false,
-    outgoing: true,
-  },
-  {
-    type: "msg",
-    message: "Ya sure, sending you a pic",
-    incoming: true,
-    outgoing: false,
-  },
+  // {
+  //   type: "msg",
+  //   message: "Hi 👋🏻, How are ya ?",
+  //   incoming: true,
+  //   outgoing: false,
+  // },
+  // {
+  //   type: "divider",
+  //   text: "Today",
+  // },
+  // {
+  //   type: "msg",
+  //   message: "Hi 👋 Panda, not bad, u ?",
+  //   incoming: false,
+  //   outgoing: true,
+  // },
+  // {
+  //   type: "msg",
+  //   message: "Can you send me an abstarct image?",
+  //   incoming: false,
+  //   outgoing: true,
+  // },
+  // {
+  //   type: "msg",
+  //   message: "Ya sure, sending you a pic",
+  //   incoming: true,
+  //   outgoing: false,
+  // },
 
-  {
-    type: "msg",
-    subtype: "img",
-    message: "Here You Go",
-    img: faker.image.abstract(),
-    incoming: true,
-    outgoing: false,
-  },
-  {
-    type: "msg",
-    message: "Can you please send this in file format?",
-    incoming: false,
-    outgoing: true,
-  },
+  // {
+  //   type: "msg",
+  //   subtype: "img",
+  //   message: "Here You Go",
+  //   img: faker.image.abstract(),
+  //   incoming: true,
+  //   outgoing: false,
+  // },
+  // {
+  //   type: "msg",
+  //   message: "Can you please send this in file format?",
+  //   incoming: false,
+  //   outgoing: true,
+  // },
 
-  {
-    type: "msg",
-    subtype: "doc",
-    message: "Yes sure, here you go.",
-    incoming: true,
-    outgoing: false,
-  },
-  {
-    type: "msg",
-    subtype: "link",
-    preview: faker.image.cats(),
-    message: "Yep, I can also do that",
-    incoming: true,
-    outgoing: false,
-  },
-  {
-    type: "msg",
-    subtype: "reply",
-    reply: "This is a reply",
-    message: "Yep, I can also do that",
-    incoming: false,
-    outgoing: true,
-  },
+  // {
+  //   type: "msg",
+  //   subtype: "doc",
+  //   message: "Yes sure, here you go.",
+  //   incoming: true,
+  //   outgoing: false,
+  // },
+  // {
+  //   type: "msg",
+  //   subtype: "link",
+  //   preview: faker.image.cats(),
+  //   message: "Yep, I can also do that",
+  //   incoming: true,
+  //   outgoing: false,
+  // },
+  // {
+  //   type: "msg",
+  //   subtype: "reply",
+  //   reply: "This is a reply",
+  //   message: "Yep, I can also do that",
+  //   incoming: false,
+  //   outgoing: true,
+  // },
 ];
 
 const Message_options = [

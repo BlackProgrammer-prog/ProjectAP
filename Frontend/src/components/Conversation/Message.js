@@ -7,16 +7,15 @@
 
 
 import { Stack } from "@mui/material"
-import { Chat_History } from "../../data"
 import { DocMsg, LinkMsg, MediaMsg, ReplyMsg, TextMsg } from "./MsgType"
 
-const Message = () => {
+const Message = ({ messages }) => {
     return (
         <Stack spacing={2}>
-            {Chat_History.map((el, index) => {
+            {messages && messages.map((el, index) => {
                 switch (el.type) {
                     case "divider":
-                        return null // دیوایدر را در index.js نمایش می‌دهیم
+                        return null; // دیوایدر را در index.js نمایش می‌دهیم
 
                     case "msg":
                         switch (el.subtype) {
@@ -25,10 +24,10 @@ const Message = () => {
 
                             case "doc":
                                 //doc msg
-                                return <DocMsg key={index} el={el}/>
+                                return <DocMsg key={index} el={el} />
                             case "link":
                                 //link msg
-                                <LinkMsg key={index} el={el} />
+                                return <LinkMsg key={index} el={el} />
 
                             // case "reply":
                             //     return <ReplyMsg key={index} el={el} />

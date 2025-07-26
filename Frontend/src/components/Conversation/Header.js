@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Box, Stack, styled, Badge, Avatar, Typography, IconButton, Divider, useTheme } from '@mui/material';
 import { faker } from '@faker-js/faker';
 import { CaretDown, MagnifyingGlass, PhoneCall, VideoCamera } from 'phosphor-react';
-import UserProfile from '../../layouts/dashboard/UserProfile'; // فرض می‌کنیم UserProfile در همان دایرکتوری قرار دارد
+import UserProfile from '../../layouts/dashboard/UserProfile';
 import { useParams } from 'react-router-dom';
 import { ChatList } from '../../data';
 
@@ -29,11 +29,13 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
     },
 }));
 
-const Header = ({ name, img }) => {
-    const { username } = useParams()
+const Header = () => {
+    const { username } = useParams();
     const theme = useTheme();
     const [showUserProfile, setShowUserProfile] = useState(false);
 
+    // پیدا کردن اطلاعات کاربر از ChatList
+    const chat = ChatList.find((c) => c.username === username);
 
     const handleAvatarClick = () => {
         setShowUserProfile(true);
@@ -42,6 +44,32 @@ const Header = ({ name, img }) => {
     const handleCloseProfile = () => {
         setShowUserProfile(false);
     };
+
+    // اگر کاربر پیدا نشد، هدر خالی نمایش بده
+    if (!chat) {
+        return (
+            <Stack>
+                <Box
+                    sx={{
+                        height: "100px",
+                        width: '100%',
+                        backgroundColor: theme.palette.mode === 'light' ? "#F8FAFF" : theme.palette.background.paper,
+                        boxShadow: "0px 0px 2px rgba(0,0,0,0.25)",
+                        position: 'fixed',
+                        top: 0,
+                        left: 422,
+                    }}
+                >
+                    <Stack alignItems={'center'} direction={'row'} justifyContent={'center'} sx={{
+                        width: '100%',
+                        height: '100%'
+                    }}>
+                        <Typography variant="h6">Select a Contact</Typography>
+                    </Stack>
+                </Box>
+            </Stack>
+        );
+    }
 
     return (
         <Stack>
@@ -74,10 +102,11 @@ const Header = ({ name, img }) => {
                                 vertical: 'bottom',
                                 horizontal: 'right'
                             }}
-                            variant='dot'
+                            variant={chat.online ? 'dot' : undefined}
                         >
                             <Avatar
-                                src={img} onClick={handleAvatarClick}
+                                src={chat.img}
+                                onClick={handleAvatarClick}
                                 sx={{
                                     cursor: 'pointer',
                                     '&:hover': {
@@ -93,12 +122,14 @@ const Header = ({ name, img }) => {
                             top: 30,
                             left: 520
                         }}>
-                            <Typography variant="h6">{username ? username : "Select a Contact"}</Typography>
+                            <Typography variant="h6">{chat.name}</Typography>
                             <Stack sx={{
                                 position: 'fixed',
                                 top: 60
                             }}>
-                                <Typography variant='caption'>Online</Typography>
+                                <Typography variant='caption'>
+                                    {chat.online ? "Online" : "Offline"}
+                                </Typography>
                             </Stack>
                         </Stack>
                         <Stack
@@ -138,18 +169,3 @@ const Header = ({ name, img }) => {
 };
 
 export default Header;
-
-// ................................................................
-
-// import { Avatar, Typography, Stack } from "@mui/material";
-
-// const Header = ({ name, img }) => {
-//     return (
-//         <Stack direction={"row"} alignItems={"center"} spacing={2}>
-//             <Avatar src={img} />
-//             <Typography variant="h6">{name}</Typography>  {/* نمایش نام مخاطب */}
-//         </Stack>
-//     );
-// };
-
-// export default Header;

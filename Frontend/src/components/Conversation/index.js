@@ -56,12 +56,12 @@ import Message from "./Message"
 import { Timeline } from "./MsgType"
 import { useParams } from "react-router-dom"
 
-const Conversation = () => {
-    const {username} = useParams()
+const Conversation = ({ messages, onSend }) => {
+    const { username } = useParams()
     return (
         <Stack>
             {/* chat header */}
-            <Header  />
+            <Header />
 
             {/* Messages area with Timeline */}
             <Box
@@ -78,12 +78,12 @@ const Conversation = () => {
                 <Stack spacing={2} sx={{ pt: 2 }}>
                     {/* Timeline در بالای پیام‌ها */}
                     {/* <Timeline text="Today" /> */}
-                    <Message />
+                    <Message messages={messages} />
                 </Stack>
             </Box>
 
             {/* chat footer */}
-            <Footer />
+            <Footer username={username} onSend={onSend} />
         </Stack>
     )
 }

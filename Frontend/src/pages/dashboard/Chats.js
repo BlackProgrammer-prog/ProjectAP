@@ -1,10 +1,11 @@
 import { alpha, Avatar, Badge, Box, Button, Divider, IconButton, InputBase, Stack, styled, Typography, useTheme } from '@mui/material';
-import { ArchiveBox, CircleDashed, MagnifyingGlass, Rows } from 'phosphor-react';
-import React from 'react';
+import { ArchiveBox, CircleDashed, MagnifyingGlass } from 'phosphor-react';
+import React, { useState, useEffect } from 'react';
 import { faker } from '@faker-js/faker';
 import { ChatList } from '../../data';
 import { Link } from "react-router-dom";
 import { PATH_DASHBOARD } from "../../routes/paths";
+import { loadPrivateChat } from "../../utils/chatStorage";
 
 
 const avatar = faker.image.avatar();
@@ -60,9 +61,34 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
 }));
 
 
+// تابع برای دریافت آخرین پیام از چت خصوصی
+const getLastMessage = (username) => {
+  try {
+    const privateChat = loadPrivateChat(username);
+    if (privateChat && privateChat.length > 0) {
+      const lastMessage = privateChat[privateChat.length - 1];
+      return lastMessage.message || "No messages yet";
+    }
+  } catch (error) {
+    console.error("Error loading last message:", error);
+  }
+  return "No messages yet";
+};
+
 const ChatElement = ({ id, name, msg, time, unread, img, online, username }) => {
   const Theme = useTheme();
-  // to = { PATH_DASHBOARD.general.chat(id) }
+  const [lastMessage, setLastMessage] = useState(msg);
+
+  // به‌روزرسانی آخرین پیام هر 2 ثانیه
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newLastMessage = getLastMessage(username);
+      setLastMessage(newLastMessage);
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [username]);
+
   return (
     <Link
       to={PATH_DASHBOARD.general.chat(username)}
@@ -98,7 +124,7 @@ const ChatElement = ({ id, name, msg, time, unread, img, online, username }) => 
 
             <Stack spacing={0.3}>
               <Typography variant='subtitle2'>{name}</Typography>
-              <Typography variant='caption'>{msg}</Typography>
+              <Typography variant='caption'>{lastMessage}</Typography>
             </Stack>
           </Stack>
           <Stack spacing={2} alignItems={'center'}>
@@ -114,7 +140,22 @@ const ChatElement = ({ id, name, msg, time, unread, img, online, username }) => 
 };
 
 const Chats = () => {
-  const Theme = useTheme()
+  const Theme = useTheme();
+  const [chatList, setChatList] = useState(ChatList);
+
+  // به‌روزرسانی لیست چت‌ها هر 3 ثانیه
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const updatedChatList = ChatList.map(chat => ({
+        ...chat,
+        msg: getLastMessage(chat.username)
+      }));
+      setChatList(updatedChatList);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div>
       <Box
@@ -155,13 +196,13 @@ const Chats = () => {
           <Stack direction={"column"} sx={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'scroll' }}>
             <Stack spacing={2.4}>
               <Typography variant='subtitle2' sx={{ color: '#676767' }}>Pinned</Typography>
-              {ChatList.filter((el) => el.pinned).map((el) => (
+              {chatList.filter((el) => el.pinned).map((el) => (
                 <ChatElement key={el.id} {...el} username={el.username} />
               ))}
             </Stack>
             <Stack spacing={2.4}>
               <Typography variant='subtitle2' sx={{ color: '#676767' }}>All Chat</Typography>
-              {ChatList.filter((el) => !el.pinned).map((el) => (
+              {chatList.filter((el) => !el.pinned).map((el) => (
                 <ChatElement key={el.id} {...el} username={el.username} />
               ))}
             </Stack>
