@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Stack, styled, Badge, Avatar, Typography, IconButton, Divider, useTheme } from '@mui/material';
 import { faker } from '@faker-js/faker';
 import { CaretDown, MagnifyingGlass, PhoneCall, VideoCamera } from 'phosphor-react';
 import UserProfile from '../../layouts/dashboard/UserProfile';
 import { useParams } from 'react-router-dom';
 import { ChatList } from '../../data';
+import { clearPrivateChat } from '../../utils/chatStorage';
 
 const StyledBadge = styled(Badge)(({ theme }) => ({
     '& .MuiBadge-badge': {
@@ -29,13 +30,18 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
     },
 }));
 
-const Header = () => {
+const Header = ({ onBlockUser, onDeleteChat }) => {
     const { username } = useParams();
     const theme = useTheme();
     const [showUserProfile, setShowUserProfile] = useState(false);
+    const [blockedUsers, setBlockedUsers] = useState(() => {
+        const stored = localStorage.getItem('blocked_users');
+        return stored ? JSON.parse(stored) : [];
+    });
 
     // پیدا کردن اطلاعات کاربر از ChatList
     const chat = ChatList.find((c) => c.username === username);
+    const isBlocked = blockedUsers.includes(username);
 
     const handleAvatarClick = () => {
         setShowUserProfile(true);
@@ -43,6 +49,28 @@ const Header = () => {
 
     const handleCloseProfile = () => {
         setShowUserProfile(false);
+    };
+
+    const handleBlockUser = (userToBlock) => {
+        const newBlockedUsers = blockedUsers.includes(userToBlock)
+            ? blockedUsers.filter(user => user !== userToBlock)
+            : [...blockedUsers, userToBlock];
+
+        setBlockedUsers(newBlockedUsers);
+        localStorage.setItem('blocked_users', JSON.stringify(newBlockedUsers));
+
+        if (onBlockUser) {
+            onBlockUser(userToBlock, newBlockedUsers.includes(userToBlock));
+        }
+    };
+
+    const handleDeleteChat = (userToDelete) => {
+        // حذف پیام‌ها از localStorage
+        clearPrivateChat(userToDelete);
+
+        if (onDeleteChat) {
+            onDeleteChat(userToDelete);
+        }
     };
 
     // اگر کاربر پیدا نشد، هدر خالی نمایش بده
@@ -102,7 +130,7 @@ const Header = () => {
                                 vertical: 'bottom',
                                 horizontal: 'right'
                             }}
-                            variant={chat.online ? 'dot' : undefined}
+                            variant={chat.online && !isBlocked ? 'dot' : undefined}
                         >
                             <Avatar
                                 src={chat.img}
@@ -128,7 +156,7 @@ const Header = () => {
                                 top: 60
                             }}>
                                 <Typography variant='caption'>
-                                    {chat.online ? "Online" : "Offline"}
+                                    {isBlocked ? "Blocked" : (chat.online ? "Online" : "Offline")}
                                 </Typography>
                             </Stack>
                         </Stack>
@@ -162,7 +190,12 @@ const Header = () => {
 
             {/* نمایش پروفایل کاربر */}
             {showUserProfile && (
-                <UserProfile onClose={handleCloseProfile} />
+                <UserProfile
+                    onClose={handleCloseProfile}
+                    onBlockUser={handleBlockUser}
+                    onDeleteChat={handleDeleteChat}
+                    isBlocked={isBlocked}
+                />
             )}
         </Stack>
     );

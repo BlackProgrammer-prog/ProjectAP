@@ -1,15 +1,36 @@
 import { Avatar, Box, Typography, Divider, Button, IconButton, Stack } from '@mui/material';
 import { ArrowLeft, Phone, VideoCamera, Info } from 'phosphor-react';
 import { faker } from '@faker-js/faker';
+import { useParams } from 'react-router-dom';
+import { ChatList } from '../../data';
+import { clearPrivateChat } from '../../utils/chatStorage';
 
-const UserProfile = ({ onClose }) => {
+const UserProfile = ({ onClose, onBlockUser, onDeleteChat, isBlocked }) => {
+    const { username } = useParams();
+
+    // پیدا کردن اطلاعات کاربر از ChatList
+    const chat = ChatList.find((c) => c.username === username);
+
     const user = {
-        name: "meysam", // نام کاربر را از هدر می‌گیریم
-        status: "Online",
+        name: chat ? chat.name : username,
+        status: chat ? (chat.online ? "Online" : "Offline") : "Unknown",
         phone: faker.phone.number(),
         bio: faker.lorem.sentence(),
-        avatar: faker.image.avatar(),
-        isBlocked: false
+        avatar: chat ? chat.img : faker.image.avatar(),
+        isBlocked: isBlocked || false
+    };
+
+    const handleBlockUser = () => {
+        if (onBlockUser) {
+            onBlockUser(username);
+        }
+    };
+
+    const handleDeleteChat = () => {
+        if (onDeleteChat) {
+            onDeleteChat(username);
+            onClose(); // بستن پروفایل بعد از حذف چت
+        }
     };
 
     return (
@@ -21,7 +42,7 @@ const UserProfile = ({ onClose }) => {
             position: 'fixed',
             top: 0,
             right: 0,
-            zIndex: 1300, // مطمئن شوید بالاتر از هدر قرار می‌گیرد
+            zIndex: 1300,
             display: 'flex',
             flexDirection: 'column'
         }}>
@@ -97,10 +118,19 @@ const UserProfile = ({ onClose }) => {
                     <Divider sx={{ width: '100%', my: 2 }} />
 
                     <Stack spacing={2} sx={{ width: '100%' }}>
-                        <Button startIcon={<Info />} fullWidth>
+                        <Button
+                            startIcon={<Info />}
+                            fullWidth
+                            onClick={handleBlockUser}
+                            color={user.isBlocked ? "success" : "warning"}
+                        >
                             {user.isBlocked ? 'Unblock' : 'Block'}
                         </Button>
-                        <Button color="error" fullWidth>
+                        <Button
+                            color="error"
+                            fullWidth
+                            onClick={handleDeleteChat}
+                        >
                             Delete Chat
                         </Button>
                     </Stack>

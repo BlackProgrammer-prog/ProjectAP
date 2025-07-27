@@ -9,7 +9,7 @@
 import { Stack } from "@mui/material"
 import { DocMsg, LinkMsg, MediaMsg, ReplyMsg, TextMsg } from "./MsgType"
 
-const Message = ({ messages }) => {
+const Message = ({ messages, onDeleteMessage }) => {
     return (
         <Stack spacing={2}>
             {messages && messages.map((el, index) => {
@@ -20,21 +20,21 @@ const Message = ({ messages }) => {
                     case "msg":
                         switch (el.subtype) {
                             case "img":
-                                return <MediaMsg key={index} el={el} />
+                                return <MediaMsg key={el.id || index} el={el} onDeleteMessage={onDeleteMessage} />
 
                             case "doc":
                                 //doc msg
-                                return <DocMsg key={index} el={el} />
+                                return <DocMsg key={el.id || index} el={el} onDeleteMessage={onDeleteMessage} />
                             case "link":
                                 //link msg
-                                return <LinkMsg key={index} el={el} />
+                                return <LinkMsg key={el.id || index} el={el} onDeleteMessage={onDeleteMessage} />
 
                             // case "reply":
-                            //     return <ReplyMsg key={index} el={el} />
+                            //     return <ReplyMsg key={el.id || index} el={el} onDeleteMessage={onDeleteMessage} />
                             //Add Reply in component MsgType coment shode
 
                             default:
-                                return <TextMsg key={index} el={el} />
+                                return <TextMsg key={el.id || index} el={el} onDeleteMessage={onDeleteMessage} />
                         }
                         break
 
@@ -48,49 +48,4 @@ const Message = ({ messages }) => {
 }
 
 export default Message
-
-
-// ........................................................................
-
-// "use client"
-
-// import { Stack } from "@mui/material"
-// import { TextMsg, DocMsg, LinkMsg, MediaMsg, ReplyMsg } from "./MsgType"
-// import { Chat_History } from "@/src/data"
-
-// const Message = () => {
-//   return (
-//     <Stack spacing={2}>
-//       {Chat_History.map((el, index) => {
-//         switch (el.type) {
-//           case "divider":
-//             return null
-
-//           case "msg":
-//             switch (el.subtype) {
-//               case "img":
-//                 return <MediaMsg key={index} el={el} />
-
-//               case "doc":
-//                 return <DocMsg key={index} el={el} />
-
-//               case "link":
-//                 return <LinkMsg key={index} el={el} />
-
-//               case "reply":
-//                 return <ReplyMsg key={index} el={el} />
-
-//               default:
-//                 return <TextMsg key={index} el={el} />
-//             }
-
-//           default:
-//             return null
-//         }
-//       })}
-//     </Stack>
-//   )
-// }
-
-// export default Message
 

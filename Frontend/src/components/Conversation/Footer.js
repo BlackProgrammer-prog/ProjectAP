@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Box, Stack, styled, TextField, InputAdornment, useTheme, IconButton, Fab } from "@mui/material"
-import { Smiley, LinkSimple, PaperPlaneTilt, Sticker, Camera, User, Image, File, Microphone } from "phosphor-react"
+import { Box, Stack, styled, TextField, InputAdornment, useTheme, IconButton, Fab, Typography } from "@mui/material"
+import { Smiley, LinkSimple, PaperPlaneTilt, Sticker, Camera, User, Image, File, Microphone, Lock } from "phosphor-react"
 import data from "@emoji-mart/data"
 import Picker from "@emoji-mart/react"
 
@@ -75,7 +75,7 @@ const ChatInput = ({ setOpenPicker, openActions, setOpenActions, username, onSen
                     </ActionButton>
                 ))}
             </Box>
-          {/* input message  */}  
+            {/* input message  */}
             <StyleInput
                 fullWidth
                 value={message}
@@ -148,7 +148,7 @@ const Action = [
     },
 ]
 
-const Footer = ({ username, onSend }) => {
+const Footer = ({ username, onSend, isBlocked }) => {
     const theme = useTheme()
     const [openPicker, setOpenPicker] = useState(false)
     const [openActions, setOpenActions] = useState(false)
@@ -161,6 +161,36 @@ const Footer = ({ username, onSend }) => {
         onSend(message); // ارسال پیام به والد
         setMessage(''); // پاک کردن فیلد
     }
+
+    // اگر کاربر بلاک است، پیام بلاک نمایش بده
+    if (isBlocked) {
+        return (
+            <Stack>
+                <Box
+                    sx={{
+                        width: "calc(100% - 40px)",
+                        maxWidth: "1088px",
+                        backgroundColor: theme.palette.mode === "light" ? "#F8FAFF" : theme.palette.background.paper,
+                        boxShadow: "0px 0px 2px rgba(0,0,0,0.25)",
+                        position: "fixed",
+                        bottom: 0,
+                        left: "420px",
+                        padding: "16px",
+                        zIndex: 10,
+                        borderRadius: "16px 16px 0 0",
+                    }}
+                >
+                    <Stack direction="row" alignItems="center" justifyContent="center" spacing={2}>
+                        <Lock size={24} color={theme.palette.error.main} />
+                        <Typography variant="body1" color="error.main" sx={{ fontWeight: 500 }}>
+                            You have blocked this user. You cannot send messages.
+                        </Typography>
+                    </Stack>
+                </Box>
+            </Stack>
+        );
+    }
+
     return (
         <Stack>
             <Box
