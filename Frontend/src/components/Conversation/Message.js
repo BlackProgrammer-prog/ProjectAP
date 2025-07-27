@@ -7,42 +7,74 @@
 
 
 import { Stack } from "@mui/material"
-import { DocMsg, LinkMsg, MediaMsg, ReplyMsg, TextMsg } from "./MsgType"
+import { format, startOfDay, isSameDay } from "date-fns"
+import TelegramMessage from "./TelegramMessage"
+import Timeline from "./Timeline"
 
 const Message = ({ messages, onDeleteMessage }) => {
-    return (
-        <Stack spacing={2}>
-            {messages && messages.map((el, index) => {
-                switch (el.type) {
-                    case "divider":
-                        return null; // دیوایدر را در index.js نمایش می‌دهیم
+    // گروه‌بندی پیام‌ها بر اساس تاریخ
+    const groupMessagesByDate = (messages) => {
+        if (!messages || messages.length === 0) return [];
 
-                    case "msg":
-                        switch (el.subtype) {
-                            case "img":
-                                return <MediaMsg key={el.id || index} el={el} onDeleteMessage={onDeleteMessage} />
+        const grouped = [];
+        let currentDate = null;
+        let currentGroup = [];
 
-                            case "doc":
-                                //doc msg
-                                return <DocMsg key={el.id || index} el={el} onDeleteMessage={onDeleteMessage} />
-                            case "link":
-                                //link msg
-                                return <LinkMsg key={el.id || index} el={el} onDeleteMessage={onDeleteMessage} />
+        messages.forEach((message) => {
+            if (message.type === "divider") return;
 
-                            // case "reply":
-                            //     return <ReplyMsg key={el.id || index} el={el} onDeleteMessage={onDeleteMessage} />
-                            //Add Reply in component MsgType coment shode
+            const messageDate = message.timestamp
+                ? startOfDay(new Date(message.timestamp))
+                : startOfDay(new Date());
 
-                            default:
-                                return <TextMsg key={el.id || index} el={el} onDeleteMessage={onDeleteMessage} />
-                        }
-                        break
-
-                    default:
-                        break
+            if (!currentDate || !isSameDay(currentDate, messageDate)) {
+                // ذخیره گروه قبلی
+                if (currentGroup.length > 0) {
+                    grouped.push({
+                        date: currentDate,
+                        messages: currentGroup
+                    });
                 }
-                return null
-            })}
+
+                // شروع گروه جدید
+                currentDate = messageDate;
+                currentGroup = [message];
+            } else {
+                // اضافه کردن به گروه فعلی
+                currentGroup.push(message);
+            }
+        });
+
+        // اضافه کردن آخرین گروه
+        if (currentGroup.length > 0) {
+            grouped.push({
+                date: currentDate,
+                messages: currentGroup
+            });
+        }
+
+        return grouped;
+    };
+
+    const groupedMessages = groupMessagesByDate(messages);
+
+    return (
+        <Stack spacing={1}>
+            {groupedMessages.map((group, groupIndex) => (
+                <Stack key={groupIndex} spacing={1}>
+                    {/* Timeline برای تاریخ */}
+                    <Timeline date={group.date} />
+
+                    {/* پیام‌های این تاریخ */}
+                    {group.messages.map((message, messageIndex) => (
+                        <TelegramMessage
+                            key={message.id || messageIndex}
+                            message={message}
+                            onDeleteMessage={onDeleteMessage}
+                        />
+                    ))}
+                </Stack>
+            ))}
         </Stack>
     )
 }

@@ -6,7 +6,7 @@ import { ChatList } from '../../data';
 import { Link } from "react-router-dom";
 import { PATH_DASHBOARD } from "../../routes/paths";
 import { loadPrivateChat } from "../../utils/chatStorage";
-
+import { format, isToday, isYesterday, isThisYear } from "date-fns";
 
 const avatar = faker.image.avatar();
 
@@ -60,7 +60,6 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
   },
 }));
 
-
 // تابع برای دریافت آخرین پیام از چت خصوصی
 const getLastMessage = (username) => {
   try {
@@ -75,15 +74,52 @@ const getLastMessage = (username) => {
   return "No messages yet";
 };
 
+// تابع برای دریافت زمان آخرین پیام
+const getLastMessageTime = (username) => {
+  try {
+    const privateChat = loadPrivateChat(username);
+    if (privateChat && privateChat.length > 0) {
+      const lastMessage = privateChat[privateChat.length - 1];
+      if (lastMessage.timestamp) {
+        const messageDate = new Date(lastMessage.timestamp);
+        const now = new Date();
+
+        // اگر پیام امروز است
+        if (isToday(messageDate)) {
+          return format(messageDate, "HH:mm");
+        }
+        // اگر پیام دیروز است
+        else if (isYesterday(messageDate)) {
+          return "Yesterday";
+        }
+        // اگر پیام در همین سال است
+        else if (isThisYear(messageDate)) {
+          return format(messageDate, "MMM d");
+        }
+        // اگر پیام سال‌های قبل است
+        else {
+          return format(messageDate, "MMM d, yyyy");
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error loading last message time:", error);
+  }
+  return " ";
+};
+
 const ChatElement = ({ id, name, msg, time, unread, img, online, username }) => {
   const Theme = useTheme();
   const [lastMessage, setLastMessage] = useState(msg);
+  const [lastMessageTime, setLastMessageTime] = useState(time);
 
-  // به‌روزرسانی آخرین پیام هر 2 ثانیه
+  // به‌روزرسانی آخرین پیام و زمان هر 2 ثانیه
   useEffect(() => {
     const interval = setInterval(() => {
       const newLastMessage = getLastMessage(username);
+      const newLastMessageTime = getLastMessageTime(username);
       setLastMessage(newLastMessage);
+      setLastMessageTime(newLastMessageTime);
     }, 2000);
 
     return () => clearInterval(interval);
@@ -92,7 +128,6 @@ const ChatElement = ({ id, name, msg, time, unread, img, online, username }) => 
   return (
     <Link
       to={PATH_DASHBOARD.general.chat(username)}
-      // استفاده از تابع chat از PATH_DASHBOARD
       style={{
         textDecoration: 'none',
         display: 'block',
@@ -116,7 +151,7 @@ const ChatElement = ({ id, name, msg, time, unread, img, online, username }) => 
           <Stack direction={'row'} spacing={2}>
             {online ? (
               <StyledBadge overlap="circular" anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} variant="dot">
-                <Avatar src={img || avatar} /> {/* استفاده از تصویر مخاطب اگر وجود دارد */}
+                <Avatar src={img || avatar} />
               </StyledBadge>
             ) : (
               <Avatar src={img || avatar} />
@@ -124,12 +159,23 @@ const ChatElement = ({ id, name, msg, time, unread, img, online, username }) => 
 
             <Stack spacing={0.3}>
               <Typography variant='subtitle2'>{name}</Typography>
-              <Typography variant='caption'>{lastMessage}</Typography>
+              <Typography variant='caption' sx={{ color: Theme.palette.text.secondary }}>
+                {lastMessage}
+              </Typography>
             </Stack>
           </Stack>
           <Stack spacing={2} alignItems={'center'}>
-            <Typography sx={{ fontWeight: 600 }} variant='caption'>{time}</Typography>
-            {unread > 0 && ( // فقط اگر پیام خوانده نشده وجود دارد نشان داده شود
+            <Typography
+              sx={{
+                fontWeight: 600,
+                fontSize: '0.75rem',
+                color: Theme.palette.text.secondary
+              }}
+              variant='caption'
+            >
+              {lastMessageTime}
+            </Typography>
+            {unread > 0 && (
               <Badge color='primary' badgeContent={unread}></Badge>
             )}
           </Stack>
@@ -148,7 +194,8 @@ const Chats = () => {
     const interval = setInterval(() => {
       const updatedChatList = ChatList.map(chat => ({
         ...chat,
-        msg: getLastMessage(chat.username)
+        msg: getLastMessage(chat.username),
+        time: getLastMessageTime(chat.username)
       }));
       setChatList(updatedChatList);
     }, 3000);
@@ -168,7 +215,6 @@ const Chats = () => {
           backgroundColor: Theme.palette.mode === "light" ? '#F8FAFF' : Theme.palette.background.paper,
           boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.15)',
           borderRadius: '8px',
-          // فعال کردن اسکرول برای محتویات چت
         }}
       >
         <Stack sx={{ padding: 3 }}>
@@ -214,215 +260,3 @@ const Chats = () => {
 };
 
 export default Chats;
-
-
-
-// // .....................................................................................
-
-
-// import { alpha, Avatar, Badge, Box, Button, Divider, IconButton, InputBase, Stack, styled, Typography, useTheme } from '@mui/material';
-// import { ArchiveBox, CircleDashed, MagnifyingGlass, Rows } from 'phosphor-react';
-// import React from 'react';
-// import { faker } from '@faker-js/faker';
-// import { ChatList } from '../../data';
-// import { Link } from "react-router-dom";
-// import { PATH_DASHBOARD } from "../../routes/paths";
-
-// const avatar = faker.image.avatar();
-
-// const Search = styled("div")(({ theme }) => ({
-//   position: 'relative',
-//   borderRadius: 20,
-//   backgroundColor: alpha(theme.palette.background.paper, 1),
-//   marginRight: theme.spacing(2),
-//   marginLeft: 0,
-//   width: "100%",
-//   display: 'flex',
-//   alignItems: 'center',
-// }));
-
-// const SearchIconWrapper = styled('div')(({ theme }) => ({
-//   padding: theme.spacing(0, 1),
-//   display: 'flex',
-//   alignItems: 'center',
-//   justifyContent: 'center',
-// }));
-
-// const StyledInputBase = styled(InputBase)(({ theme }) => ({
-//   color: 'inherit',
-//   padding: theme.spacing(1, 1, 1, 2),
-//   width: "100%",
-//   '& .MuiInputBase-input': {
-//     paddingLeft: theme.spacing(2),
-//   },
-// }));
-
-// const StyledBadge = styled(Badge)(({ theme }) => ({
-//   '& .MuiBadge-badge': {
-//     backgroundColor: '#44b700',
-//     color: '#44b700',
-//     boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
-//     '&::after': {
-//       position: 'absolute',
-//       top: 0,
-//       left: 0,
-//       width: '100%',
-//       height: '100%',
-//       borderRadius: '50%',
-//       animation: 'ripple 1.2s infinite ease-in-out',
-//       border: '1px solid currentColor',
-//       content: '""',
-//     },
-//   },
-//   '@keyframes ripple': {
-//     '0%': { transform: 'scale(.8)', opacity: 1 },
-//     '100%': { transform: 'scale(2.4)', opacity: 0 },
-//   },
-// }));
-
-// const ChatElement = ({ id, name, msg, time, unread, img, online, isChild = false }) => {
-//   const Theme = useTheme();
-//   return (
-//     <Link
-//       to={PATH_DASHBOARD.general.chat(id)}
-//       style={{
-//         textDecoration: 'none',
-//         display: 'block',
-//         width: "100%"
-//       }}
-//     >
-//       <Box
-//         sx={{
-//           width: "100%",
-//           minHeight: 72,
-//           backgroundColor: Theme.palette.mode === "light" ? "#fff" : Theme.palette.background.paper,
-//           borderRadius: 1,
-//           '&:hover': {
-//             backgroundColor: Theme.palette.action.hover,
-//             cursor: 'pointer'
-//           },
-//           display: 'flex',
-//           alignItems: 'center',
-//           px: 2,
-//           py: 1,
-//           ...(isChild && {
-//             pl: 4,
-//             borderLeft: '2px solid',
-//             borderColor: 'divider',
-//             backgroundColor: alpha(Theme.palette.background.paper, 0.5)
-//           })
-//         }}
-//       >
-//         <Box
-//           sx={{
-//             display: 'grid',
-//             gridTemplateColumns: 'auto 1fr auto',
-//             alignItems: 'center',
-//             gap: 2,
-//             width: '100%'
-//           }}
-//         >
-//           <div>
-//             {online ? (
-//               <StyledBadge overlap="circular" anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} variant="dot">
-//                 <Avatar src={img || avatar} sx={{ width: 48, height: 48 }} />
-//               </StyledBadge>
-//             ) : (
-//               <Avatar src={img || avatar} sx={{ width: 48, height: 48 }} />
-//             )}
-//           </div>
-
-//           <Stack minWidth={0}>
-//             <Typography variant="subtitle2" noWrap>{name}</Typography>
-//             <Typography variant="caption" noWrap color="text.secondary">
-//               {msg}
-//             </Typography>
-//           </Stack>
-
-//           <Stack alignItems="flex-end">
-//             <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-//               {time}
-//             </Typography>
-//             {unread > 0 && (
-//               <Badge color="primary" badgeContent={unread} sx={{
-//                 '& .MuiBadge-badge': {
-//                   right: -4,
-//                   top: -4
-//                 }
-//               }} />
-//             )}
-//           </Stack>
-//         </Box>
-//       </Box>
-//     </Link>
-//   );
-// };
-
-// const Chats = () => {
-//   const Theme = useTheme();
-//   return (
-//     <Box
-//       sx={{
-//         position: 'absolute',
-//         width: 320,
-//         height: '100vh',
-//         top: 0,
-//         left: 100,
-//         backgroundColor: Theme.palette.mode === "light" ? '#F8FAFF' : Theme.palette.background.paper,
-//         boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.15)',
-//         borderRadius: '8px',
-//       }}
-//     >
-//       <Stack height="100%">
-//         <Stack spacing={2} sx={{ p: 3, pb: 0 }}>
-//           <Stack direction="row" alignItems="center" justifyContent="space-between">
-//             <Typography variant="h5">Chats</Typography>
-//             <IconButton>
-//               <CircleDashed />
-//             </IconButton>
-//           </Stack>
-//           <Search>
-//             <SearchIconWrapper>
-//               <MagnifyingGlass color='#709CE6' />
-//             </SearchIconWrapper>
-//             <StyledInputBase placeholder='Search...' />
-//           </Search>
-//           <Stack direction="row" alignItems="center" spacing={2} sx={{ pt: 1, pl: 1 }}>
-//             <ArchiveBox size={24} />
-//             <Button variant="text">Archived</Button>
-//           </Stack>
-//           <Divider />
-//         </Stack>
-
-//         <Box sx={{ flex: 1, overflowY: 'auto', px: 2 }}>
-//           <Stack spacing={0.5} sx={{ py: 1 }}>
-//             <Typography variant="subtitle2" color="text.secondary" sx={{ px: 2, py: 1 }}>
-//               Pinned
-//             </Typography>
-//             {ChatList.filter((el) => el.pinned).map((el) => (
-//               <ChatElement key={el.id} {...el} />
-//             ))}
-
-//             <Typography variant="subtitle2" color="text.secondary" sx={{ px: 2, py: 1, pt: 3 }}>
-//               All Chats
-//             </Typography>
-//             {ChatList.filter((el) => !el.pinned).map((el) => (
-//               <React.Fragment key={el.id}>
-//                 <ChatElement {...el} />
-//                 {/* پیام‌های تودرتو - مثال */}
-//                 {el.id === 1 && (
-//                   <>
-//                     <ChatElement {...el} isChild msg="پاسخ به پیام" />
-//                     <ChatElement {...el} isChild msg="پاسخ دیگر" />
-//                   </>
-//                 )}
-//               </React.Fragment>
-//             ))}
-//           </Stack>
-//         </Box>
-//       </Stack>
-//     </Box>
-//   );
-// };
-
-// export default Chats;

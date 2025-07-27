@@ -55,14 +55,11 @@ const Conversation = ({ messages, onSend, onDeleteMessage, onDeleteChat }) => {
                     right: 0,
                     bottom: "80px", // فضا برای footer
                     overflowY: "auto",
-                    px: 2,
+                    px: 3,
+                    py: 2,
                 }}
             >
-                <Stack spacing={2} sx={{ pt: 2 }}>
-                    {/* Timeline در بالای پیام‌ها */}
-                    {/* <Timeline text="Today" /> */}
-                    <Message messages={messages} onDeleteMessage={onDeleteMessage} />
-                </Stack>
+                <Message messages={messages} onDeleteMessage={onDeleteMessage} />
             </Box>
 
             {/* chat footer */}
