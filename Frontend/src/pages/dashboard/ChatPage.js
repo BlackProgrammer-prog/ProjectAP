@@ -61,6 +61,86 @@ const ChatPage = () => {
         setMessages([]); // پاک کردن پیام‌ها از state
     };
 
+    // مدیریت ری‌اکشن‌های پیام
+    const handleReactionChange = (messageId, emojiName) => {
+        const updatedMessages = messages.map(msg => {
+            if (msg.id === messageId) {
+                const currentReactions = msg.reactions || {};
+                const currentUsers = currentReactions[emojiName] || [];
+
+                // بررسی اینکه آیا کاربر فعلی قبلاً این ری‌اکشن را گذاشته یا نه
+                const userIndex = currentUsers.indexOf("me");
+
+                if (userIndex > -1) {
+                    // حذف ری‌اکشن کاربر
+                    const newUsers = currentUsers.filter(user => user !== "me");
+                    if (newUsers.length === 0) {
+                        // اگر هیچ کاربری این ری‌اکشن را ندارد، کل ری‌اکشن را حذف کن
+                        const { [emojiName]: removed, ...restReactions } = currentReactions;
+                        return { ...msg, reactions: restReactions };
+                    } else {
+                        // به‌روزرسانی لیست کاربران
+                        return {
+                            ...msg,
+                            reactions: {
+                                ...currentReactions,
+                                [emojiName]: newUsers
+                            }
+                        };
+                    }
+                } else {
+                    // اضافه کردن ری‌اکشن کاربر
+                    return {
+                        ...msg,
+                        reactions: {
+                            ...currentReactions,
+                            [emojiName]: [...currentUsers, "me"]
+                        }
+                    };
+                }
+            }
+            return msg;
+        });
+
+        setMessages(updatedMessages);
+        savePrivateChat(username, updatedMessages);
+    };
+
+    // فوروارد پیام به مخاطب دیگر
+    const handleForwardMessage = (targetUsername, messageToForward) => {
+        // ایجاد پیام فوروارد شده
+        const forwardedMessage = {
+            id: uuidv4(),
+            type: "msg",
+            message: messageToForward.message,
+            incoming: false,
+            outgoing: true,
+            sender: "me",
+            receiver: targetUsername,
+            timestamp: new Date().toISOString(),
+            forwarded: true,
+            originalSender: messageToForward.sender === "me" ? "شما" : chat?.name || "کاربر",
+            originalChat: username,
+        };
+
+        // ذخیره پیام فوروارد شده در چت هدف
+        const targetChatMessages = loadPrivateChat(targetUsername) || [];
+        const updatedTargetMessages = [...targetChatMessages, forwardedMessage];
+        savePrivateChat(targetUsername, updatedTargetMessages);
+
+        // نمایش پیام موفقیت
+        alert(`پیام با موفقیت به ${targetUsername} فوروارد شد!`);
+    };
+
+    // ویرایش پیام
+    const handleEditMessage = (messageId, newText) => {
+        const updatedMessages = messages.map(msg =>
+            msg.id === messageId ? { ...msg, message: newText } : msg
+        );
+        setMessages(updatedMessages);
+        savePrivateChat(username, updatedMessages);
+    };
+
     if (!chat) return <div>مخاطب یافت نشد</div>;
 
     return (
@@ -82,6 +162,9 @@ const ChatPage = () => {
                     onSend={handleSendMessage}
                     onDeleteMessage={handleDeleteMessage}
                     onDeleteChat={handleDeleteChat}
+                    onReactionChange={handleReactionChange}
+                    onForwardMessage={handleForwardMessage}
+                    onEditMessage={handleEditMessage}
                 />
             </Box>
         </Stack>

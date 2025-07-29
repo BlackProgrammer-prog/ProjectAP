@@ -1,11 +1,14 @@
-import { Stack, Box, Typography, Avatar, useTheme } from "@mui/material";
+import { Stack, Box, Typography, Avatar, useTheme, TextField, IconButton, Button, Checkbox } from "@mui/material";
 import { format } from "date-fns";
 import { MessageOption } from "./MsgType";
+import MessageReactions from "./MessageReactions";
 import { faker } from "@faker-js/faker";
 import { useParams } from "react-router-dom";
 import { ChatList } from "../../data";
+import { useState } from "react";
+import React from "react";
 
-const TelegramMessage = ({ message, onDeleteMessage, currentUser = "me" }) => {
+const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForwardMessage, onEditMessage, currentUser = "me", selectMode = false, selected = false, onMessageClick, onToggleSelect }) => {
     const theme = useTheme();
     const { username } = useParams();
     const isOwnMessage = message.sender === currentUser || message.outgoing;
@@ -32,6 +35,37 @@ const TelegramMessage = ({ message, onDeleteMessage, currentUser = "me" }) => {
         }
     };
 
+    // حالت ویرایش
+    const [isEditing, setIsEditing] = useState(false);
+    const [editText, setEditText] = useState(message.message);
+
+    // وقتی پیام تغییر کرد، مقدار ورودی را به‌روزرسانی کن
+    React.useEffect(() => {
+        setEditText(message.message);
+    }, [message.message]);
+
+    const handleEditClick = () => {
+        setIsEditing(true);
+    };
+    const handleEditCancel = () => {
+        setIsEditing(false);
+        setEditText(message.message);
+    };
+    const handleEditSave = () => {
+        if (editText.trim() && editText !== message.message) {
+            onEditMessage && onEditMessage(message.id, editText);
+        }
+        setIsEditing(false);
+    };
+    const handleEditInputKeyDown = (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleEditSave();
+        } else if (e.key === "Escape") {
+            handleEditCancel();
+        }
+    };
+
     return (
         <Stack
             direction="row"
@@ -54,32 +88,118 @@ const TelegramMessage = ({ message, onDeleteMessage, currentUser = "me" }) => {
 
             {/* پیام */}
             <Stack direction="row" alignItems="flex-end" spacing={1}>
+                {/* Checkbox for select mode */}
+                {selectMode && (
+                    <Checkbox
+                        checked={selected}
+                        onChange={onToggleSelect}
+                        sx={{ alignSelf: "center" }}
+                        color="primary"
+                    />
+                )}
                 <Box
                     sx={{
                         maxWidth: "70%",
-                        backgroundColor: isOwnMessage
+                        backgroundColor: selected ? "#e0e0e0" : (isOwnMessage
                             ? theme.palette.primary.main
                             : theme.palette.mode === "light"
                                 ? "#f0f0f0"
-                                : theme.palette.grey[800],
+                                : theme.palette.grey[800]),
                         borderRadius: isOwnMessage
                             ? "18px 18px 4px 18px"
                             : "18px 18px 18px 4px",
                         padding: "8px 12px",
                         position: "relative",
                         wordBreak: "break-word",
+                        cursor: selectMode && !isEditing ? "pointer" : "default",
+                        transition: "background 0.2s",
                     }}
+                    onClick={(!isEditing && selectMode) ? onToggleSelect : (!isEditing ? onMessageClick : undefined)}
                 >
-                    <Typography
-                        variant="body2"
-                        sx={{
-                            color: isOwnMessage ? "#fff" : theme.palette.text.primary,
-                            fontSize: "0.875rem",
-                            lineHeight: 1.4,
-                        }}
-                    >
-                        {message.message}
-                    </Typography>
+                    {/* نمایش ری‌اکشن‌ها */}
+                    <MessageReactions
+                        message={message}
+                        onReactionChange={onReactionChange}
+                    />
+                    {/* نمایش اطلاعات فوروارد */}
+                    {message.forwarded && (
+                        <Box
+                            sx={{
+                                mb: 1,
+                                p: 1,
+                                backgroundColor: isOwnMessage
+                                    ? "rgba(255,255,255,0.1)"
+                                    : theme.palette.mode === "light"
+                                        ? "rgba(0,0,0,0.05)"
+                                        : "rgba(255,255,255,0.05)",
+                                borderRadius: 1,
+                                borderLeft: `3px solid ${theme.palette.primary.main}`,
+                            }}
+                        >
+                            <Typography
+                                variant="caption"
+                                sx={{
+                                    color: isOwnMessage ? "rgba(255,255,255,0.8)" : theme.palette.text.secondary,
+                                    fontSize: "0.75rem",
+                                    fontWeight: 500,
+                                    display: "block",
+                                    mb: 0.5,
+                                }}
+                            >
+                                فوروارد شده از {message.originalSender}
+                            </Typography>
+                        </Box>
+                    )}
+
+                    {/* حالت ویرایش */}
+                    {isEditing ? (
+                        <Stack spacing={1} direction="row" alignItems="center">
+                            <TextField
+                                size="small"
+                                fullWidth
+                                value={editText}
+                                onChange={e => setEditText(e.target.value)}
+                                onKeyDown={handleEditInputKeyDown}
+                                autoFocus
+                                multiline
+                                minRows={1}
+                                maxRows={4}
+                                sx={{
+                                    backgroundColor: isOwnMessage ? "#fff" : theme.palette.background.paper,
+                                    borderRadius: 1,
+                                }}
+                            />
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                size="small"
+                                onClick={handleEditSave}
+                                sx={{ minWidth: 40 }}
+                            >
+                                ذخیره
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                color="inherit"
+                                size="small"
+                                onClick={handleEditCancel}
+                                sx={{ minWidth: 40 }}
+                            >
+                                لغو
+                            </Button>
+                        </Stack>
+                    ) : (
+                        <Typography
+                            variant="body2"
+                            sx={{
+                                color: isOwnMessage ? "#fff" : theme.palette.text.primary,
+                                fontSize: "0.875rem",
+                                lineHeight: 1.4,
+                            }}
+                        >
+                            {message.message}
+                        </Typography>
+                    )}
 
                     {/* زمان ارسال */}
                     <Typography
@@ -101,6 +221,9 @@ const TelegramMessage = ({ message, onDeleteMessage, currentUser = "me" }) => {
                     el={message}
                     message={message.message}
                     onDeleteMessage={onDeleteMessage}
+                    onReactionChange={onReactionChange}
+                    onForwardMessage={onForwardMessage}
+                    onEditClick={isOwnMessage ? handleEditClick : undefined}
                 />
             </Stack>
 

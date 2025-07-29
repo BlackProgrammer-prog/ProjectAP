@@ -74,7 +74,7 @@ const ChatList = [
     img: faker.image.avatar(),
     name: "parham",
     msg: getLastMessage("parham"),
-    time: "9:36",
+    // time: "9:36",
     unread: 0,
     pinned: true,
     online: true,
@@ -85,7 +85,7 @@ const ChatList = [
     img: faker.image.avatar(),
     name: "mmd",
     msg: getLastMessage("mmd"),
-    time: "12:02",
+    // time: "12:02",
     unread: 2,
     pinned: true,
     online: false,
@@ -96,7 +96,7 @@ const ChatList = [
     img: faker.image.avatar(),
     name: "mahdi",
     msg: getLastMessage("mahdi"),
-    time: "10:35",
+    // time: "10:35",
     unread: 3,
     pinned: false,
     online: true,
@@ -107,7 +107,7 @@ const ChatList = [
     img: faker.image.avatar(),
     name: "meysam",
     msg: getLastMessage("meysam"),
-    time: "04:00",
+    // time: "04:00",
     unread: 0,
     pinned: false,
     online: true,
@@ -118,7 +118,7 @@ const ChatList = [
     img: faker.image.avatar(),
     name: "misagh",
     msg: getLastMessage("misagh"),
-    time: "08:42",
+    // time: "08:42",
     unread: 0,
     pinned: false,
     online: false,
@@ -129,7 +129,7 @@ const ChatList = [
     img: faker.image.avatar(),
     name: "jdhjkchd",
     msg: getLastMessage("jdhjkchd"),
-    time: "08:42",
+    // time: "08:42",
     unread: 0,
     pinned: false,
     online: false,
@@ -140,7 +140,7 @@ const ChatList = [
     img: faker.image.avatar(),
     name: "jdjkh",
     msg: getLastMessage("jdjkh"),
-    time: "08:42",
+    // time: "08:42",
     unread: 0,
     pinned: false,
     online: false,
@@ -151,12 +151,63 @@ const ChatList = [
     img: faker.image.avatar(),
     name: "cgfcf",
     msg: getLastMessage("cgfcf"),
-    time: "08:42",
+    // time: "08:42",
     unread: 0,
     pinned: false,
     online: false,
   },
 ];
+
+// const ChatList = [
+//   {
+//     id: 0,
+//     img: faker.image.avatar(),
+//     name: "meysam",
+//     msg: "سلام علی جون خوبی؟",
+//     time: "9:36",
+//     unread: 0,
+//     pinned: true,
+//     online: true,
+//     messages: [
+//       {
+//         id: 1,
+//         type: "msg",
+//         message: "سلام علی جون خوبی؟",
+//         incoming: true,
+//         outgoing: false,
+//         time: "9:36",
+//       },
+//       {
+//         id: 2,
+//         type: "msg",
+//         message: "سلام! خوبم ممنون تو چطوری؟",
+//         incoming: false,
+//         outgoing: true,
+//         time: "9:38",
+//       },
+//     ],
+//   },
+//   {
+//     id: 1,
+//     img: faker.image.avatar(),
+//     name: "Parham",
+//     msg: "سلام اقا علی ممنون تو خوبی؟",
+//     time: "12:02",
+//     unread: 2,
+//     pinned: true,
+//     online: false,
+//     messages: [
+//       {
+//         id: 1,
+//         type: "msg",
+//         message: "سلام اقا علی ممنون تو خوبی؟",
+//         incoming: true,
+//         outgoing: false,
+//         time: "12:02",
+//       },
+//     ],
+//   },
+// ];
 
 
 const CallList = [
@@ -357,6 +408,13 @@ const MembersList = [
 
 ]
 
+// ایجاد timestamp های واقعی برای پیام‌ها
+const createTimestamp = (hours, minutes) => {
+  const now = new Date();
+  now.setHours(hours, minutes, 0, 0);
+  return now.toISOString();
+};
+
 const Chat_History = [
   {
     id: "msg_1",
@@ -364,11 +422,8 @@ const Chat_History = [
     message: "Hi 👋🏻, How are ya ?",
     incoming: true,
     outgoing: false,
-  },
-  {
-    id: "divider_1",
-    type: "divider",
-    text: "Today",
+    timestamp: createTimestamp(9, 30),
+    sender: "other",
   },
   {
     id: "msg_2",
@@ -376,13 +431,21 @@ const Chat_History = [
     message: "Hi 👋 Panda, not bad, u ?",
     incoming: false,
     outgoing: true,
+    timestamp: createTimestamp(9, 32),
+    sender: "me",
+    reactions: {
+      heart: ["other"],
+      thumbsUp: ["other", "me"]
+    }
   },
   {
     id: "msg_3",
     type: "msg",
-    message: "Can you send me an abstarct image?",
+    message: "Can you send me an abstract image?",
     incoming: false,
     outgoing: true,
+    timestamp: createTimestamp(9, 35),
+    sender: "me",
   },
   {
     id: "msg_4",
@@ -390,8 +453,9 @@ const Chat_History = [
     message: "Ya sure, sending you a pic",
     incoming: true,
     outgoing: false,
+    timestamp: createTimestamp(9, 40),
+    sender: "other",
   },
-
   {
     id: "msg_5",
     type: "msg",
@@ -400,6 +464,8 @@ const Chat_History = [
     img: faker.image.abstract(),
     incoming: true,
     outgoing: false,
+    timestamp: createTimestamp(9, 42),
+    sender: "other",
   },
   {
     id: "msg_6",
@@ -407,8 +473,9 @@ const Chat_History = [
     message: "Can you please send this in file format?",
     incoming: false,
     outgoing: true,
+    timestamp: createTimestamp(10, 15),
+    sender: "me",
   },
-
   {
     id: "msg_7",
     type: "msg",
@@ -416,6 +483,8 @@ const Chat_History = [
     message: "Yes sure, here you go.",
     incoming: true,
     outgoing: false,
+    timestamp: createTimestamp(10, 20),
+    sender: "other",
   },
   {
     id: "msg_8",
@@ -425,6 +494,8 @@ const Chat_History = [
     message: "Yep, I can also do that",
     incoming: true,
     outgoing: false,
+    timestamp: createTimestamp(10, 25),
+    sender: "other",
   },
   {
     id: "msg_9",
@@ -434,6 +505,8 @@ const Chat_History = [
     message: "Yep, I can also do that",
     incoming: false,
     outgoing: true,
+    timestamp: createTimestamp(10, 30),
+    sender: "me",
   },
 ];
 

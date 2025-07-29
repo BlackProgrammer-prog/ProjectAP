@@ -14,10 +14,10 @@ import {
     Copy,
 } from "phosphor-react"
 import { useState } from "react"
-
+import ForwardDialog from "./ForwardDialog"
+import { MdEdit } from "react-icons/md";
 
 // Message options with icons
-
 const Message_options = [
     {
         title: "Reply",
@@ -40,8 +40,8 @@ const Message_options = [
         color: "#9c27b0",
     },
     {
-        title: "Star message",
-        icon: <Star size={16} />,
+        title: "Edit message",
+        icon: <MdEdit size={16} />,
         color: "#ffc107",
     },
     {
@@ -56,21 +56,40 @@ const Message_options = [
     },
 ]
 
-
-const MessageOption = ({ el, message, onDeleteMessage }) => {
+export const MessageOption = ({ el, message, onDeleteMessage, onReactionChange, onForwardMessage, onEditClick }) => {
     const [anchorEl, setAnchorEl] = useState(null)
+    const [reactionAnchorEl, setReactionAnchorEl] = useState(null)
+    const [forwardDialogOpen, setForwardDialogOpen] = useState(false)
     const open = Boolean(anchorEl)
+    const reactionOpen = Boolean(reactionAnchorEl)
     const theme = useTheme()
 
-    const handleClick = (event) => {
-        setAnchorEl(event.currentTarget)
+    // ایموجی‌های پیش‌فرض برای ری‌اکشن
+    const REACTION_EMOJIS = [
+        { emoji: "❤️", name: "heart" },
+        { emoji: "😆", name: "laugh" },
+        { emoji: "😮", name: "wow" },
+        { emoji: "👍", name: "thumbsUp" },
+        { emoji: "👎", name: "thumbsDown" },
+    ];
+
+    const handleClick = (e) => {
+        setAnchorEl(e.currentTarget)
     }
 
     const handleClose = () => {
         setAnchorEl(null)
     }
 
-    const handleMenuItemClick = (option) => {
+    const handleReactionClick = (e) => {
+        setReactionAnchorEl(e.currentTarget)
+    }
+
+    const handleReactionClose = () => {
+        setReactionAnchorEl(null)
+    }
+
+    const handleMenuItemClick = (option, e) => {
         if (option.title === "Copy message") {
             // کپی کردن پیام به کلیپ‌بورد
             navigator.clipboard.writeText(message).then(() => {
@@ -83,8 +102,29 @@ const MessageOption = ({ el, message, onDeleteMessage }) => {
             if (onDeleteMessage && el.id) {
                 onDeleteMessage(el.id);
             }
+        } else if (option.title === "React to message") {
+            // نمایش پاپ‌آپ ری‌اکشن
+            handleReactionClick(e);
+        } else if (option.title === "Forward message") {
+            // نمایش دیالوگ فوروارد
+            setForwardDialogOpen(true);
+        } else if (option.title === "Edit message") {
+            if (onEditClick) onEditClick();
         }
-        handleClose()
+        handleClose();
+    }
+
+    const handleEmojiClick = (emojiName) => {
+        if (onReactionChange && el.id) {
+            onReactionChange(el.id, emojiName);
+        }
+        handleReactionClose();
+    }
+
+    const handleForward = (targetUsername, messageToForward) => {
+        if (onForwardMessage) {
+            onForwardMessage(targetUsername, messageToForward);
+        }
     }
 
     return (
@@ -127,7 +167,7 @@ const MessageOption = ({ el, message, onDeleteMessage }) => {
                     {Message_options.map((option, index) => (
                         <MenuItem
                             key={index}
-                            onClick={() => handleMenuItemClick(option)}
+                            onClick={(e) => handleMenuItemClick(option, e)}
                             sx={{
                                 mx: 1,
                                 borderRadius: 1,
@@ -162,12 +202,101 @@ const MessageOption = ({ el, message, onDeleteMessage }) => {
                     ))}
                 </Stack>
             </Menu>
+
+            {/* پاپ‌آپ انتخاب ری‌اکشن */}
+            <Menu
+                anchorEl={reactionAnchorEl}
+                open={reactionOpen}
+                onClose={handleReactionClose}
+                anchorOrigin={{
+                    vertical: "top",
+                    horizontal: "center",
+                }}
+                transformOrigin={{
+                    vertical: "bottom",
+                    horizontal: "center",
+                }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: "16px",
+                        padding: "8px",
+                        boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+                        border: `1px solid ${theme.palette.divider}`,
+                        minWidth: "auto",
+                    },
+                }}
+            >
+                <Stack direction="row" spacing={1}>
+                    {REACTION_EMOJIS.map(({ emoji, name }) => {
+                        const reactions = el.reactions || {};
+                        const isSelected = reactions[name]?.includes("me");
+                        const reactionCount = reactions[name]?.length || 0;
+
+                        return (
+                            <Box
+                                key={name}
+                                sx={{
+                                    position: "relative",
+                                    cursor: "pointer",
+                                    padding: "4px",
+                                    borderRadius: "8px",
+                                    backgroundColor: isSelected ? theme.palette.primary.light : "transparent",
+                                    "&:hover": {
+                                        backgroundColor: theme.palette.action.hover,
+                                    },
+                                }}
+                                onClick={() => handleEmojiClick(name)}
+                            >
+                                <Typography
+                                    sx={{
+                                        fontSize: "1.25rem",
+                                        opacity: isSelected ? 1 : 0.8,
+                                    }}
+                                >
+                                    {emoji}
+                                </Typography>
+
+                                {/* نمایش تعداد ری‌اکشن */}
+                                {reactionCount > 0 && (
+                                    <Typography
+                                        variant="caption"
+                                        sx={{
+                                            position: "absolute",
+                                            top: "-4px",
+                                            right: "-4px",
+                                            backgroundColor: theme.palette.primary.main,
+                                            color: "white",
+                                            borderRadius: "50%",
+                                            width: "16px",
+                                            height: "16px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            fontSize: "0.625rem",
+                                            fontWeight: "bold",
+                                        }}
+                                    >
+                                        {reactionCount}
+                                    </Typography>
+                                )}
+                            </Box>
+                        );
+                    })}
+                </Stack>
+            </Menu>
+
+            {/* دیالوگ فوروارد پیام */}
+            <ForwardDialog
+                open={forwardDialogOpen}
+                onClose={() => setForwardDialogOpen(false)}
+                onForward={handleForward}
+                message={el}
+            />
         </>
     )
 }
 
-
-export const DocMsg = ({ el, onDeleteMessage }) => {
+export const DocMsg = ({ el, onDeleteMessage, onReactionChange, onForwardMessage }) => {
     const theme = useTheme()
     return (
         <Stack direction={"row"} justifyContent={el.incoming ? "start" : "end"}>
@@ -211,18 +340,18 @@ export const DocMsg = ({ el, onDeleteMessage }) => {
                         </Typography>
                     </Stack>
                 </Box>
-                {!el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} />}
+                {!el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} />}
             </Stack>
         </Stack>
     )
 }
 
-export const LinkMsg = ({ el, onDeleteMessage }) => {
+export const LinkMsg = ({ el, onDeleteMessage, onReactionChange, onForwardMessage }) => {
     const theme = useTheme()
     return (
         <Stack direction={"row"} justifyContent={el.incoming ? "start" : "end"}>
             <Stack direction="row" alignItems="flex-start" spacing={1}>
-                {el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} />}
+                {el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} />}
                 <Box
                     p={1.5}
                     sx={{
@@ -250,19 +379,18 @@ export const LinkMsg = ({ el, onDeleteMessage }) => {
                         </Stack>
                     </Stack>
                 </Box>
-                {!el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} />}
+                {!el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} />}
             </Stack>
         </Stack>
     )
 }
 
-
-export const MediaMsg = ({ el, onDeleteMessage }) => {
+export const MediaMsg = ({ el, onDeleteMessage, onReactionChange, onForwardMessage }) => {
     const theme = useTheme()
     return (
         <Stack direction={"row"} justifyContent={el.incoming ? "start" : "end"}>
             <Stack direction="row" alignItems="flex-start" spacing={1}>
-                {el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} />}
+                {el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} />}
                 <Box
                     p={1.5}
                     sx={{
@@ -278,19 +406,18 @@ export const MediaMsg = ({ el, onDeleteMessage }) => {
                         </Typography>
                     </Stack>
                 </Box>
-                {!el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} />}
+                {!el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} />}
             </Stack>
         </Stack>
     )
 }
 
-
-export const TextMsg = ({ el, onDeleteMessage }) => {
+export const TextMsg = ({ el, onDeleteMessage, onReactionChange, onForwardMessage }) => {
     const theme = useTheme()
     return (
         <Stack direction={"row"} justifyContent={el.incoming ? "start" : "end"}>
             <Stack direction="row" alignItems="flex-start" spacing={1}>
-                {el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} />}
+                {el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} />}
                 <Box
                     p={1.5}
                     sx={{
@@ -304,9 +431,8 @@ export const TextMsg = ({ el, onDeleteMessage }) => {
                         {el.message}
                     </Typography>
                 </Box>
-                {!el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} />}
+                {!el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} />}
             </Stack>
         </Stack>
     )
 }
-

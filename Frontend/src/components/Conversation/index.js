@@ -9,7 +9,7 @@ import { Timeline } from "./MsgType"
 import { useParams } from "react-router-dom"
 import { useState, useEffect } from "react"
 
-const Conversation = ({ messages, onSend, onDeleteMessage, onDeleteChat }) => {
+const Conversation = ({ messages, onSend, onDeleteMessage, onDeleteChat, onReactionChange, onForwardMessage, onEditMessage }) => {
     const { username } = useParams()
     const [blockedUsers, setBlockedUsers] = useState(() => {
         const stored = localStorage.getItem('blocked_users');
@@ -59,7 +59,13 @@ const Conversation = ({ messages, onSend, onDeleteMessage, onDeleteChat }) => {
                     py: 2,
                 }}
             >
-                <Message messages={messages} onDeleteMessage={onDeleteMessage} />
+                <Message
+                    messages={messages}
+                    onDeleteMessage={onDeleteMessage}
+                    onReactionChange={onReactionChange}
+                    onForwardMessage={onForwardMessage}
+                    onEditMessage={onEditMessage}
+                />
             </Box>
 
             {/* chat footer */}
