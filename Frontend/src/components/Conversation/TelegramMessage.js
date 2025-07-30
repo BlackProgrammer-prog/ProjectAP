@@ -113,6 +113,7 @@ const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForward
                         wordBreak: "break-word",
                         cursor: selectMode && !isEditing ? "pointer" : "default",
                         transition: "background 0.2s",
+                        boxShadow: theme.shadows[1], //add
                     }}
                     onClick={(!isEditing && selectMode) ? onToggleSelect : (!isEditing ? onMessageClick : undefined)}
                 >
@@ -174,7 +175,6 @@ const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForward
                                 color="primary"
                                 size="small"
                                 onClick={handleEditSave}
-                                sx={{ minWidth: 40 }}
                             >
                                 ذخیره
                             </Button>

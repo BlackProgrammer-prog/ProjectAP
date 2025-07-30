@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Stack, styled, Badge, Avatar, Typography, IconButton, Divider, useTheme } from '@mui/material';
+import { Box, Stack, styled, Badge, Avatar, Typography, IconButton, Divider, useTheme, TextField, InputAdornment } from '@mui/material';
 import { faker } from '@faker-js/faker';
-import { CaretDown, MagnifyingGlass, PhoneCall, VideoCamera } from 'phosphor-react';
+import { CaretDown, MagnifyingGlass, PhoneCall, VideoCamera, X } from 'phosphor-react';
 import UserProfile from '../../layouts/dashboard/UserProfile';
 import { useParams } from 'react-router-dom';
 import { ChatList } from '../../data';
 import { clearPrivateChat } from '../../utils/chatStorage';
+import StartCall from '../../Secctions/main/StartCall';
 
 const StyledBadge = styled(Badge)(({ theme }) => ({
     '& .MuiBadge-badge': {
@@ -30,7 +31,7 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
     },
 }));
 
-const Header = ({ onBlockUser, onDeleteChat }) => {
+const Header = ({ onBlockUser, onDeleteChat, onSearchChange, isSearchActive }) => {
     const { username } = useParams();
     const theme = useTheme();
     const [showUserProfile, setShowUserProfile] = useState(false);
@@ -38,6 +39,7 @@ const Header = ({ onBlockUser, onDeleteChat }) => {
         const stored = localStorage.getItem('blocked_users');
         return stored ? JSON.parse(stored) : [];
     });
+    const [searchQuery, setSearchQuery] = useState('');
 
     // پیدا کردن اطلاعات کاربر از ChatList
     const chat = ChatList.find((c) => c.username === username);
@@ -73,6 +75,32 @@ const Header = ({ onBlockUser, onDeleteChat }) => {
         }
     };
 
+    // Search functionality
+    const handleSearchClick = () => {
+        if (onSearchChange) {
+            onSearchChange(true);
+        }
+    };
+
+    const handleSearchInputChange = (e) => {
+        const query = e.target.value;
+        setSearchQuery(query);
+        if (onSearchChange) {
+            onSearchChange(true, query);
+        }
+    };
+
+    const handleClearSearch = () => {
+        setSearchQuery('');
+        if (onSearchChange) {
+            onSearchChange(false, '');
+        }
+    };
+    const [openDialog, setOpenDialog] = useState(false);
+    const handleCloseDialog = () => {
+        setOpenDialog(false)
+    }
+
     // اگر کاربر پیدا نشد، هدر خالی نمایش بده
     if (!chat) {
         return (
@@ -89,7 +117,7 @@ const Header = ({ onBlockUser, onDeleteChat }) => {
                     }}
                 >
                     <Stack alignItems={'center'} direction={'row'} justifyContent={'center'} sx={{
-                        width: '100%',
+                        width: '70%',
                         height: '100%'
                     }}>
                         <Typography variant="h6">Select a Contact</Typography>
@@ -173,10 +201,10 @@ const Header = ({ onBlockUser, onDeleteChat }) => {
                             <IconButton>
                                 <VideoCamera size={22} />
                             </IconButton>
-                            <IconButton>
+                            <IconButton onClick={() => setOpenDialog(true)}>
                                 <PhoneCall />
                             </IconButton>
-                            <IconButton>
+                            <IconButton onClick={handleSearchClick}>
                                 <MagnifyingGlass />
                             </IconButton>
                             <Divider orientation="vertical" flexItem sx={{ mx: 2 }} />
@@ -188,6 +216,50 @@ const Header = ({ onBlockUser, onDeleteChat }) => {
                 </Stack>
             </Stack>
 
+            {/* Search input field */}
+            {isSearchActive && (
+                <Box
+                    sx={{
+                        position: 'fixed',
+                        top: 100,
+                        left: 422,
+                        right: 1,
+                        zIndex: 1000,
+                        backgroundColor: theme.palette.mode === 'light' ? "#F8FAFF" : theme.palette.background.paper,
+                        padding: 2,
+                        boxShadow: "0px 2px 4px rgba(0,0,0,0.1)",
+                    }}
+                >
+                    <TextField
+                        fullWidth
+                        value={searchQuery}
+                        onChange={handleSearchInputChange}
+                        placeholder="Search..."
+                        variant="outlined"
+                        size="small"
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <MagnifyingGlass size={20} />
+                                </InputAdornment>
+                            ),
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton onClick={handleClearSearch} size="small">
+                                        <X size={16} />
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
+                        }}
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                borderRadius: 2,
+                            },
+                        }}
+                    />
+                </Box>
+            )}
+
             {/* نمایش پروفایل کاربر */}
             {showUserProfile && (
                 <UserProfile
@@ -197,6 +269,7 @@ const Header = ({ onBlockUser, onDeleteChat }) => {
                     isBlocked={isBlocked}
                 />
             )}
+            {openDialog && <StartCall open={openDialog} handleClose={handleCloseDialog} />}
         </Stack>
     );
 };

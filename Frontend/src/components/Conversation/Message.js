@@ -6,14 +6,14 @@
 //.................................................................MAIN
 
 
-import { Stack } from "@mui/material"
+import { Stack, Box } from "@mui/material"
 import { format, startOfDay, isSameDay } from "date-fns"
 import TelegramMessage from "./TelegramMessage"
 import Timeline from "./Timeline"
 import { AppBar, Toolbar, Checkbox, Button, Typography } from "@mui/material";
 import { useState } from "react";
 
-const Message = ({ messages, onDeleteMessage, onReactionChange, onForwardMessage, onEditMessage }) => {
+const Message = ({ messages, onDeleteMessage, onReactionChange, onForwardMessage, onEditMessage, isSearchActive, searchQuery, onSearchChange }) => {
     // گروه‌بندی پیام‌ها بر اساس تاریخ
     const groupMessagesByDate = (messages) => {
         if (!messages || messages.length === 0) return [];
@@ -90,7 +90,19 @@ const Message = ({ messages, onDeleteMessage, onReactionChange, onForwardMessage
     // If all messages are selected
     const allSelected = selectedMessages.length === messages.length && messages.length > 0;
 
-    const groupedMessages = groupMessagesByDate(messages);
+    // Filter messages based on search query
+    const filterMessages = (messages, query) => {
+        if (!query || !query.trim()) return messages;
+
+        return messages.filter(message =>
+            message.message &&
+            message.message.toLowerCase().includes(query.toLowerCase())
+        );
+    };
+
+    // Get filtered messages
+    const filteredMessages = filterMessages(messages, searchQuery);
+    const groupedMessages = groupMessagesByDate(filteredMessages);
 
     return (
         <Stack spacing={1}>
@@ -110,6 +122,19 @@ const Message = ({ messages, onDeleteMessage, onReactionChange, onForwardMessage
                     </Toolbar>
                 </AppBar>
             )}
+
+            {/* Search results info */}
+            {isSearchActive && searchQuery && (
+                <Box sx={{ p: 2, textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                        {filteredMessages.length > 0
+                            ? `Found ${filteredMessages.length} message${filteredMessages.length > 1 ? 's' : ''}`
+                            : "No results found."
+                        }
+                    </Typography>
+                </Box>
+            )}
+
             {groupedMessages.map((group, groupIndex) => (
                 <Stack key={groupIndex} spacing={1}>
                     {/* Timeline برای تاریخ */}
