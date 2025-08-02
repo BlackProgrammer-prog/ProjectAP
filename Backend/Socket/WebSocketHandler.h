@@ -34,6 +34,7 @@ public:
     std::string getClientRole(const std::string& client_id);
 
     void setupHandlers();
+    void setChatManager(std::shared_ptr<PrivateChatManager> chat_manager);
 
 private:
     struct Impl;

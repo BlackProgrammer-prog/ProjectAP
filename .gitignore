@@ -6,3 +6,5 @@
 /UI-Login/node_modules
 /UI-Login/.idea
 /Frontend/.idea
+/Backend/cmake-build-release
+/Backend/.cursor

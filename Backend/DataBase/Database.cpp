@@ -57,10 +57,13 @@ struct Database::Impl {
                 FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
                 FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
             );
-            
-            CREATE INDEX idx_msg_sender ON private_messages(sender_id);
-            CREATE INDEX idx_msg_receiver ON private_messages(receiver_id);
-            CREATE INDEX idx_msg_timestamp ON private_messages(timestamp);
+
+            CREATE INDEX IF NOT EXISTS idx_msg_sender ON private_messages(sender_id);
+            CREATE INDEX IF NOT EXISTS idx_msg_receiver ON private_messages(receiver_id);
+            CREATE INDEX IF NOT EXISTS idx_msg_timestamp ON private_messages(timestamp);
+
+            CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts
+            USING fts5(sender_id, receiver_id, content);
             
             CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts 
             USING fts5(sender_id, receiver_id, content);

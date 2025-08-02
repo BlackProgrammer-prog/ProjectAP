@@ -11,6 +11,7 @@ namespace websocket = beast::websocket;
 using tcp = boost::asio::ip::tcp;
 
 class WebSocketServer::Impl {
+    friend class WebSocketServer;
 public:
     Impl(int port,
          const std::string& jwt_secret,
@@ -213,6 +214,8 @@ WebSocketServer::WebSocketServer(int port,
           session_manager_(session_manager)
 {
     jwt_auth_ = JwtAuth::create(jwt_secret);
+    // Initialize chat_manager_ - this will be set later via a setter or passed in constructor
+    chat_manager_ = nullptr;
 }
 
 WebSocketServer::~WebSocketServer() {
@@ -239,6 +242,18 @@ void WebSocketServer::sendToClient(const std::string& client_id, const json& mes
 
 std::string WebSocketServer::getClientUserId(const std::string& client_id) {
     return impl_->getClientUserId(client_id);
+}
+
+std::string WebSocketServer::getClientRole(const std::string& client_id) {
+    std::lock_guard<std::mutex> lock(impl_->clients_mutex_);
+    if (impl_->client_sessions_.count(client_id)) {
+        return impl_->client_sessions_[client_id].role;
+    }
+    return "";
+}
+
+void WebSocketServer::setChatManager(std::shared_ptr<PrivateChatManager> chat_manager) {
+    chat_manager_ = chat_manager;
 }
 
 // Handler implementations
@@ -410,4 +425,170 @@ json WebSocketServer::handleStatusUpdate(const json& data, const std::string& cl
     return {{"status", "error"}, {"message", "Invalid status value"}};
 }
 
-// Other handlers (mark_as_read, edit_message, etc.) would be implemented similarly
+json WebSocketServer::handleMarkAsRead(const json& data, const std::string& client_id) {
+    if(!jwt_auth_->isValidToken(data["token"])) {
+        return {{"status", "error"}, {"message", "Invalid token"}};
+    }
+
+    if (!data.contains("message_id")) {
+        return {{"status", "error"}, {"message", "Missing message_id"}};
+    }
+
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    std::string message_id = data["message_id"];
+
+    if (!chat_manager_) {
+        return {{"status", "error"}, {"message", "Chat manager not initialized"}};
+    }
+
+    // Get message to verify user is the receiver
+    Message msg = chat_manager_->getMessageById(message_id);
+    if (msg.id.empty()) {
+        return {{"status", "error"}, {"message", "Message not found"}};
+    }
+
+    if (msg.receiver_id != user_id) {
+        return {{"status", "error"}, {"message", "Not authorized to mark this message as read"}};
+    }
+
+    if (chat_manager_->markAsRead(message_id)) {
+        // Notify sender about read status
+        json payload = {
+            {"type", "message_read"},
+            {"message_id", message_id},
+            {"read_by", user_id}
+        };
+
+        auto sender_clients = session_manager_->getClientIds(msg.sender_id);
+        for (const auto& cid : sender_clients) {
+            sendToClient(cid, payload);
+        }
+
+        return {{"status", "success"}};
+    }
+
+    return {{"status", "error"}, {"message", "Failed to mark message as read"}};
+}
+
+json WebSocketServer::handleEditMessage(const json& data, const std::string& client_id) {
+    if(!jwt_auth_->isValidToken(data["token"])) {
+        return {{"status", "error"}, {"message", "Invalid token"}};
+    }
+
+    if (!data.contains("message_id") || !data.contains("new_content")) {
+        return {{"status", "error"}, {"message", "Missing message_id or new_content"}};
+    }
+
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    std::string message_id = data["message_id"];
+    std::string new_content = data["new_content"];
+
+    if (!chat_manager_) {
+        return {{"status", "error"}, {"message", "Chat manager not initialized"}};
+    }
+
+    // Get message to verify user is the sender
+    Message msg = chat_manager_->getMessageById(message_id);
+    if (msg.id.empty()) {
+        return {{"status", "error"}, {"message", "Message not found"}};
+    }
+
+    if (msg.sender_id != user_id) {
+        return {{"status", "error"}, {"message", "Not authorized to edit this message"}};
+    }
+
+    if (chat_manager_->editMessage(message_id, new_content)) {
+        // Notify receiver about message edit
+        json payload = {
+            {"type", "message_edited"},
+            {"message_id", message_id},
+            {"new_content", new_content},
+            {"edited_by", user_id}
+        };
+
+        auto receiver_clients = session_manager_->getClientIds(msg.receiver_id);
+        for (const auto& cid : receiver_clients) {
+            sendToClient(cid, payload);
+        }
+
+        return {{"status", "success"}};
+    }
+
+    return {{"status", "error"}, {"message", "Failed to edit message"}};
+}
+
+json WebSocketServer::handleDeleteMessage(const json& data, const std::string& client_id) {
+    if(!jwt_auth_->isValidToken(data["token"])) {
+        return {{"status", "error"}, {"message", "Invalid token"}};
+    }
+
+    if (!data.contains("message_id")) {
+        return {{"status", "error"}, {"message", "Missing message_id"}};
+    }
+
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    std::string message_id = data["message_id"];
+
+    if (!chat_manager_) {
+        return {{"status", "error"}, {"message", "Chat manager not initialized"}};
+    }
+
+    // Get message to verify user is the sender
+    Message msg = chat_manager_->getMessageById(message_id);
+    if (msg.id.empty()) {
+        return {{"status", "error"}, {"message", "Message not found"}};
+    }
+
+    if (msg.sender_id != user_id) {
+        return {{"status", "error"}, {"message", "Not authorized to delete this message"}};
+    }
+
+    if (chat_manager_->deleteMessage(message_id)) {
+        // Notify receiver about message deletion
+        json payload = {
+            {"type", "message_deleted"},
+            {"message_id", message_id},
+            {"deleted_by", user_id}
+        };
+
+        auto receiver_clients = session_manager_->getClientIds(msg.receiver_id);
+        for (const auto& cid : receiver_clients) {
+            sendToClient(cid, payload);
+        }
+
+        return {{"status", "success"}};
+    }
+
+    return {{"status", "error"}, {"message", "Failed to delete message"}};
+}
+
+json WebSocketServer::handleSearchMessages(const json& data, const std::string& client_id) {
+    if(!jwt_auth_->isValidToken(data["token"])) {
+        return {{"status", "error"}, {"message", "Invalid token"}};
+    }
+
+    if (!data.contains("query")) {
+        return {{"status", "error"}, {"message", "Missing search query"}};
+    }
+
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    std::string query = data["query"];
+    int limit = data.contains("limit") ? data["limit"].get<int>() : 50;
+
+    if (!chat_manager_) {
+        return {{"status", "error"}, {"message", "Chat manager not initialized"}};
+    }
+
+    auto messages = chat_manager_->searchMessages(user_id, query, limit);
+    
+    json results = json::array();
+    for (const auto& msg : messages) {
+        results.push_back(msg.toJson());
+    }
+
+    return {
+        {"status", "success"},
+        {"messages", results},
+        {"count", messages.size()}
+    };
+}

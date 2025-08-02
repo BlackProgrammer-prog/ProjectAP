@@ -48,30 +48,33 @@ int main() {
             session_manager
         );
 
-        // 5. ایجاد و تنظیم NotificationManager
+        // 5. تنظیم chat_manager برای سرور
+        server.setChatManager(chat_manager);
+
+        // 6. ایجاد و تنظیم NotificationManager
         auto notification_manager = std::make_shared<NotificationManager>(
                 server,
             session_manager,
             chat_manager
         );
 
-        // 6. ثبت هندلرهای اصلی
+        // 7. ثبت هندلرهای اصلی
         Registration registrationHandler(db, server);
         registrationHandler.setupRoutes();
 
         Login loginHandler(db, server, jwtAuth);
         loginHandler.setupRoutes();
 
-        // 7. تنظیم هندلرهای چت و مخاطبین
+        // 8. تنظیم هندلرهای چت و مخاطبین
         server.setupHandlers(); // این متد تمام هندلرهای چت را ثبت می‌کند
 
-        // 8. شروع سرور
+        // 9. شروع سرور
         server.start();
         std::cout << "سرور چت روی پورت " << WS_PORT << " راه‌اندازی شد" << std::endl;
         std::cout << "ماژول‌های فعال:" << std::endl;
         std::cout << "- سیستم چت خصوصی\n- مدیریت مخاطبین\n- وضعیت کاربران\n- اطلاع‌رسانی بلادرنگ" << std::endl;
 
-        // 9. نگه‌داشتن برنامه در حالت اجرا
+        // 10. نگه‌داشتن برنامه در حالت اجرا
         while (true) {
             std::this_thread::sleep_for(std::chrono::hours(1));
         }
