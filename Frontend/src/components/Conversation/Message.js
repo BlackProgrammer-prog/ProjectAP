@@ -88,8 +88,7 @@ const Message = ({ messages, onDeleteMessage, onReactionChange, onForwardMessage
         setSelectedMessages([]);
     };
     // If all messages are selected
-    const allSelected = selectedMessages.length === messages.length && messages.length > 0;
-
+    const allSelected = Array.isArray(messages) && selectedMessages.length === messages.length && messages.length > 0;
     // Filter messages based on search query
     const filterMessages = (messages, query) => {
         if (!query || !query.trim()) return messages;

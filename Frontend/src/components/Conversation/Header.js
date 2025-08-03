@@ -120,7 +120,7 @@ const Header = ({ onBlockUser, onDeleteChat, onSearchChange, isSearchActive }) =
                         width: '70%',
                         height: '100%'
                     }}>
-                        <Typography variant="h6">Select a Contact</Typography>
+                        <Typography variant="h6">Select a Chat</Typography>
                     </Stack>
                 </Box>
             </Stack>
