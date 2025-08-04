@@ -58,6 +58,10 @@ const Loadable = (Component) => (props) => {
 export default function Router() {
   return useRoutes([
     {
+      path: "/Login-Register",
+      element: <Login />,
+    },
+    {
       path: "/",
       element: <DashboardLayout />,
       children: [
