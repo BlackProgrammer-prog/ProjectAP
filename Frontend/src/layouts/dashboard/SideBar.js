@@ -6,7 +6,18 @@ import React, { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import logo from "../../assets/Images/logo.ico";
 // import { getProfileMenu, Nav_Buttons, Profile_Menu } from "../../data/index";
-import { ChatCircleDots, CirclesThreePlus, GameController, Gear, Phone, Robot, SignOut, User, Users } from "phosphor-react";
+import {
+    AddressBook,
+    ChatCircleDots,
+    CirclesThreePlus,
+    GameController,
+    Gear,
+    Phone,
+    Robot,
+    SignOut,
+    User,
+    Users
+} from "phosphor-react";
 import { faker } from "@faker-js/faker";
 import useSettings from '../../hooks/useSettings';
 import Profile from "./Profile";
@@ -76,6 +87,15 @@ const SideBar = () => {
             navigate("/app"); // اگر در مسیر call هستیم، به app برگردیم
         } else {
             navigate("/call"); // اگر نیستیم، به call برویم
+        }
+    };
+
+
+    const handleToggleContacts = () => {
+        if (location.pathname === "/contacts") {
+            navigate("/app"); // اگر در مسیر call هستیم، به app برگردیم
+        } else {
+            navigate("/contacts"); // اگر نیستیم، به call برویم
         }
     };
 
@@ -214,6 +234,22 @@ const SideBar = () => {
                                 }}
                             >
                                 <Phone />
+                            </IconButton>
+                        </Box>
+                        <Box
+                            sx={{
+                                backgroundColor: select ? them.palette.primary.main : 'transparent',
+                                borderRadius: 1.5
+                            }}
+                        >
+                            <IconButton
+                                onClick={() => { handleToggleContacts() }}
+                                sx={{
+
+                                    color: select ? "#fff" : "#000"
+                                }}
+                            >
+                                <AddressBook />
                             </IconButton>
                         </Box>
                         <Divider />

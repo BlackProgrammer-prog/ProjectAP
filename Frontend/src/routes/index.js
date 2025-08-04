@@ -68,6 +68,7 @@ export default function Router() {
         { path: "settings", element: <Settings /> },
         { path: "group", element: <GroupPage /> },
         { path: "call", element: <CallPage /> },
+        {path:"contacts" , element: <ContactsPage />},
         { path: "games", element: <Game /> },
         { path: "video-call", element: <Videocall /> },
         { path: "profile", element: <Profile /> },
@@ -108,6 +109,7 @@ const Weather = Loadable(lazy(() => import("../services/weather/Weather")));
 
 const ChatPage = Loadable(lazy(() => import("../pages/dashboard/ChatPage")));
 const CallPage = Loadable(lazy(() => import("../pages/dashboard/Call")));
+const ContactsPage = Loadable(lazy(() => import("../pages/dashboard/Contacts")));
 const Videocall = Loadable(lazy(() => import("../pages/dashboard/StartCall")));
 const AIState = Loadable(lazy(() => import("../AI/stateAI")));
 const ChatGPT = Loadable(lazy(() => import("../AI/chatgpt/ChatGPTAPI")));
