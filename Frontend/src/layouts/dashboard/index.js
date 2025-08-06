@@ -1,20 +1,41 @@
-import { Avatar, Box, Divider, IconButton, Stack, Switch, useTheme } from "@mui/material";
-import React, { useState } from "react";
-import { Outlet } from "react-router-dom";
-import logo from "../../assets/Images/logo.ico"
-import { Nav_Buttons } from "../../data/index";
-import { Gear } from "phosphor-react";
-import { faker } from "@faker-js/faker";
-import useSettings from '../../hooks/useSettings'
-import SideBar from "./SideBar";
-
+import React, { useEffect } from 'react';
+import { Stack } from '@mui/material';
+import { Navigate, Outlet } from 'react-router-dom';
+import SideBar from './SideBar';
+import { useAuth } from '../../Login/Component/Context/AuthContext';
+import { ContactsProvider } from '../../contexts/ContactsContext'; // Import the new provider
 
 const DashboardLayout = () => {
-  
+  const { isAuthenticated, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      console.log("User is not authenticated. Redirecting to login...");
+    }
+  }, [isAuthenticated, isLoading]);
+
+  if (isLoading) {
+    return (
+      <Stack sx={{ height: '100vh', width: '100vw', justifyContent: 'center', alignItems: 'center' }}>
+        <p>Loading...</p> 
+      </Stack>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/Login-Register" />;
+  }
+
   return (
-    <Stack>
-      <SideBar/>
-    </Stack>
+    // Wrap the entire authenticated layout with the ContactsProvider
+    <ContactsProvider>
+      <Stack direction="row" sx={{ width: '100%' }}>
+        <SideBar />
+        {/* The Outlet will render the authenticated routes like /app, /contacts, etc. */}
+        {/* All of them will now have access to the ContactsContext. */}
+        <Outlet />
+      </Stack>
+    </ContactsProvider>
   );
 };
 

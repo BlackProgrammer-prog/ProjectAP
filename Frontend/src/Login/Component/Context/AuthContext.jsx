@@ -8,120 +8,101 @@ export const AuthProvider = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [token, setToken] = useState(null);
+    const [onRegisterSuccessCallback, setOnRegisterSuccessCallback] = useState(null);
+
+    const handleWebSocketMessage = (rawData) => {
+        let response;
+        try {
+            response = JSON.parse(rawData);
+        } catch (error) {
+            return; // Not a JSON message for auth, ignore it
+        }
+
+        // --- AUTHENTICATION LOGIC ---
+        if (response.token && response.user) { // Login success
+            setIsLoading(false);
+            console.log('🧠 Auth Handler: Identified as LOGIN SUCCESS.');
+            handleLoginSuccess(response);
+        } else if (response.status === 'success' && !response.token) { // Register success
+             setIsLoading(false);
+            console.log('🧠 Auth Handler: Identified as REGISTER SUCCESS.');
+            handleRegisterSuccess(response);
+        } else if (response.status === 'error' && (response.message.includes('ورود') || response.message.includes('ثبت نام') || response.message.includes('Login') || response.message.includes('Registration'))) {
+             setIsLoading(false);
+            console.log('🧠 Auth Handler: Identified as AUTH FAILURE response.');
+            handleFailure(response);
+        }
+    };
+
+    const handleLoginSuccess = (response) => {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        setUser(response.user);
+        setToken(response.token);
+        setIsAuthenticated(true);
+        alert('ورود با موفقیت انجام شد!');
+    };
+
+    const handleRegisterSuccess = (response) => {
+        const message = response.message || 'ثبت نام با موفقیت انجام شد! اکنون می‌توانید وارد شوید.';
+        alert(message);
+        if (onRegisterSuccessCallback) {
+            onRegisterSuccessCallback();
+        }
+    };
+
+    const handleFailure = (response) => {
+        const errorMessage = response.message || 'یک خطای احراز هویت رخ داده است.';
+        alert(`خطا: ${errorMessage}`);
+        logout();
+    };
 
     useEffect(() => {
-        // اتصال به WebSocket هنگام لود اپلیکیشن
-        webSocketService.connect();
-
-        // بازیابی وضعیت کاربر از localStorage
+        if (!webSocketService.socket || webSocketService.socket.readyState === WebSocket.CLOSED) {
+            webSocketService.connect();
+        }
         const storedUser = localStorage.getItem('user');
         const storedToken = localStorage.getItem('token');
-
         if (storedUser && storedToken) {
             setUser(JSON.parse(storedUser));
             setToken(storedToken);
             setIsAuthenticated(true);
-            console.log('User restored from localStorage:', JSON.parse(storedUser));
-            console.log('Token restored from localStorage:', storedToken);
         }
-
         setIsLoading(false);
 
-        // اضافه کردن listener برای پاسخ‌های لاگین
-        const cleanupLoginListener = webSocketService.addListener('login_response', handleLoginResponse);
-        const cleanupRegisterListener = webSocketService.addListener('register_response', handleRegisterResponse);
-
+        // ** Use the new addGeneralListener **
+        const cleanupListener = webSocketService.addGeneralListener(handleWebSocketMessage);
         return () => {
-            cleanupLoginListener();
-            cleanupRegisterListener();
+            cleanupListener(); // Cleanup on unmount
         };
-    }, []);
-
-    const handleLoginResponse = (response) => {
-        console.log('Login response received:', response);
-        
-        if (response.status === 'success') {
-            const userData = {
-                id: response.user.id,
-                username: response.user.username,
-                email: response.user.email,
-                role: response.user.role
-            };
-
-            setUser(userData);
-            setToken(response.token);
-            setIsAuthenticated(true);
-
-            // ذخیره در localStorage
-            localStorage.setItem('user', JSON.stringify(userData));
-            localStorage.setItem('token', response.token);
-            
-            console.log('Login successful! User:', userData);
-            console.log('JWT Token stored:', response.token);
-        } else {
-            // مدیریت خطاهای لاگین
-            console.error('Login failed:', response.message);
-            console.log('Full error response:', response);
-            alert(`Login failed: ${response.message}`);
-        }
-    };
-
-    const handleRegisterResponse = (response) => {
-        console.log('Register response received:', response);
-        
-        if (response.status === 'success') {
-            console.log('Registration successful! Server response:', response);
-            alert('Registration successful! You can now login.');
-            // بعد از ثبت نام موفق، کاربر باید به صفحه لاگین برگردد
-            // این کار در LoginRegister.jsx انجام می‌شود
-        } else {
-            console.error('Registration failed:', response.message);
-            console.log('Full error response:', response);
-            alert(`Registration failed: ${response.message}`);
-        }
-    };
+    }, [onRegisterSuccessCallback]);
 
     const login = (email, password) => {
-        console.log('Attempting login with email:', email);
-        webSocketService.send({
-            type: 'login',
-            email: email,  // تغییر از username به email
-            password: password
-        });
+        setIsLoading(true);
+        webSocketService.send({ type: 'login', email, password });
     };
 
     const register = (username, email, password) => {
-        console.log('Attempting registration with username:', username, 'email:', email);
-        webSocketService.send({
-            type: 'register',
-            username: username,
-            email: email,
-            password: password
-        });
+        setIsLoading(true);
+        webSocketService.send({ type: 'register', username, email, password });
     };
 
     const logout = () => {
-        console.log('User logging out...');
-        setUser(null);
-        setToken(null);
-        setIsAuthenticated(false);
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-        console.log('User logged out and localStorage cleared');
+        if (user || token || isAuthenticated) {
+            setUser(null);
+            setToken(null);
+            setIsAuthenticated(false);
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+        }
+    };
+    
+    const setOnRegisterSuccess = (callback) => {
+        setOnRegisterSuccessCallback(() => callback);
     };
 
     return (
-        <AuthContext.Provider
-            value={{
-                user,
-                token,
-                isAuthenticated,
-                isLoading,
-                login,
-                register,
-                logout
-            }}
-        >
+        <AuthContext.Provider value={{ user, token, isAuthenticated, isLoading, login, register, logout, setOnRegisterSuccess }}>
             {children}
         </AuthContext.Provider>
     );

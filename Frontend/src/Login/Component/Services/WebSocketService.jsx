@@ -1,51 +1,50 @@
 class WebSocketService {
     constructor() {
         this.socket = null;
-        this.listeners = {};
+        this.generalListeners = []; // Changed to an array to support multiple listeners
         this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 5;
-        this.reconnectInterval = 3000; // 3 seconds
+        this.maxReconnectAttempts = 10;
+        this.reconnectInterval = 3000;
     }
 
     connect = () => {
-        // آدرس سرور WebSocket شما
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            console.log('🔌 WebSocket is already connected.');
+            return;
+        }
+
         this.socket = new WebSocket('ws://localhost:8081');
+        console.log('🔌 Attempting to connect to WebSocket...');
 
         this.socket.onopen = () => {
-            console.log('WebSocket connected');
+            console.log('✅ WebSocket connected successfully!');
             this.reconnectAttempts = 0;
         };
 
         this.socket.onmessage = (event) => {
-            try {
-                const message = JSON.parse(event.data);
-                const { type } = message;
-
-                if (this.listeners[type]) {
-                    this.listeners[type].forEach(callback => callback(message));
-                }
-            } catch (error) {
-                console.error('Error parsing WebSocket message:', error);
-            }
+            console.log('📬 [RAW MESSAGE FROM SERVER]:', event.data);
+            // --- Execute ALL general listeners ---
+            this.generalListeners.forEach(callback => callback(event.data));
         };
 
         this.socket.onclose = (event) => {
-            console.log('WebSocket disconnected:', event.reason);
-
+            console.log(`🔌 WebSocket disconnected. Reason: ${event.reason || 'No reason given'}. Code: ${event.code}`);
             if (this.reconnectAttempts < this.maxReconnectAttempts) {
                 setTimeout(() => {
                     this.reconnectAttempts++;
-                    console.log(`Reconnecting attempt ${this.reconnectAttempts}...`);
+                    console.log(`🔁 Reconnecting... attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
                     this.connect();
                 }, this.reconnectInterval);
+            } else {
+                console.error('🚫 Max reconnect attempts reached.');
             }
         };
 
         this.socket.onerror = (error) => {
-            console.error('WebSocket error:', error);
+            console.error('❌ WebSocket error:', error);
         };
     };
-
+    
     disconnect = () => {
         if (this.socket) {
             this.socket.close();
@@ -55,34 +54,26 @@ class WebSocketService {
 
     send = (message) => {
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(JSON.stringify(message));
+            const jsonMessage = JSON.stringify(message);
+            console.log('🚀 [MESSAGE SENT TO SERVER]:', jsonMessage);
+            this.socket.send(jsonMessage);
             return true;
         } else {
-            console.warn('WebSocket not connected, message not sent');
+            console.warn('⚠️ WebSocket not connected. Message not sent:', message);
+            this.connect(); 
             return false;
         }
     };
-
-    addListener = (type, callback) => {
-        if (!this.listeners[type]) {
-            this.listeners[type] = [];
-        }
-        this.listeners[type].push(callback);
-
-        // Return a cleanup function
+    
+    // This function adds a listener that hears ALL messages
+    addGeneralListener = (callback) => {
+        this.generalListeners.push(callback);
+        // Return a cleanup function to remove the listener
         return () => {
-            this.listeners[type] = this.listeners[type].filter(cb => cb !== callback);
+            this.generalListeners = this.generalListeners.filter(cb => cb !== callback);
         };
-    };
-
-    removeListener = (type, callback) => {
-        if (this.listeners[type]) {
-            this.listeners[type] = this.listeners[type].filter(cb => cb !== callback);
-        }
     };
 }
 
-// ایجاد یک نمونه واحد از سرویس WebSocket
 const webSocketService = new WebSocketService();
-
 export default webSocketService;
