@@ -81,14 +81,14 @@ const Contacts = () => {
     useEffect(() => {
         const handleMessage = (response) => {
             if (response.type === "get_contacts") {
+                setLoading(false); // اول اینو بذار
                 if (response.status === "success") {
-                    setContacts(response.contacts);
+                    setContacts(response.contacts || []);
                     setError(null);
                 } else {
                     setError(response.message || "خطا در دریافت مخاطبان");
                     setContacts([]);
                 }
-                setLoading(false);
             }
 
             if (response.type === "add_contact") {

@@ -9,7 +9,7 @@ class WebSocketService {
 
     connect = () => {
         // آدرس سرور WebSocket شما
-        this.socket = new WebSocket('ws://localhost:8080');
+        this.socket = new WebSocket('ws://localhost:8081');
 
         this.socket.onopen = () => {
             console.log('WebSocket connected');
