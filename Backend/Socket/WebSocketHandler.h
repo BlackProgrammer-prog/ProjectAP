@@ -11,6 +11,7 @@
 #include "ContactManager.h"
 #include "UserStatusManager.h"
 #include "PrivateChatManager.h"
+#include "ProfileManager.h"
 
 using json = nlohmann::json;
 
@@ -35,6 +36,7 @@ public:
 
     void setupHandlers();
     void setChatManager(std::shared_ptr<PrivateChatManager> chat_manager);
+    void setProfileManager(std::shared_ptr<ProfileManager> profile_manager);
 
 private:
     struct Impl;
@@ -57,4 +59,5 @@ private:
     std::shared_ptr<UserStatusManager> status_manager_;
     std::shared_ptr<SessionManager> session_manager_;
     std::shared_ptr<PrivateChatManager> chat_manager_;
+    std::shared_ptr<ProfileManager> profile_manager_;
 };

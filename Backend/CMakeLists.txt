@@ -51,6 +51,8 @@ add_executable(Backend
         ContactManager.h
         NotificationManager.cpp
         NotificationManager.h
+        ProfileManager.cpp
+        ProfileManager.h
 )
 
 # ────────────────────────────────

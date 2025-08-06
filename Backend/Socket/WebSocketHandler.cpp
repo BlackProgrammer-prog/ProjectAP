@@ -390,6 +390,11 @@ WebSocketServer::WebSocketServer(int port,
     jwt_auth_ = JwtAuth::create(jwt_secret);
     // Initialize chat_manager_ - this will be set later via a setter or passed in constructor
     chat_manager_ = nullptr;
+    profile_manager_ = nullptr;
+}
+
+void WebSocketServer::setProfileManager(std::shared_ptr<ProfileManager> profile_manager) {
+    profile_manager_ = profile_manager;
 }
 
 WebSocketServer::~WebSocketServer() {

@@ -349,3 +349,19 @@ std::vector<std::vector<std::string>> Database::getMessagesBetweenUsers(
     }
     return messages;
 }
+json Database::getPublicUserProfile(const std::string& email) {
+    DBUser user = getUserByEmail(email);
+    if (user.id.empty()) {
+        return nullptr;
+    }
+
+    // Start with the existing profile data from the database
+    json publicProfile = user.profile;
+
+    // Ensure the main fields are present
+    publicProfile["email"] = user.email;
+    publicProfile["username"] = user.username;
+    publicProfile["customUrl"] = user.customUrl;
+
+    return publicProfile;
+}

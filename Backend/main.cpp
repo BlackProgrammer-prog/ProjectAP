@@ -15,6 +15,7 @@
 #include "SessionManager.h"
 #include "PrivateChatManager.h"
 #include "NotificationManager.h"
+#include "ProfileManager.h"
 
 int main() {
     // تنظیمات اولیه
@@ -38,7 +39,7 @@ int main() {
         auto status_manager = std::make_shared<UserStatusManager>();
         auto contact_manager = std::make_shared<ContactManager>(db);
         auto chat_manager = std::make_shared<PrivateChatManager>(db);
-
+        
         // 4. راه‌اندازی سرور WebSocket با وابستگی‌های جدید
         WebSocketServer server(
             WS_PORT,
@@ -48,8 +49,12 @@ int main() {
             session_manager
         );
 
+        auto profile_manager = std::make_shared<ProfileManager>(db, server);
+
         // 5. تنظیم chat_manager برای سرور
         server.setChatManager(chat_manager);
+        server.setProfileManager(profile_manager);
+
 
         // 6. ایجاد و تنظیم NotificationManager
         auto notification_manager = std::make_shared<NotificationManager>(
@@ -64,6 +69,9 @@ int main() {
 
         Login loginHandler(db, server, jwtAuth);
         loginHandler.setupRoutes();
+
+        profile_manager->setupRoutes();
+
 
         // 8. تنظیم هندلرهای چت و مخاطبین
         server.setupHandlers(); // این متد تمام هندلرهای چت را ثبت می‌کند
