@@ -1,0 +1,11 @@
+
+#ifndef DS_STORE_PROFILEMANAGER_H
+#define DS_STORE_PROFILEMANAGER_H
+
+
+class ProfileManager {
+
+};
+
+
+#endif //DS_STORE_PROFILEMANAGER_H
