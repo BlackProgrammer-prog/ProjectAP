@@ -1,9 +1,26 @@
 #include "ProfileManager.h"
+#include "Socket/WebSocketHandler.h"
 
-ProfileManager::ProfileManager() {}
+ProfileManager::ProfileManager(std::shared_ptr<Database> db, WebSocketServer& server)
+        : db_(db), server_(server) {}
 
-void ProfileManager::loadProfile(const std::string& email) {}
+void ProfileManager::setupRoutes() {
+    server_.on("get_profile", [this](const json& data, const std::string& clientId) {
+        return handleProfileRequest(data);
+    });
+}
 
-void ProfileManager::saveProfile() {}
+json ProfileManager::handleProfileRequest(const json& data) {
+    if (!data.contains("email")) {
+        return {{"status", "error"}, {"message", "Email is required"}};
+    }
 
-void ProfileManager::clearProfile() {}
+    std::string email = data["email"];
+    json profile = db_->getPublicUserProfile(email);
+
+    if (profile.is_null()) {
+        return {{"status", "error"}, {"message", "User not found"}};
+    }
+
+    return {{"status", "success"}, {"profile", profile}};
+}

@@ -1,17 +1,25 @@
 
-#ifndef DS_STORE_PROFILEMANAGER_H
-#define DS_STORE_PROFILEMANAGER_H
+#ifndef BACKEND_PROFILEMANAGER_H
+#define BACKEND_PROFILEMANAGER_H
+
+#include "Database.h"
+#include "json.hpp"
+
+class WebSocketServer; // Forward declaration
+
+using json = nlohmann::json;
 
 
 class ProfileManager {
 public:
-    ProfileManager();
-    void loadProfile(const std::string& email);
-    void saveProfile();
-    void clearProfile();
+    ProfileManager(std::shared_ptr<Database> db, WebSocketServer& server);
+    void setupRoutes();
+
 private:
-    std::string userEmail;
+    json handleProfileRequest(const json& data);
+
+    std::shared_ptr<Database> db_;
+    WebSocketServer& server_;
 };
 
-
-#endif //DS_STORE_PROFILEMANAGER_H
+#endif //BACKEND_PROFILEMANAGER_H
