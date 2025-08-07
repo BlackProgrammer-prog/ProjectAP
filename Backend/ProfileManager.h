@@ -4,7 +4,13 @@
 
 
 class ProfileManager {
-
+public:
+    ProfileManager();
+    void loadProfile(const std::string& email);
+    void saveProfile();
+    void clearProfile();
+private:
+    std::string userEmail;
 };
 
 
