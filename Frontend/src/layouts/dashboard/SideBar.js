@@ -8,17 +8,17 @@ import {
 } from "phosphor-react";
 import { faker } from "@faker-js/faker";
 import useSettings from '../../hooks/useSettings';
-import Profile from "./Profile";
 import Chats from "../../pages/dashboard/Chats";
 import { OpenAiLogoIcon } from "@phosphor-icons/react";
-import { useAuth } from "../../Login/Component/Context/AuthContext"; // Import useAuth
+import { useAuth } from "../../Login/Component/Context/AuthContext";
+import Profile from "./Profile"; // Import useAuth
 
 const SideBar = () => {
     const theme = useTheme();
     const navigate = useNavigate();
     const { onToggleMode } = useSettings();
+    const { user, logout, updateUser } = useAuth(); // Get user and updateUser for theme toggle
     const location = useLocation();
-    const { logout } = useAuth(); // Get the logout function from AuthContext
 
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [openChat, setOpenChat] = useState(false);
@@ -33,7 +33,7 @@ const SideBar = () => {
         if (location.pathname !== path) {
             navigate(path);
         } else {
-            navigate("/app"); // Toggle behavior: if already on the page, go back to main chat
+            navigate("/app");
         }
     };
     
@@ -46,9 +46,16 @@ const SideBar = () => {
     };
 
     const handleLogout = () => {
-        logout(); // This will clear localStorage and update auth state
+        logout();
         handleProfileMenuClose();
-        // The redirection logic will be handled in the DashboardLayout
+    };
+
+    // Handler for Theme Toggle
+    const handleThemeToggle = () => {
+        onToggleMode(); // Toggles theme visually
+        updateUser({ // Updates backend and localStorage
+            settings_json: { darkMode: !user.settings.darkMode }
+        });
     };
 
     return (
@@ -61,12 +68,10 @@ const SideBar = () => {
                 paddingTop: 1
             }}>
                 <Stack direction="column" alignItems="center" sx={{ width: "100%", height: "100%", justifyContent: "space-between" }}>
-                    {/* Logo */}
                     <Box sx={{ backgroundColor: theme.palette.primary.main, height: 64, width: 64, borderRadius: 1.5, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                         <img src={logo} alt="chat logo" style={{ width: '80%', height: '80%' }} />
                     </Box>
 
-                    {/* Navigation Buttons */}
                     <Stack sx={{ width: "max-content", marginTop: 1 }} direction="column" spacing={2.5}>
                         <IconButton onClick={() => navigate("/app")}><ChatCircleDots /></IconButton>
                         <IconButton onClick={() => handleNavigate("/group")}><Users /></IconButton>
@@ -79,12 +84,11 @@ const SideBar = () => {
                         <IconButton onClick={() => handleNavigate("/ai/state")}><OpenAiLogoIcon size={27} /></IconButton>
                     </Stack>
                     
-                    {/* Bottom part of sidebar */}
                     <Stack direction="column" alignItems="center" spacing={2} sx={{ marginBottom: 2 }}>
-                        <Switch onChange={onToggleMode} defaultChecked />
-                        <Avatar src={faker.image.avatar()} onClick={handleProfileClick} sx={{ cursor: 'pointer' }} />
+                        {/* Connect the switch to the new handler and user state */}
+                        <Switch onChange={handleThemeToggle} checked={user?.settings?.darkMode || false} />
+                        <Avatar src={user?.profile?.avatarUrl || faker.image.avatar()} onClick={handleProfileClick} sx={{ cursor: 'pointer' }} />
                         
-                        {/* Profile Menu */}
                         <Menu
                             anchorEl={profileMenuAnchor}
                             open={profileMenuOpen}

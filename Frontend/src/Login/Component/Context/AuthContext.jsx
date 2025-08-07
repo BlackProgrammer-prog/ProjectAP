@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import webSocketService from "../Services/WebSocketService";
 
 const AuthContext = createContext();
@@ -10,29 +10,63 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(null);
     const [onRegisterSuccessCallback, setOnRegisterSuccessCallback] = useState(null);
 
-    const handleWebSocketMessage = (rawData) => {
-        let response;
-        try {
-            response = JSON.parse(rawData);
-        } catch (error) {
-            return; // Not a JSON message for auth, ignore it
+    // --- *** NEW FUNCTION TO UPDATE NOTIFICATION STATUS *** ---
+    const setNotificationStatus = useCallback((enabled) => {
+        if (!user || !token) {
+            console.error("❌ Cannot update notifications: User not authenticated.");
+            return;
         }
 
-        // --- AUTHENTICATION LOGIC ---
-        if (response.token && response.user) { // Login success
+        // 1. Optimistically update state and localStorage
+        const newUser = { ...user, settings: { ...user.settings, notificationsEnabled: enabled } };
+        setUser(newUser);
+        localStorage.setItem('user', JSON.stringify(newUser));
+        console.log(`💾 Optimistically set notifications to ${enabled} and updated localStorage.`);
+
+        // 2. Send the specific request to the backend
+        webSocketService.send({
+            type: "set_notification_status",
+            token: token,
+            enabled: enabled
+        });
+
+    }, [user, token]);
+
+    const updateUser = useCallback((updates) => {
+        if (!user || !token) return;
+        const newUser = {
+            ...user,
+            profile: { ...user.profile, ...(updates.profile_json || {}) },
+            settings: { ...user.settings, ...(updates.settings_json || {}) },
+        };
+        setUser(newUser);
+        localStorage.setItem('user', JSON.stringify(newUser));
+        webSocketService.send({ type: "update_user_info", token: token, ...updates });
+    }, [user, token]);
+
+    // ... (rest of the context remains the same)
+    const handleWebSocketMessage = useCallback((rawData) => {
+        let response;
+        try { response = JSON.parse(rawData); } catch (error) { return; }
+
+        if (response.token && response.user) {
             setIsLoading(false);
-            console.log('🧠 Auth Handler: Identified as LOGIN SUCCESS.');
             handleLoginSuccess(response);
-        } else if (response.status === 'success' && !response.token) { // Register success
-             setIsLoading(false);
-            console.log('🧠 Auth Handler: Identified as REGISTER SUCCESS.');
+        } else if (response.status === 'success' && !response.token) {
+            setIsLoading(false);
             handleRegisterSuccess(response);
-        } else if (response.status === 'error' && (response.message.includes('ورود') || response.message.includes('ثبت نام') || response.message.includes('Login') || response.message.includes('Registration'))) {
-             setIsLoading(false);
-            console.log('🧠 Auth Handler: Identified as AUTH FAILURE response.');
+        } else if (response.type === 'update_user_info_response' || response.type === 'set_notification_status_response') {
+            if(response.status === 'success') {
+                console.log(`✅ Server confirmed update for: ${response.type}`);
+            } else {
+                 console.error(`❌ Server failed update for: ${response.type}. Reason: ${response.message}`);
+                 // Here you could potentially revert the optimistic update
+            }
+        } else if (response.status === 'error' && (response.message?.includes('ورود') || response.message?.includes('ثبت نام'))) {
+            setIsLoading(false);
             handleFailure(response);
         }
-    };
+    }, [setOnRegisterSuccessCallback]);
 
     const handleLoginSuccess = (response) => {
         localStorage.setItem('token', response.token);
@@ -44,38 +78,30 @@ export const AuthProvider = ({ children }) => {
     };
 
     const handleRegisterSuccess = (response) => {
-        const message = response.message || 'ثبت نام با موفقیت انجام شد! اکنون می‌توانید وارد شوید.';
+        const message = response.message || 'ثبت نام با موفقیت انجام شد!';
         alert(message);
-        if (onRegisterSuccessCallback) {
-            onRegisterSuccessCallback();
-        }
+        if (onRegisterSuccessCallback) onRegisterSuccessCallback();
     };
 
     const handleFailure = (response) => {
-        const errorMessage = response.message || 'یک خطای احراز هویت رخ داده است.';
-        alert(`خطا: ${errorMessage}`);
+        alert(`خطا: ${response.message || 'یک خطای احراز هویت رخ داده است.'}`);
         logout();
     };
 
     useEffect(() => {
-        if (!webSocketService.socket || webSocketService.socket.readyState === WebSocket.CLOSED) {
-            webSocketService.connect();
-        }
         const storedUser = localStorage.getItem('user');
         const storedToken = localStorage.getItem('token');
         if (storedUser && storedToken) {
-            setUser(JSON.parse(storedUser));
-            setToken(storedToken);
-            setIsAuthenticated(true);
+            try {
+                setUser(JSON.parse(storedUser));
+                setToken(storedToken);
+                setIsAuthenticated(true);
+            } catch (e) { localStorage.clear(); }
         }
         setIsLoading(false);
-
-        // ** Use the new addGeneralListener **
         const cleanupListener = webSocketService.addGeneralListener(handleWebSocketMessage);
-        return () => {
-            cleanupListener(); // Cleanup on unmount
-        };
-    }, [onRegisterSuccessCallback]);
+        return () => cleanupListener();
+    }, [handleWebSocketMessage]);
 
     const login = (email, password) => {
         setIsLoading(true);
@@ -88,12 +114,9 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
-        if (user || token || isAuthenticated) {
-            setUser(null);
-            setToken(null);
-            setIsAuthenticated(false);
-            localStorage.removeItem('user');
-            localStorage.removeItem('token');
+        if (user || token) {
+            setUser(null); setToken(null); setIsAuthenticated(false);
+            localStorage.removeItem('user'); localStorage.removeItem('token');
         }
     };
     
@@ -102,7 +125,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, isAuthenticated, isLoading, login, register, logout, setOnRegisterSuccess }}>
+        <AuthContext.Provider value={{ user, token, isAuthenticated, isLoading, login, register, logout, setOnRegisterSuccess, updateUser, setNotificationStatus }}>
             {children}
         </AuthContext.Provider>
     );
