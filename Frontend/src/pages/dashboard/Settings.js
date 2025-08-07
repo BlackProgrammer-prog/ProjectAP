@@ -1,5 +1,5 @@
 import WallpaperDialog from '../../components/WallpaperDialog'; // add
-import React, { useState, useRef } from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {
     Avatar, Box, Divider, IconButton, Stack,
     Typography, useTheme, Dialog
@@ -17,6 +17,25 @@ import Help from '../../Secctions/help/help';
 // >>>>>>> 90a019c9be9d997c87283da3a0386c119010ecdf
 
 const Settings = () => {
+
+    const [UserNameFull , setUserNameFull] = useState('');
+    const [UserNameUser ,SetUserNameUser ] = useState('');
+
+    useEffect(() => {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser){
+            try {
+                const UserObject = JSON.parse(storedUser);
+                const ObjectProfile = UserObject.profile;
+                setUserNameFull(ObjectProfile.fullName);
+                SetUserNameUser(UserObject.username);
+            }catch (error) {
+                console.error("Error while fetching user data", error);
+            }
+        }
+    } , []);
+
+
     const theme = useTheme();
     const navigate = useNavigate();
     const webcamRef = useRef(null);
@@ -108,10 +127,9 @@ const Settings = () => {
                         onClick={() => setOpenCamera(true)}
                     />
                     <Stack>
-                        <Typography variant='subtitle1'>Ali Zandi</Typography>
+                        <Typography variant='subtitle1'>{UserNameFull}</Typography>
                         <Typography variant='body2' color="text.secondary">
-                            Programmer
-                        </Typography>
+                            {UserNameUser}                    </Typography>
                     </Stack>
                 </Stack>
 

@@ -14,14 +14,35 @@ import {
     InputAdornment
 } from "@mui/material";
 import { faker } from "@faker-js/faker";
-import React from "react";
+import React, {useEffect, useState} from "react";
 import { ArrowLeft, Phone, Pencil } from "phosphor-react";
 
 const Profile = ({ onClose }) => {
+
+    const [NameFull , setNameFull] = useState('');
+    const [EmailFull, setEmailFull] = useState('');
+    const [Biography , setBiography] = useState('');
+
+    useEffect(() => {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            try {
+                const UserObject = JSON.parse(storedUser);
+                const ObjectProfile = UserObject.profile;
+                setNameFull(ObjectProfile.fullName);
+                setEmailFull(UserObject.email);
+                setBiography(ObjectProfile.bio);
+
+            }catch (error) {
+                console.error("Error while fetching user data", error);
+            }
+        }
+    }, []);
+
     const user = {
-        name: "Ali Zandi",
-        phone: "+98 912345678",
-        bio: "Test Messagenger",
+        name: NameFull,
+        email: EmailFull,
+        bio: Biography,
         avatar: faker.image.avatar(),
     };
 
@@ -30,7 +51,7 @@ const Profile = ({ onClose }) => {
 
     const handleSaveBio = () => {
         setIsEditing(false);
-        // اینجا می‌توانید لاگیک ذخیره بیو در API را اضافه کنید
+
     };
 
     return (
@@ -131,14 +152,14 @@ const Profile = ({ onClose }) => {
 
                     {/* فیلد تلفن */}
                     <TextField
-                        label="شماره تلفن"
-                        value={user.phone}
+                        label="ایمیل "
+                        value={user.email}
                         fullWidth
                         disabled
                         InputProps={{
                             startAdornment: (
                                 <InputAdornment position="start">
-                                    <Phone size={20} color="#555" />
+                                    {/*<Phone size={20} color="#555" />*/}
                                 </InputAdornment>
                             ),
                         }}
@@ -162,7 +183,7 @@ const Profile = ({ onClose }) => {
                     {/* فیلد بیوگرافی */}
                     <TextField
                         label="بیوگرافی"
-                        value={bio}
+                        value={user.bio}
                         onChange={(e) => setBio(e.target.value)}
                         multiline
                         rows={4}
@@ -207,6 +228,28 @@ const Profile = ({ onClose }) => {
                         }}
                     >
                         {isEditing ? "ذخیره تغییرات" : "ویرایش بیوگرافی"}
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        // onClick={}
+                        fullWidth
+                        startIcon={<Pencil size={20} />}
+                        sx={{
+                            py: 1.5,
+                            borderRadius: "12px",
+                            fontWeight: 600,
+                            textTransform: "none",
+                            boxShadow: "none",
+                            letterSpacing: "0.5px",
+                            "&:hover": {
+                                boxShadow: "0px 3px 10px rgba(25, 118, 210, 0.3)",
+                                transform: "translateY(-1px)"
+                            },
+                            transition: "all 0.2s ease"
+                        }}
+                    >
+                        {isEditing ? "ذخیره تغییرات" : "ویرایش نام"}
                     </Button>
                 </Stack>
             </Box>

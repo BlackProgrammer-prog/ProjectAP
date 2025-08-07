@@ -49,7 +49,7 @@ int main() {
             session_manager
         );
 
-        auto profile_manager = std::make_shared<ProfileManager>(db, server);
+        auto profile_manager = std::make_shared<ProfileManager>(db, server, jwtAuth);
 
         // 5. تنظیم chat_manager برای سرور
         server.setChatManager(chat_manager);
