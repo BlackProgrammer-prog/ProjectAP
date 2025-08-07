@@ -9,27 +9,29 @@ export const AuthProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [token, setToken] = useState(null);
     const [onRegisterSuccessCallback, setOnRegisterSuccessCallback] = useState(null);
+    
+    const changePassword = useCallback((currentPassword, newPassword) => {
+        if (!token) {
+            console.error("❌ Cannot change password: User not authenticated.");
+            return;
+        }
+        webSocketService.send({
+            type: "change_password",
+            token: token,
+            current_password: currentPassword,
+            new_password: newPassword
+        });
+    }, [token]);
 
-    // --- *** NEW FUNCTION TO UPDATE NOTIFICATION STATUS *** ---
     const setNotificationStatus = useCallback((enabled) => {
         if (!user || !token) {
             console.error("❌ Cannot update notifications: User not authenticated.");
             return;
         }
-
-        // 1. Optimistically update state and localStorage
         const newUser = { ...user, settings: { ...user.settings, notificationsEnabled: enabled } };
         setUser(newUser);
         localStorage.setItem('user', JSON.stringify(newUser));
-        console.log(`💾 Optimistically set notifications to ${enabled} and updated localStorage.`);
-
-        // 2. Send the specific request to the backend
-        webSocketService.send({
-            type: "set_notification_status",
-            token: token,
-            enabled: enabled
-        });
-
+        webSocketService.send({ type: "set_notification_status", token: token, enabled: enabled });
     }, [user, token]);
 
     const updateUser = useCallback((updates) => {
@@ -44,36 +46,35 @@ export const AuthProvider = ({ children }) => {
         webSocketService.send({ type: "update_user_info", token: token, ...updates });
     }, [user, token]);
 
-    // ... (rest of the context remains the same)
     const handleWebSocketMessage = useCallback((rawData) => {
         let response;
         try { response = JSON.parse(rawData); } catch (error) { return; }
 
         if (response.token && response.user) {
-            setIsLoading(false);
-            handleLoginSuccess(response);
+            setIsLoading(false); handleLoginSuccess(response);
         } else if (response.status === 'success' && !response.token) {
-            setIsLoading(false);
-            handleRegisterSuccess(response);
+            setIsLoading(false); handleRegisterSuccess(response);
+        } else if (response.type === 'change_password_response') {
+            if (response.status === 'success') {
+                alert('رمز عبور با موفقیت تغییر کرد.');
+            } else {
+                alert(`خطا در تغییر رمز عبور: ${response.message}`);
+            }
         } else if (response.type === 'update_user_info_response' || response.type === 'set_notification_status_response') {
             if(response.status === 'success') {
                 console.log(`✅ Server confirmed update for: ${response.type}`);
             } else {
                  console.error(`❌ Server failed update for: ${response.type}. Reason: ${response.message}`);
-                 // Here you could potentially revert the optimistic update
             }
         } else if (response.status === 'error' && (response.message?.includes('ورود') || response.message?.includes('ثبت نام'))) {
-            setIsLoading(false);
-            handleFailure(response);
+            setIsLoading(false); handleFailure(response);
         }
     }, [setOnRegisterSuccessCallback]);
 
     const handleLoginSuccess = (response) => {
         localStorage.setItem('token', response.token);
         localStorage.setItem('user', JSON.stringify(response.user));
-        setUser(response.user);
-        setToken(response.token);
-        setIsAuthenticated(true);
+        setUser(response.user); setToken(response.token); setIsAuthenticated(true);
         alert('ورود با موفقیت انجام شد!');
     };
 
@@ -104,13 +105,11 @@ export const AuthProvider = ({ children }) => {
     }, [handleWebSocketMessage]);
 
     const login = (email, password) => {
-        setIsLoading(true);
-        webSocketService.send({ type: 'login', email, password });
+        setIsLoading(true); webSocketService.send({ type: 'login', email, password });
     };
 
     const register = (username, email, password) => {
-        setIsLoading(true);
-        webSocketService.send({ type: 'register', username, email, password });
+        setIsLoading(true); webSocketService.send({ type: 'register', username, email, password });
     };
 
     const logout = () => {
@@ -125,7 +124,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, isAuthenticated, isLoading, login, register, logout, setOnRegisterSuccess, updateUser, setNotificationStatus }}>
+        <AuthContext.Provider value={{ user, token, isAuthenticated, isLoading, login, register, logout, setOnRegisterSuccess, updateUser, setNotificationStatus, changePassword }}>
             {children}
         </AuthContext.Provider>
     );
