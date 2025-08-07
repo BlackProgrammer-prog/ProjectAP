@@ -8,6 +8,10 @@ import { faker } from '@faker-js/faker';
 const ContactElement = ({ contact }) => {
     const { removeContact } = useContacts();
 
+    // --- THE FIX IS HERE ---
+    // 1. Determine online status from numeric value.
+    const isOnline = contact.status === 1;
+
     return (
         <Stack
             direction="row"
@@ -19,17 +23,19 @@ const ContactElement = ({ contact }) => {
                 borderRadius: 2,
                 boxShadow: (theme) => theme.shadows[1],
                 transition: 'box-shadow 0.3s ease-in-out',
-                '&:hover': {
-                    boxShadow: (theme) => theme.shadows[4],
-                }
+                '&:hover': { boxShadow: (theme) => theme.shadows[4] }
             }}
         >
             <Stack direction="row" spacing={2} alignItems="center">
                 <Avatar src={contact.profile?.avatar || faker.image.avatar()} />
                 <Stack>
-                    <Typography variant="subtitle1" fontWeight={600}>{contact.username}</Typography>
-                    <Typography variant="body2" color={contact.status === 'online' ? 'primary.main' : 'text.secondary'}>
-                        {contact.status || 'offline'}
+                    {/* 2. Display username, but fallback to email if it doesn't exist. */}
+                    <Typography variant="subtitle1" fontWeight={600}>
+                        {contact.username || contact.email}
+                    </Typography>
+                    {/* 3. Display text status based on the isOnline boolean. */}
+                    <Typography variant="body2" color={isOnline ? 'primary.main' : 'text.secondary'}>
+                        {isOnline ? 'Online' : 'Offline'}
                     </Typography>
                 </Stack>
             </Stack>
@@ -68,8 +74,9 @@ const Contacts = () => {
                 ) : (
                     <Stack spacing={2}>
                         {contacts.length > 0 ? (
-                            contacts.map((contact) => (
-                                <ContactElement key={contact.user_id} contact={contact} />
+                            contacts.map((contact, index) => (
+                                // Use a combination of user_id or index for a more robust key
+                                <ContactElement key={contact.user_id || index} contact={contact} />
                             ))
                         ) : (
                             <Typography textAlign="center" color="text.secondary">لیست مخاطبین شما خالی است.</Typography>

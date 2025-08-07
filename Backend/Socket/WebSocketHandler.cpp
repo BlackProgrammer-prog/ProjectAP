@@ -472,6 +472,36 @@ void WebSocketServer::setupHandlers() {
     impl_->on("search_messages", [this](const json& data, const std::string& clientId) {
         return handleSearchMessages(data, clientId);
     });
+
+    impl_->on("search_user", [this](const json& data, const std::string& clientId) {
+        return handleSearchUser(data, clientId);
+    });
+}
+
+json WebSocketServer::handleSearchUser(const json& data, const std::string& client_id) {
+    if (!jwt_auth_->isValidToken(data["token"])) {
+        return {{"status", "error"}, {"message", "Invalid token"}};
+    }
+
+    if (!data.contains("query")) {
+        return {{"status", "error"}, {"message", "Missing search query"}};
+    }
+
+    std::string query = data["query"];
+    json results = contact_manager_->searchUsers(query);
+
+    if (results.empty()) {
+        return {
+            {"status", "error"},
+            {"code", "NO_RESULTS"},
+            {"message", "نتیجه‌ای یافت نشد"}
+        };
+    }
+
+    return {
+        {"status", "success"},
+        {"results", results}
+    };
 }
 
 json WebSocketServer::handleSendMessage(const json& data, const std::string& client_id) {

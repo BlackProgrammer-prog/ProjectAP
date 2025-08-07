@@ -52,6 +52,7 @@ private:
     json handleEditMessage(const json& data, const std::string& client_id);
     json handleDeleteMessage(const json& data, const std::string& client_id);
     json handleSearchMessages(const json& data, const std::string& client_id);
+    json handleSearchUser(const json& data, const std::string& client_id);
 
     // Dependencies
     std::shared_ptr<JwtAuth> jwt_auth_;

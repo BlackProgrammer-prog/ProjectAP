@@ -365,3 +365,35 @@ json Database::getPublicUserProfile(const std::string& email) {
 
     return publicProfile;
 }
+
+std::vector<DBUser> Database::searchUsers(const std::string& query) {
+    std::vector<DBUser> users;
+    std::string sql = "SELECT * FROM users WHERE username LIKE ? OR email LIKE ? LIMIT 10";
+    
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(pImpl->db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        return users;
+    }
+    
+    std::string searchQuery = "%" + query + "%";
+    sqlite3_bind_text(stmt, 1, searchQuery.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, searchQuery.c_str(), -1, SQLITE_TRANSIENT);
+    
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        DBUser user;
+        const auto get_safe = [](sqlite3_stmt* s, int i) -> std::string {
+            const char* val = reinterpret_cast<const char*>(sqlite3_column_text(s, i));
+            return val ? val : "";
+        };
+
+        user.id = get_safe(stmt, 0);
+        user.email = get_safe(stmt, 1);
+        user.username = get_safe(stmt, 2);
+        // We don't need to load other fields for search results
+        users.push_back(user);
+    }
+    
+    sqlite3_finalize(stmt);
+    return users;
+}
+

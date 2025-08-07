@@ -16,31 +16,36 @@ export const ContactsProvider = ({ children }) => {
         try {
             response = JSON.parse(rawData);
         } catch (e) {
-            return; // Not a JSON message, ignore
+            return; // Not a relevant message
         }
 
-        // --- INTELLIGENT ROUTING for CONTACTS ---
-        if (response.hasOwnProperty('contacts')) { // get_contacts response
+        const messageType = response.type; // Check for a type field if it exists
+
+        if (messageType === 'get_contacts_response' || response.hasOwnProperty('contacts')) {
             console.log('🧠 Contacts Handler: Identified as GET_CONTACTS response.');
             setIsLoading(false);
             if (response.status === 'success') {
-                setContacts(response.contacts);
+                setContacts(response.contacts || []);
                 setError(null);
             } else {
                 setContacts([]);
-                setError(response.message);
+                setError(response.message || "لیست مخاطبین خالی است.");
             }
-        } else if (response.hasOwnProperty('contact')) { // add_contact response
+        } else if (messageType === 'add_contact_response' || response.hasOwnProperty('contact')) {
             console.log('🧠 Contacts Handler: Identified as ADD_CONTACT response.');
             if (response.status === 'success') {
-                // Add contact only if it's not already in the list
-                setContacts(prev => prev.some(c => c.user_id === response.contact.user_id) ? prev : [...prev, response.contact]);
+                // ** THE FIX IS HERE **
+                // Use .find() to check for existence, which is safer and clearer.
+                setContacts(prev => {
+                    const exists = prev.find(c => c.user_id === response.contact.user_id);
+                    return exists ? prev : [...prev, response.contact];
+                });
                 alert('مخاطب با موفقیت اضافه شد');
-                setSearchResults([]); // Clear search results after adding
+                setSearchResults([]);
             } else {
                 alert(`خطا در افزودن مخاطب: ${response.message}`);
             }
-        } else if (response.hasOwnProperty('removed_contact')) { // remove_contact response
+        } else if (messageType === 'remove_contact_response' || response.hasOwnProperty('removed_contact')) {
             console.log('🧠 Contacts Handler: Identified as REMOVE_CONTACT response.');
              if (response.status === 'success') {
                 setContacts(prev => prev.filter(c => c.email !== response.removed_contact));
@@ -48,10 +53,10 @@ export const ContactsProvider = ({ children }) => {
             } else {
                 alert(`خطا در حذف مخاطب: ${response.message}`);
             }
-        } else if (response.hasOwnProperty('results')) { // search_user response
+        } else if (messageType === 'search_user_response' || response.hasOwnProperty('results')) {
             console.log('🧠 Contacts Handler: Identified as SEARCH_USER response.');
              if (response.status === 'success') {
-                setSearchResults(response.results);
+                setSearchResults(response.results || []);
             } else {
                 setSearchResults([]);
             }
@@ -61,14 +66,13 @@ export const ContactsProvider = ({ children }) => {
     useEffect(() => {
         if (isAuthenticated) {
             const cleanupListener = webSocketService.addGeneralListener(handleWebSocketMessage);
-            return () => {
-                cleanupListener();
-            };
+            return () => cleanupListener();
         }
     }, [isAuthenticated, handleWebSocketMessage]);
 
     const getContacts = useCallback(() => {
         if (token) {
+            console.log("Requesting contact list from server...");
             setIsLoading(true);
             setError(null);
             webSocketService.send({ type: 'get_contacts', token });
@@ -76,10 +80,10 @@ export const ContactsProvider = ({ children }) => {
     }, [token]);
     
     useEffect(() => {
-        if (isAuthenticated) {
+        if (isAuthenticated && token) { // Ensure token exists before fetching
             getContacts();
         }
-    }, [isAuthenticated, getContacts]);
+    }, [isAuthenticated, token, getContacts]);
 
     const addContact = (email) => {
         if (token) {
@@ -97,7 +101,7 @@ export const ContactsProvider = ({ children }) => {
         if (token && query && query.trim() !== '') {
             webSocketService.send({ type: 'search_user', token, query });
         } else {
-            setSearchResults([]); // Clear results if query is empty
+            setSearchResults([]);
         }
     }, [token]);
 
