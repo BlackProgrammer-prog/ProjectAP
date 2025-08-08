@@ -24,6 +24,7 @@ private:
     json handleUpdateUserInfo(const json& data);
     json handleChangePassword(const json& data);
     json handleSetNotificationStatus(const json& data);
+    json handleUpdateAvatar(const json& data);
 
     std::shared_ptr<Database> db_;
     WebSocketServer& server_;

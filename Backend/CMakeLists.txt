@@ -53,6 +53,8 @@ add_executable(Backend
         NotificationManager.h
         ProfileManager.cpp
         ProfileManager.h
+        FileManager.cpp
+        FileManager.h
 )
 
 # ────────────────────────────────

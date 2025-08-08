@@ -5,6 +5,7 @@
 #include "ProfileManager.h"
 #include "Socket/WebSocketHandler.h"
 #include "sha256.h"
+#include "FileManager.h"
 
 ProfileManager::ProfileManager(std::shared_ptr<Database> db, WebSocketServer& server, std::shared_ptr<JwtAuth> jwtAuth)
     : db_(db), server_(server), jwtAuth_(jwtAuth) {}
@@ -24,6 +25,10 @@ void ProfileManager::setupRoutes() {
 
     server_.on("set_notification_status", [this](const json& data, const std::string& clientId) {
         return handleSetNotificationStatus(data);
+    });
+
+    server_.on("update_avatar", [this](const json& data, const std::string& clientId) {
+        return handleUpdateAvatar(data);
     });
 }
 
@@ -142,5 +147,44 @@ json ProfileManager::handleSetNotificationStatus(const json& data) {
         return {{"status", "success"}, {"message", "Notification status updated successfully"}};
     } else {
         return {{"status", "error"}, {"message", "Failed to update notification status"}};
+    }
+}
+
+json ProfileManager::handleUpdateAvatar(const json& data) {
+    if (!data.contains("token") || !data.contains("avatar_data") || !data.contains("filename")) {
+        return {{"status", "error"}, {"message", "Token, avatar data, and filename are required"}};
+    }
+
+    std::string token = data["token"];
+    if (!jwtAuth_->isValidToken(token)) {
+        return {{"status", "error"}, {"message", "Invalid or expired token"}};
+    }
+
+    std::string userId = jwtAuth_->getUserId(token);
+    DBUser user = db_->getUserById(userId);
+
+    if (user.id.empty()) {
+        return {{"status", "error"}, {"message", "User not found"}};
+    }
+
+    std::string avatarData = data["avatar_data"];
+    std::string filename = data["filename"];
+    
+    std::string savedPath = FileManager::saveBase64File(avatarData, "../uploads/avatars", filename);
+
+    if (savedPath.empty()) {
+        return {{"status", "error"}, {"message", "Failed to save avatar image"}};
+    }
+
+    user.profile["avatarUrl"] = savedPath;
+
+    if (db_->updateUser(user)) {
+        return {
+            {"status", "success"},
+            {"message", "Avatar updated successfully"},
+            {"avatarUrl", savedPath}
+        };
+    } else {
+        return {{"status", "error"}, {"message", "Failed to update avatar URL in database"}};
     }
 }
