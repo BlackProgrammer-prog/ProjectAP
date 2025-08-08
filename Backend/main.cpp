@@ -16,12 +16,17 @@
 #include "PrivateChatManager.h"
 #include "NotificationManager.h"
 #include "ProfileManager.h"
+#include "HttpServer.h"
+#include <filesystem>
 
 int main() {
     // تنظیمات اولیه
     const std::string DB_PATH = "app_database.db";
     const int WS_PORT = 8081;
+    const int HTTP_PORT = 8080;
     const std::string JWT_SECRET = "your_strong_jwt_secret_here";
+    // Serve static files from the project source root regardless of working directory
+    const std::string DOC_ROOT = std::filesystem::path(__FILE__).parent_path().string();
 
     try {
         // 1. اتصال به دیتابیس
@@ -76,13 +81,16 @@ int main() {
         // 8. تنظیم هندلرهای چت و مخاطبین
         server.setupHandlers(); // این متد تمام هندلرهای چت را ثبت می‌کند
 
-        // 9. شروع سرور
+        // 9. راه‌اندازی سرور HTTP برای فایل‌های استاتیک
+        HttpServer http_server(HTTP_PORT, DOC_ROOT);
+        http_server.run();
+        std::cout << "سرور HTTP برای فایل‌های استاتیک روی پورت " << HTTP_PORT << " راه‌اندازی شد" << std::endl;
+
+        // 10. شروع سرور وب‌سوکت
         server.start();
         std::cout << "سرور چت روی پورت " << WS_PORT << " راه‌اندازی شد" << std::endl;
-        std::cout << "ماژول‌های فعال:" << std::endl;
-        std::cout << "- سیستم چت خصوصی\n- مدیریت مخاطبین\n- وضعیت کاربران\n- اطلاع‌رسانی بلادرنگ" << std::endl;
-
-        // 10. نگه‌داشتن برنامه در حالت اجرا
+        
+        // 11. نگه‌داشتن برنامه در حالت اجرا
         while (true) {
             std::this_thread::sleep_for(std::chrono::hours(1));
         }

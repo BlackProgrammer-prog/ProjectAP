@@ -55,6 +55,8 @@ add_executable(Backend
         ProfileManager.h
         FileManager.cpp
         FileManager.h
+        HttpServer.cpp
+        HttpServer.h
 )
 
 # ────────────────────────────────
