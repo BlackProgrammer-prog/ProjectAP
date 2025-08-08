@@ -10,6 +10,27 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(null);
     const [onRegisterSuccessCallback, setOnRegisterSuccessCallback] = useState(null);
     
+    const updateAvatar = useCallback((file) => {
+        if (!token) {
+            console.error("❌ Cannot update avatar: User not authenticated.");
+            return;
+        }
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            webSocketService.send({
+                type: "update_avatar",
+                token: token,
+                filename: file.name,
+                avatar_data: reader.result
+            });
+        };
+        reader.onerror = error => {
+            console.error("❌ Error reading file for avatar update:", error);
+            alert("خطا در پردازش فایل. لطفا دوباره تلاش کنید.");
+        };
+    }, [token]);
+
     const changePassword = useCallback((currentPassword, newPassword) => {
         if (!token) {
             console.error("❌ Cannot change password: User not authenticated.");
@@ -50,7 +71,33 @@ export const AuthProvider = ({ children }) => {
         let response;
         try { response = JSON.parse(rawData); } catch (error) { return; }
 
-        if (response.token && response.user) {
+        // --- *** THE DEFINITIVE FIX IS HERE *** ---
+        // 1. Changed the condition to check for `avatarUrl` property instead of `type`.
+        if (response.status === 'success' && response.hasOwnProperty('avatarUrl')) {
+            console.log('✅ Avatar update response received. Relative URL:', response.avatarUrl);
+            alert(response.message || 'تصویر پروفایل با موفقیت به‌روزرسانی شد.');
+            
+            // 2. Prepend the user-specified local file path.
+            const backendBasePath = 'file:///C:/Users/HOME/Desktop/ProjectAP/ProjectAP/Backend/';
+            const fullAvatarUrl = backendBasePath + response.avatarUrl;
+            console.log('Constructed full avatar URL:', fullAvatarUrl);
+            
+            // Use functional update to guarantee access to the latest state.
+            setUser(currentUser => {
+                if (!currentUser) return null; // Safety check
+                const updatedUser = { 
+                    ...currentUser, 
+                    profile: { 
+                        ...currentUser.profile, 
+                        avatarUrl: fullAvatarUrl // Use the newly constructed full URL
+                    } 
+                };
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+                console.log('✅ User state and localStorage successfully updated with new avatar.');
+                return updatedUser;
+            });
+        }
+        else if (response.token && response.user) {
             setIsLoading(false); handleLoginSuccess(response);
         } else if (response.status === 'success' && !response.token) {
             setIsLoading(false); handleRegisterSuccess(response);
@@ -69,7 +116,7 @@ export const AuthProvider = ({ children }) => {
         } else if (response.status === 'error' && (response.message?.includes('ورود') || response.message?.includes('ثبت نام'))) {
             setIsLoading(false); handleFailure(response);
         }
-    }, [setOnRegisterSuccessCallback]);
+    }, []);
 
     const handleLoginSuccess = (response) => {
         localStorage.setItem('token', response.token);
@@ -124,7 +171,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, isAuthenticated, isLoading, login, register, logout, setOnRegisterSuccess, updateUser, setNotificationStatus, changePassword }}>
+        <AuthContext.Provider value={{ user, token, isAuthenticated, isLoading, login, register, logout, setOnRegisterSuccess, updateUser, setNotificationStatus, changePassword, updateAvatar }}>
             {children}
         </AuthContext.Provider>
     );
