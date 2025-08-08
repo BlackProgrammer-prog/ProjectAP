@@ -21,7 +21,7 @@
 
 int main() {
     // تنظیمات اولیه
-    const std::string DB_PATH = "app_database.db";
+    const std::string DB_PATH = "C:/Users/HOME/Desktop/ProjectAP/ProjectAP/Database/app_database.db";
     const int WS_PORT = 8081;
     const int HTTP_PORT = 8080;
     const std::string JWT_SECRET = "your_strong_jwt_secret_here";
