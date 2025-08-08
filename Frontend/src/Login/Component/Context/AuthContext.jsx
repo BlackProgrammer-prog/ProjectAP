@@ -78,7 +78,7 @@ export const AuthProvider = ({ children }) => {
             alert(response.message || 'تصویر پروفایل با موفقیت به‌روزرسانی شد.');
             
             // 2. Prepend the user-specified local file path.
-            const backendBasePath = 'file:///C:/Users/HOME/Desktop/ProjectAP/ProjectAP/Backend/';
+            const backendBasePath = 'http://localhost:8080/';
             const fullAvatarUrl = backendBasePath + response.avatarUrl;
             console.log('Constructed full avatar URL:', fullAvatarUrl);
             
@@ -120,7 +120,15 @@ export const AuthProvider = ({ children }) => {
 
     const handleLoginSuccess = (response) => {
         localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
+        let JSONUSER = response.user;
+        let JsonProFile = JSONUSER.profile
+        const URLUP = JsonProFile.avatarUrl;
+        if (URLUP !== null || URLUP !== "") {
+            const AddSUB_URL = 'http://localhost:8080/';
+            JsonProFile.avatarUrl = AddSUB_URL + URLUP;
+            JSONUSER.profile = JsonProFile;
+        }
+        localStorage.setItem('user', JSON.stringify(JSONUSER));
         setUser(response.user); setToken(response.token); setIsAuthenticated(true);
         alert('ورود با موفقیت انجام شد!');
     };
