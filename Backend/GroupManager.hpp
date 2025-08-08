@@ -1,24 +1,34 @@
-#ifndef DS_STORE_GROUPMANAGER_H
-#define DS_STORE_GROUPMANAGER_H
+#ifndef GROUPMANAGER_GROUPMANAGER_H
+#define GROUPMANAGER_GROUPMANAGER_H
 
 #include <string>
 #include <vector>
+#include <memory>
+#include <ctime>
+#include "DataBase/Database.h"
+
+struct Group {
+    std::string id;
+    std::string name;
+    std::string creator_id;
+    time_t created_at;
+    std::vector<std::string> members;
+};
 
 class GroupManager {
 public:
-    void createGroup(const std::string& groupName,
-                     const std::string& description,
-                     const std::vector<std::string>& members);
+    explicit GroupManager(std::shared_ptr<Database> db);
 
-    void deleteGroup(const std::string& groupName);
+    Group createGroup(const std::string& name, const std::string& creator_id, const std::vector<std::string>& members);
+    bool deleteGroup(const std::string& group_id);
+    bool addMember(const std::string& group_id, const std::string& user_id);
+    bool removeMember(const std::string& group_id, const std::string& user_id);
+    Group getGroup(const std::string& group_id);
+    bool isMember(const std::string& group_id, const std::string& user_id);
+    std::vector<Group> getUserGroups(const std::string& user_id);
 
-    void addMember(const std::string& groupName, const std::string& member);
-
-    void removeMember(const std::string& groupName, const std::string& member);
-
-    std::vector<std::string> getGroup(const std::string& groupName);
-
-    std::vector<std::string> listGroups();
+private:
+    std::shared_ptr<Database> db_;
 };
 
-#endif
+#endif //GROUPMANAGER_GROUPMANAGER_H
