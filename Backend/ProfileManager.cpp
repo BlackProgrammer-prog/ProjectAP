@@ -66,13 +66,19 @@ json ProfileManager::handleUpdateUserInfo(const json& data) {
 
     bool updated = false;
 
-    if (data.contains("profile_json")) {
-        user.profile = data["profile_json"];
+    if (data.contains("profile_json") && data["profile_json"].is_object()) {
+        // Merge provided fields into existing profile_json instead of replacing it entirely
+        for (auto& [key, value] : data["profile_json"].items()) {
+            user.profile[key] = value;
+        }
         updated = true;
     }
 
-    if (data.contains("settings_json")) {
-        user.settings = data["settings_json"];
+    if (data.contains("settings_json") && data["settings_json"].is_object()) {
+        // Merge provided fields into existing settings_json instead of replacing it entirely
+        for (auto& [key, value] : data["settings_json"].items()) {
+            user.settings[key] = value;
+        }
         updated = true;
     }
 
@@ -170,7 +176,7 @@ json ProfileManager::handleUpdateAvatar(const json& data) {
     std::string avatarData = data["avatar_data"];
     std::string filename = data["filename"];
     
-    std::string savedPath = FileManager::saveBase64File(avatarData, "../uploads/avatars", filename);
+    std::string savedPath = FileManager::saveBase64File(avatarData, "uploads/avatars", filename);
 
     if (savedPath.empty()) {
         return {{"status", "error"}, {"message", "Failed to save avatar image"}};
