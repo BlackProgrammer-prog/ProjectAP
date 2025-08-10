@@ -4,6 +4,8 @@ import webSocketService from "../Services/WebSocketService";
 const AuthContext = createContext();
 const HEARTBEAT_INTERVAL = 3000; // 3 ثانیه
 const HEARTBEAT_TIMEOUT = 10000; // 10 ثانیه برای timeout
+// پس از 5 ضربان پیاپیِ بی‌پاسخ، کاربر لاگ‌اوت شود
+const MISSED_HEARTBEATS_LIMIT = 5;
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -11,9 +13,13 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(null);
     const [onRegisterSuccessCallback, setOnRegisterSuccessCallback] = useState(null);
 
-    const [lastHeartbeatResponse, setLastHeartbeatResponse] = useState(null);
+    const lastHeartbeatResponseRef = useRef(Date.now());
     const heartbeatTimeoutRef = useRef(null);
     const heartbeatIntervalRef = useRef(null);
+    const missedBeatsRef = useRef(0);
+    const tokenRef = useRef(null);
+    const isAuthenticatedRef = useRef(false);
+    const registerPendingRef = useRef(false);
 
 
 
@@ -97,26 +103,41 @@ export const AuthProvider = ({ children }) => {
     }, [user, token]);
 
     const sendHeartbeat = useCallback(() => {
-        if (isAuthenticated && token) {
+        if (isAuthenticatedRef.current && tokenRef.current) {
             console.log('❤️ Heartbeat sent at:', new Date().toISOString()); // این خط اضافه شد
+            // شمارش ضربان‌های بی‌پاسخ؛ اگر پاسخ نیامده باشد، شمارنده افزایش می‌یابد
+            missedBeatsRef.current += 1;
+            console.log('⏱️ missed heartbeats =', missedBeatsRef.current);
+            if (missedBeatsRef.current >= MISSED_HEARTBEATS_LIMIT) {
+                console.error('Heartbeat: missed 5 consecutive responses. Logging out.');
+                logout();
+                return;
+            }
+
             webSocketService.send({
                 type: "heartbeat",
-                token: token
+                token: tokenRef.current
             });
 
-            // تنظیم timeout برای بررسی پاسخ
+            // تنظیم timeout فقط برای مانیتورینگ؛ خروج صرفاً با 5 ضربانِ بی
+            // پیاپیِ بی
+            // پاسخ انجام می
+            // شود
+            clearTimeout(heartbeatTimeoutRef.current);
             heartbeatTimeoutRef.current = setTimeout(() => {
-                if (Date.now() - lastHeartbeatResponse > HEARTBEAT_TIMEOUT) {
-                    console.error('Heartbeat timeout - logging out');
-                    logout();
+                if (Date.now() - lastHeartbeatResponseRef.current > HEARTBEAT_TIMEOUT) {
+                    console.warn('Heartbeat timeout window passed without ack. Waiting for consecutive-miss logic.');
                 }
             }, HEARTBEAT_TIMEOUT);
         }
-    }, [isAuthenticated, token, lastHeartbeatResponse, logout]);
+    }, [logout]);
     const handleHeartbeatResponse = useCallback((response) => {
-        if (response.type === 'heartbeat_response') {
-            setLastHeartbeatResponse(Date.now());
+        const isHeartbeatAck = response?.type === 'heartbeat_ack' || response?.type === 'heartbeat_response' || (response?.type && String(response.type).includes('heartbeat'));
+        if (isHeartbeatAck) {
+            lastHeartbeatResponseRef.current = Date.now();
+            missedBeatsRef.current = 0; // ریست شمارنده پس از دریافت پاسخ
             clearTimeout(heartbeatTimeoutRef.current);
+            console.log('🫀 Heartbeat response at:', new Date().toISOString());
         }
     }, []);
 
@@ -153,7 +174,8 @@ export const AuthProvider = ({ children }) => {
         }
         else if (response.token && response.user) {
             setIsLoading(false); handleLoginSuccess(response);
-        } else if (response.status === 'success' && !response.token) {
+        } else if (registerPendingRef.current && response.status === 'success' && !response.token) {
+            registerPendingRef.current = false;
             setIsLoading(false); handleRegisterSuccess(response);
         } else if (response.type === 'change_password_response') {
             if (response.status === 'success') {
@@ -168,7 +190,9 @@ export const AuthProvider = ({ children }) => {
                  console.error(`❌ Server failed update for: ${response.type}. Reason: ${response.message}`);
             }
         } else if (response.status === 'error' && (response.message?.includes('ورود') || response.message?.includes('ثبت نام'))) {
-            setIsLoading(false); handleFailure(response);
+            setIsLoading(false);
+            if (registerPendingRef.current) registerPendingRef.current = false;
+            handleFailure(response);
         }
         handleHeartbeatResponse(response);
     }, [handleHeartbeatResponse]);
@@ -177,6 +201,9 @@ export const AuthProvider = ({ children }) => {
     // به‌روزرسانی useEffect برای تنظیم تایمر heartbeat
     useEffect(() => {
         if (isAuthenticated) {
+            // مقداردهی اولیه برای جلوگیری از لاگ‌اوت اشتباهی
+            lastHeartbeatResponseRef.current = Date.now();
+            missedBeatsRef.current = 0;
             // شروع تایمر heartbeat
             heartbeatIntervalRef.current = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
 
@@ -186,7 +213,13 @@ export const AuthProvider = ({ children }) => {
                 clearTimeout(heartbeatTimeoutRef.current);
             };
         }
-    }, [isAuthenticated, sendHeartbeat]);
+    }, [isAuthenticated]);
+
+    // Sync refs for stable callbacks
+    useEffect(() => {
+        tokenRef.current = token;
+        isAuthenticatedRef.current = isAuthenticated;
+    }, [token, isAuthenticated]);
 
 
     const handleLoginSuccess = (response) => {
@@ -235,7 +268,9 @@ export const AuthProvider = ({ children }) => {
     };
 
     const register = (username, email, password) => {
-        setIsLoading(true); webSocketService.send({ type: 'register', username, email, password });
+        setIsLoading(true);
+        registerPendingRef.current = true;
+        webSocketService.send({ type: 'register', username, email, password });
     };
 
     // const logout = () => {
@@ -248,9 +283,9 @@ export const AuthProvider = ({ children }) => {
 
 // به‌روزرسانی تابع logout
 
-    const setOnRegisterSuccess = (callback) => {
+    const setOnRegisterSuccess = useCallback((callback) => {
         setOnRegisterSuccessCallback(() => callback);
-    };
+    }, []);
 
     return (
         <AuthContext.Provider value={{ user, token, isAuthenticated, isLoading, login, register, logout, setOnRegisterSuccess, updateUser, setNotificationStatus, changePassword, updateAvatar }}>
