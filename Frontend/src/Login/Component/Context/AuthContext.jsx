@@ -1,15 +1,44 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, {createContext, useContext, useState, useEffect, useCallback, useRef} from 'react';
 import webSocketService from "../Services/WebSocketService";
 
 const AuthContext = createContext();
-
+const HEARTBEAT_INTERVAL = 3000; // 3 ثانیه
+const HEARTBEAT_TIMEOUT = 10000; // 10 ثانیه برای timeout
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [token, setToken] = useState(null);
     const [onRegisterSuccessCallback, setOnRegisterSuccessCallback] = useState(null);
-    
+
+    const [lastHeartbeatResponse, setLastHeartbeatResponse] = useState(null);
+    const heartbeatTimeoutRef = useRef(null);
+    const heartbeatIntervalRef = useRef(null);
+
+
+
+    const logout = useCallback(() => {
+        if (isAuthenticated && token) {
+            webSocketService.send({
+                type: "logout",
+                token: token
+            });
+        }
+
+        // پاک کردن تایمرها
+        clearInterval(heartbeatIntervalRef.current);
+        clearTimeout(heartbeatTimeoutRef.current);
+
+        // کدهای موجود برای پاک کردن state و localStorage
+        setUser(null);
+        setToken(null);
+        setIsAuthenticated(false);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+    }, [isAuthenticated, token]);
+
+
+
     const updateAvatar = useCallback((file) => {
         if (!token) {
             console.error("❌ Cannot update avatar: User not authenticated.");
@@ -67,6 +96,31 @@ export const AuthProvider = ({ children }) => {
         webSocketService.send({ type: "update_user_info", token: token, ...updates });
     }, [user, token]);
 
+    const sendHeartbeat = useCallback(() => {
+        if (isAuthenticated && token) {
+            console.log('❤️ Heartbeat sent at:', new Date().toISOString()); // این خط اضافه شد
+            webSocketService.send({
+                type: "heartbeat",
+                token: token
+            });
+
+            // تنظیم timeout برای بررسی پاسخ
+            heartbeatTimeoutRef.current = setTimeout(() => {
+                if (Date.now() - lastHeartbeatResponse > HEARTBEAT_TIMEOUT) {
+                    console.error('Heartbeat timeout - logging out');
+                    logout();
+                }
+            }, HEARTBEAT_TIMEOUT);
+        }
+    }, [isAuthenticated, token, lastHeartbeatResponse, logout]);
+    const handleHeartbeatResponse = useCallback((response) => {
+        if (response.type === 'heartbeat_response') {
+            setLastHeartbeatResponse(Date.now());
+            clearTimeout(heartbeatTimeoutRef.current);
+        }
+    }, []);
+
+
     const handleWebSocketMessage = useCallback((rawData) => {
         let response;
         try { response = JSON.parse(rawData); } catch (error) { return; }
@@ -116,7 +170,24 @@ export const AuthProvider = ({ children }) => {
         } else if (response.status === 'error' && (response.message?.includes('ورود') || response.message?.includes('ثبت نام'))) {
             setIsLoading(false); handleFailure(response);
         }
-    }, []);
+        handleHeartbeatResponse(response);
+    }, [handleHeartbeatResponse]);
+
+
+    // به‌روزرسانی useEffect برای تنظیم تایمر heartbeat
+    useEffect(() => {
+        if (isAuthenticated) {
+            // شروع تایمر heartbeat
+            heartbeatIntervalRef.current = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
+
+            // پاک کردن تایمر هنگام unmount
+            return () => {
+                clearInterval(heartbeatIntervalRef.current);
+                clearTimeout(heartbeatTimeoutRef.current);
+            };
+        }
+    }, [isAuthenticated, sendHeartbeat]);
+
 
     const handleLoginSuccess = (response) => {
         localStorage.setItem('token', response.token);
@@ -167,13 +238,16 @@ export const AuthProvider = ({ children }) => {
         setIsLoading(true); webSocketService.send({ type: 'register', username, email, password });
     };
 
-    const logout = () => {
-        if (user || token) {
-            setUser(null); setToken(null); setIsAuthenticated(false);
-            localStorage.removeItem('user'); localStorage.removeItem('token');
-        }
-    };
-    
+    // const logout = () => {
+    //     if (user || token) {
+    //         setUser(null); setToken(null); setIsAuthenticated(false);
+    //         localStorage.removeItem('user'); localStorage.removeItem('token');
+    //     }
+    // };
+
+
+// به‌روزرسانی تابع logout
+
     const setOnRegisterSuccess = (callback) => {
         setOnRegisterSuccessCallback(() => callback);
     };
