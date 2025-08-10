@@ -1,5 +1,8 @@
 #include "WebSocketHandler.h"
 #include "PrivateChatManager.h"
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 #include <boost/asio/strand.hpp>
 #include <thread>
 #include <mutex>
@@ -8,6 +11,8 @@
 #include <ctime>
 #include <sstream>
 #include <deque>
+#include <chrono>
+#include <vector>
 #include "json.hpp"
 
 namespace beast = boost::beast;
@@ -63,12 +68,18 @@ public:
     void start() {
         logInfo("Starting WebSocket Server...");
         doAccept();
+        // Start periodic heartbeat timeout checker (every 5 seconds)
+        heartbeat_timer_ = std::make_unique<boost::asio::steady_timer>(ioc_);
+        scheduleHeartbeatCheck();
         thread_ = std::thread([this]() { ioc_.run(); });
         logInfo("WebSocket Server started successfully");
     }
 
     void stop() {
         logInfo("Stopping WebSocket Server...");
+        if (heartbeat_timer_) {
+            heartbeat_timer_->cancel();
+        }
         ioc_.stop();
         if (thread_.joinable())
             thread_.join();
@@ -143,21 +154,33 @@ public:
         }
     }
 
-    void removeSession(const std::string& client_id) {
-        std::lock_guard<std::mutex> lock(clients_mutex_);
-        
-        // Update user status to offline if authenticated
-        if (client_sessions_.count(client_id)) {
-            std::string user_id = client_sessions_[client_id].user_id;
-            status_manager_->setStatus(user_id, UserStatusManager::Status::OFFLINE);
-            session_manager_->removeSession(client_id);
-            client_sessions_.erase(client_id);
-            
-            logClientAction(client_id, "Session cleaned up", "User: " + user_id + " set to OFFLINE");
-        }
-        
-        // Remove from active sessions
+    void removeSession(const std::string& client_id, const std::string& user_id) {
+        // Remove this specific session and associated mappings first
         active_sessions_.erase(client_id);
+        if (session_manager_) {
+            session_manager_->removeSession(client_id);
+        }
+        client_sessions_.erase(client_id);
+
+        // Check if this user has any other active sessions
+        bool has_other_sessions = false;
+        for (const auto& [cid, sess] : client_sessions_) {
+            if (sess.user_id == user_id) {
+                if (cid != client_id && active_sessions_.count(cid) > 0) {
+                    has_other_sessions = true;
+                    break;
+                }
+            }
+        }
+
+        // Only set offline if no other sessions exist for this user
+        if (!has_other_sessions) {
+            status_manager_->setStatus(user_id, UserStatusManager::Status::OFFLINE);
+            if (contact_manager_) {
+                contact_manager_->setUserOnlineStatus(user_id, false);
+            }
+            logClientAction(user_id, "Set offline - no active sessions remaining");
+        }
     }
 
 private:
@@ -168,22 +191,62 @@ private:
     };
 
     class Session; // Forward declaration
+    // Heartbeat tracking: client_id -> last_heartbeat (steady_clock)
+    std::unordered_map<std::string, std::chrono::steady_clock::time_point> last_heartbeat_;
+    std::unique_ptr<boost::asio::steady_timer> heartbeat_timer_;
+    std::chrono::seconds heartbeat_interval_{3};
+    std::chrono::seconds heartbeat_timeout_{15};
+
+    // Update the timer interval to 15 seconds
+    void scheduleHeartbeatCheck() {
+        if (!heartbeat_timer_) return;
+        heartbeat_timer_->expires_after(std::chrono::seconds(15));
+        heartbeat_timer_->async_wait([this](const boost::system::error_code& ec){
+            if (!ec) {
+                checkHeartbeatTimeouts();
+                scheduleHeartbeatCheck();
+            }
+        });
+    }
+
+    void checkHeartbeatTimeouts() {
+        const auto now = std::chrono::steady_clock::now();
+        
+        // Aggressively set all users offline every 15 seconds
+        if (contact_manager_) {
+            contact_manager_->setAllUsersOffline();
+        }
+        
+        // Then re-mark online only those who sent heartbeat in last 15 seconds
+        for (const auto& [client_id, tp] : last_heartbeat_) {
+            if (now - tp <= std::chrono::seconds(15)) {
+                std::string user_id = getClientUserId(client_id);
+                if (!user_id.empty()) {
+                    status_manager_->setStatus(user_id, UserStatusManager::Status::ONLINE);
+                    if (contact_manager_) {
+                        contact_manager_->setUserOnlineStatus(user_id, true);
+                    }
+                }
+            }
+        }
+    }
 
     void doAccept() {
         acceptor_.async_accept([this](boost::system::error_code ec, tcp::socket socket) {
             if (!ec) {
                 try {
-                    std::string client_ip = socket.remote_endpoint().address().to_string();
-                    logClientAction(client_ip, "New TCP connection established");
-                    
-                    auto session = std::make_shared<Session>(std::move(socket), *this);
-                    
+                    // Generate a unique id per connection independent of IP/port
+                    std::string client_id = to_string(boost::uuids::random_generator()());
+                    logClientAction(client_id, "New TCP connection established");
+
+                    auto session = std::make_shared<Session>(std::move(socket), *this, client_id);
+
                     // Store session in active sessions
                     {
                         std::lock_guard<std::mutex> lock(clients_mutex_);
-                        active_sessions_[client_ip] = session;
+                        active_sessions_[client_id] = session;
                     }
-                    
+
                     session->start();
                 } catch (const std::exception& e) {
                     logError("Error creating session: " + std::string(e.what()));
@@ -197,14 +260,11 @@ private:
 
     class Session : public std::enable_shared_from_this<Session> {
     public:
-        Session(tcp::socket socket, Impl& server)
-                : ws_(std::move(socket)), server_(server) {
-            try {
-                client_ip_ = ws_.next_layer().remote_endpoint().address().to_string();
-            } catch (...) {
-                client_ip_ = "unknown";
-            }
-        }
+        Session(tcp::socket socket, Impl& server, const std::string& client_id)
+            : ws_(std::move(socket))
+            , server_(server)
+            , client_id_(client_id)
+            , user_id_("") {}
 
         void start() {
             // Set WebSocket options
@@ -219,10 +279,10 @@ private:
             // Accept WebSocket handshake
             ws_.async_accept([self = shared_from_this()](boost::system::error_code ec) {
                 if (!ec) {
-                    logClientAction(self->client_ip_, "WebSocket handshake successful");
+                    logClientAction(self->client_id_, "WebSocket handshake successful");
                     self->read();
                 } else {
-                    logError("WebSocket handshake failed for client [" + self->client_ip_ + "]: " + ec.message());
+                    logError("WebSocket handshake failed for client [" + self->client_id_ + "]: " + ec.message());
                     self->cleanup();
                 }
             });
@@ -243,15 +303,15 @@ private:
         void read() {
             ws_.async_read(buffer_, [self = shared_from_this()](boost::system::error_code ec, std::size_t bytes) {
                 if (!ec) {
-                    logClientAction(self->client_ip_, "Message received", "Size: " + std::to_string(bytes) + " bytes");
+                    logClientAction(self->client_id_, "Message received", "Size: " + std::to_string(bytes) + " bytes");
                     self->handleMessage();
                     self->buffer_.clear();
                     self->read(); // Continue reading
                 } else {
                     if (ec != websocket::error::closed) {
-                        logClientAction(self->client_ip_, "Read error", "Reason: " + ec.message());
+                        logClientAction(self->client_id_, "Read error", "Reason: " + ec.message());
                     } else {
-                        logClientAction(self->client_ip_, "Connection closed normally");
+                        logClientAction(self->client_id_, "Connection closed normally");
                     }
                     self->cleanup();
                 }
@@ -269,7 +329,7 @@ private:
                             self->doWrite();
                         }
                     } else {
-                        logError("Write error for client [" + self->client_ip_ + "]: " + ec.message());
+                        logError("Write error for client [" + self->client_id_ + "]: " + ec.message());
                         self->cleanup();
                     }
                 });
@@ -280,11 +340,11 @@ private:
                 std::string msg = beast::buffers_to_string(buffer_.data());
                 json jsondata = json::parse(msg);
                 json data = jsondata;
-                std::string client_id = client_ip_;
+                std::string client_id = client_id_;
 
                 // Log the message type and basic info
                 std::string message_type = data.value("type", "unknown");
-                logClientAction(client_id, "Processing message", "Type: " + message_type);
+                    logClientAction(client_id, "Processing message", "Type: " + message_type);
 
                 server_.updateUserStatus(client_id, 0); // 0 = ONLINE
 
@@ -294,7 +354,20 @@ private:
                         sendResponse(json{{"status", "error"}, {"message", "Unauthorized"}});
                         return;
                     } else {
-                        logClientAction(client_id, "Authentication successful", "User: " + server_.getClientUserId(client_id));
+                        auto uid = server_.getClientUserId(client_id);
+                        logClientAction(client_id, "Authentication successful", "User: " + uid);
+                        // Mark user online on any authenticated message
+                        try {
+                            if (!uid.empty()) {
+                                user_id_ = uid;
+                                server_.status_manager_->setStatus(uid, UserStatusManager::Status::ONLINE);
+                                if (server_.contact_manager_) {
+                                    server_.contact_manager_->setUserOnlineStatus(uid, true);
+                                }
+                                // Seed heartbeat so timeout works even if client hasn't sent heartbeat yet
+                                server_.last_heartbeat_[client_id_] = std::chrono::steady_clock::now();
+                            }
+                        } catch(...) {}
                     }
                 }
 
@@ -311,7 +384,7 @@ private:
                     sendResponse(json{{"status", "error"}, {"message", "Unknown message type"}});
                 }
             } catch (const std::exception& e) {
-                logError("Message handling error for client [" + client_ip_ + "]: " + e.what());
+                logError("Message handling error for client [" + client_id_ + "]: " + e.what());
                 sendResponse(json{
                         {"status", "error"},
                         {"message", std::string("Exception: ") + e.what()}
@@ -324,13 +397,17 @@ private:
         }
 
         void cleanup() {
-            server_.removeSession(client_ip_);
+            if (user_id_.empty()) return; // No user associated
+            
+            // Remove this session from server's active sessions
+            server_.removeSession(client_id_, user_id_);
         }
 
         websocket::stream<tcp::socket> ws_;
         beast::flat_buffer buffer_;
         Impl& server_;
-        std::string client_ip_;
+        std::string client_id_;
+        std::string user_id_; // Added for user_id tracking
         std::deque<std::string> write_queue_;
     };
 
@@ -435,6 +512,19 @@ void WebSocketServer::setChatManager(std::shared_ptr<PrivateChatManager> chat_ma
     chat_manager_ = chat_manager;
 }
 
+void WebSocketServer::setUserOnlineStatus(const std::string& user_id, bool online) {
+    if (!user_id.empty()) {
+        status_manager_->setStatus(user_id, online ? UserStatusManager::Status::ONLINE : UserStatusManager::Status::OFFLINE);
+        if (contact_manager_) {
+            contact_manager_->setUserOnlineStatus(user_id, online);
+        }
+    }
+}
+
+void WebSocketServer::forceAllOfflineTick() {
+    impl_->checkHeartbeatTimeouts();
+}
+
 // Handler implementations
 void WebSocketServer::setupHandlers() {
     impl_->on("send_message", [this](const json& data, const std::string& clientId) {
@@ -476,6 +566,16 @@ void WebSocketServer::setupHandlers() {
     impl_->on("search_user", [this](const json& data, const std::string& clientId) {
         return handleSearchUser(data, clientId);
     });
+
+    // Heartbeat every 5s from client; we update last_active and keep ONLINE
+    impl_->on("heartbeat", [this](const json& data, const std::string& clientId) {
+        return handleHeartbeat(data, clientId);
+    });
+
+    // Explicit logout from client
+    impl_->on("logout", [this](const json& data, const std::string& clientId) {
+        return handleLogout(data, clientId);
+    });
 }
 
 json WebSocketServer::handleSearchUser(const json& data, const std::string& client_id) {
@@ -502,6 +602,59 @@ json WebSocketServer::handleSearchUser(const json& data, const std::string& clie
         {"status", "success"},
         {"results", results}
     };
+}
+
+json WebSocketServer::handleHeartbeat(const json& data, const std::string& client_id) {
+    if (!data.contains("token")) {
+        return {{"status", "error"}, {"message", "Missing token"}};
+    }
+    if (!jwt_auth_->isValidToken(data["token"])) {
+        return {{"status", "error"}, {"message", "Invalid token"}};
+    }
+    const std::string user_id = jwt_auth_->getUserId(data["token"]);
+    if (user_id.empty()) {
+        return {{"status", "error"}, {"message", "User not found"}};
+    }
+    // Ensure this client_id is mapped to this user (so timeout removal can find it)
+    {
+        std::lock_guard<std::mutex> lock(impl_->clients_mutex_);
+        if (impl_->client_sessions_.count(client_id) == 0) {
+            WebSocketServer::Impl::ClientSession sess;
+            sess.user_id = user_id;
+            sess.role = jwt_auth_->getUserRole(data["token"]);
+            sess.token = data["token"];
+            impl_->client_sessions_[client_id] = std::move(sess);
+            if (session_manager_) {
+                session_manager_->addSession(client_id, user_id);
+            }
+        }
+    }
+    impl_->last_heartbeat_[client_id] = std::chrono::steady_clock::now();
+    status_manager_->updateLastActive(user_id);
+    status_manager_->setStatus(user_id, UserStatusManager::Status::ONLINE);
+    if (contact_manager_) {
+        // Re-mark this user online in DB on each heartbeat
+        contact_manager_->setUserOnlineStatus(user_id, true);
+    }
+    return {{"status", "success"}, {"type", "heartbeat_ack"}, {"timestamp", std::time(nullptr)}};
+}
+
+json WebSocketServer::handleLogout(const json& data, const std::string& client_id) {
+    if (!data.contains("token")) {
+        return {{"status", "error"}, {"message", "Missing token"}};
+    }
+    if (!jwt_auth_->isValidToken(data["token"])) {
+        return {{"status", "error"}, {"message", "Invalid token"}};
+    }
+    const std::string token = data["token"];
+    const std::string user_id = jwt_auth_->getUserId(token);
+    if (user_id.empty()) {
+        return {{"status", "error"}, {"message", "User not found"}};
+    }
+    jwt_auth_->invalidateToken(token);
+    impl_->removeSession(client_id, user_id);
+    impl_->last_heartbeat_.erase(client_id);
+    return {{"status", "success"}};
 }
 
 json WebSocketServer::handleSendMessage(const json& data, const std::string& client_id) {
@@ -605,13 +758,15 @@ json WebSocketServer::handleGetContacts(const json& data, const std::string& cli
     json contacts_with_status = json::array();
     for(const auto& email : contacts) {
         std::string contact_id = contact_manager_->findUserByEmail(email);
-        auto status = status_manager_->getStatus(contact_id);
+        auto status_enum = status_manager_->getStatus(contact_id);
+        int status_value = (status_enum == UserStatusManager::Status::ONLINE) ? 1 : 0; // 1=online, 0=offline
+        auto last_active_ts = status_manager_->getLastActive(contact_id);
 
         contacts_with_status.push_back({
-                                               {"email", email},
-                                               {"status", static_cast<int>(status)},
-                                               {"last_active", status_manager_->getLastActive(contact_id)}
-                                       });
+            {"email", email},
+            {"status", status_value},
+            {"last_active", last_active_ts}
+        });
     }
 
     return {{"status", "success"}, {"contacts", contacts_with_status}};

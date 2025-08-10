@@ -64,6 +64,8 @@ public:
     std::vector<std::string> getContacts(const std::string& user_id);
     json getPublicUserProfile(const std::string& email);
     std::vector<DBUser> searchUsers(const std::string& query);
+    bool setUserOnlineStatus(const std::string& userId, bool online);
+    bool setAllUsersOffline();
     // Message methods
     bool storeMessage(const std::string& id,
                       const std::string& sender_id,

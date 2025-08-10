@@ -69,6 +69,17 @@ struct Database::Impl {
             USING fts5(sender_id, receiver_id, content);
         )";
         executeQueryInternal(sql);
+
+        // Try to add 'online' column if it doesn't exist (ignore error if already exists)
+        // Add online column if missing (ignore error if exists)
+        char* errMsg = nullptr;
+        std::string add_online_col = "ALTER TABLE users ADD COLUMN online INTEGER DEFAULT 0";
+        sqlite3_exec(db, add_online_col.c_str(), nullptr, nullptr, &errMsg);
+        if (errMsg) {
+            // Suppress duplicate column error
+            std::string err = errMsg;
+            sqlite3_free(errMsg);
+        }
     }
 
     bool executeQueryInternal(const std::string& sql) {
@@ -395,5 +406,23 @@ std::vector<DBUser> Database::searchUsers(const std::string& query) {
     
     sqlite3_finalize(stmt);
     return users;
+}
+
+bool Database::setUserOnlineStatus(const std::string& userId, bool online) {
+    std::string sql = "UPDATE users SET online = ? WHERE id = ?";
+    auto result = executeQueryWithParams(sql, { online ? "1" : "0", userId });
+    if (result.success && sqlite3_changes(pImpl->db) > 0) {
+        std::cout << "Updated online status for user " << userId << " to " << (online ? 1 : 0) << std::endl;
+        return true;
+    } else {
+        std::cout << "Failed to update online status for user " << userId << ": No rows affected" << std::endl;
+        return false;
+    }
+}
+
+bool Database::setAllUsersOffline() {
+    std::string sql = "UPDATE users SET online = 0";
+    auto result = executeQuery(sql);
+    return result.success;
 }
 

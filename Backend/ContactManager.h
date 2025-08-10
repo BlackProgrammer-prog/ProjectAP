@@ -22,6 +22,10 @@ public:
     std::string findUserByEmail(const std::string& email);
     json searchUsers(const std::string& query);
 
+    // Persist online/offline flag in database
+    bool setUserOnlineStatus(const std::string& user_id, bool online);
+    bool setAllUsersOffline();
+
 private:
     std::shared_ptr<Database> database_;
 };

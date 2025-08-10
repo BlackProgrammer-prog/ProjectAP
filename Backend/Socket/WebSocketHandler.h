@@ -37,6 +37,8 @@ public:
     void setupHandlers();
     void setChatManager(std::shared_ptr<PrivateChatManager> chat_manager);
     void setProfileManager(std::shared_ptr<ProfileManager> profile_manager);
+    void setUserOnlineStatus(const std::string& user_id, bool online);
+    void forceAllOfflineTick();
 
 private:
     struct Impl;
@@ -53,6 +55,8 @@ private:
     json handleDeleteMessage(const json& data, const std::string& client_id);
     json handleSearchMessages(const json& data, const std::string& client_id);
     json handleSearchUser(const json& data, const std::string& client_id);
+    json handleHeartbeat(const json& data, const std::string& client_id);
+    json handleLogout(const json& data, const std::string& client_id);
 
     // Dependencies
     std::shared_ptr<JwtAuth> jwt_auth_;

@@ -87,3 +87,13 @@ json ContactManager::searchUsers(const std::string& query) {
 
     return users;
 }
+
+bool ContactManager::setUserOnlineStatus(const std::string& user_id, bool online) {
+    // Database expects user id; if empty, nothing to do
+    if (user_id.empty()) return false;
+    return database_->setUserOnlineStatus(user_id, online);
+}
+
+bool ContactManager::setAllUsersOffline() {
+    return database_->setAllUsersOffline();
+}
