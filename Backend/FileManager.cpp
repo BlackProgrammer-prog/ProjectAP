@@ -1,5 +1,5 @@
 //
-// Created by TUF_Fx507VV on 12/8/2025.
+// Created by afraa on 8/8/2025.
 //
 
 #include "FileManager.h"
@@ -26,13 +26,13 @@ std::string FileManager::saveBase64File(const std::string& base64Data, const std
     if (auto pos = preferredName.rfind('.'); pos != std::string::npos) {
         extension = preferredName.substr(pos);
     }
-    
+
     // Generate a unique filename to avoid conflicts
     boost::uuids::uuid uuid = boost::uuids::random_generator()();
     std::string uniqueFilename = to_string(uuid) + extension;
 
     // Resolve directory relative to project root (folder containing this source file)
-    fs::path projectRoot = fs::path(FILE).parent_path();
+    fs::path projectRoot = fs::path(__FILE__).parent_path();
     fs::path targetDir = fs::path(directory);
     if (targetDir.is_relative()) {
         targetDir = projectRoot / targetDir;
@@ -50,7 +50,7 @@ std::string FileManager::saveBase64File(const std::string& base64Data, const std
     if (auto pos = base64Data.find(','); pos != std::string::npos) {
         pureBase64 = base64Data.substr(pos + 1);
     }
-    
+
     std::vector<unsigned char> decodedData = base64Decode(pureBase64);
 
     // Save the file
