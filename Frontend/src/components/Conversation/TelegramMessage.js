@@ -4,7 +4,8 @@ import { MessageOption } from "./MsgType";
 import MessageReactions from "./MessageReactions";
 import { faker } from "@faker-js/faker";
 import { useParams } from "react-router-dom";
-import { ChatList } from "../../data";
+import { loadPV } from "../../utils/pvStorage";
+import { resolveAvatarUrl } from "../../utils/resolveAvatarUrl";
 import { useState } from "react";
 import React from "react";
 
@@ -13,15 +14,16 @@ const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForward
     const { username } = useParams();
     const isOwnMessage = message.sender === currentUser || message.outgoing;
 
-    // پیدا کردن اطلاعات کاربر مقابل از ChatList
-    const otherUser = ChatList.find((c) => c.username === username);
+    // پیدا کردن اطلاعات کاربر مقابل از PV (localStorage)
+    const pv = loadPV();
+    const otherUser = (pv || []).find((p) => p.customUrl === username);
 
     // تعیین آواتار بر اساس فرستنده
     const getAvatar = () => {
         if (isOwnMessage) {
-            return faker.image.avatar(); // آواتار کاربر فعلی
+            return faker.image.avatar();
         } else {
-            return otherUser ? otherUser.img : faker.image.avatar(); // آواتار کاربر مقابل
+            return otherUser ? resolveAvatarUrl(otherUser.avatarUrl) : faker.image.avatar();
         }
     };
 

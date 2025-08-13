@@ -10,7 +10,7 @@ import { useParams } from "react-router-dom"
 import { useState, useEffect } from "react"
 import WallpaperDialog from "../WallpaperDialog"
 
-const Conversation = ({ messages, onSend, onDeleteMessage, onDeleteChat, onReactionChange, onForwardMessage, onEditMessage }) => {
+const Conversation = ({ chatData, messages, onSend, onDeleteMessage, onDeleteChat, onReactionChange, onForwardMessage, onEditMessage }) => {
     const { username } = useParams()
     const [blockedUsers, setBlockedUsers] = useState(() => {
         const stored = localStorage.getItem('blocked_users');
@@ -73,6 +73,7 @@ const Conversation = ({ messages, onSend, onDeleteMessage, onDeleteChat, onReact
                     backgroundSize: 'cover',
                 }}>
                 <Header
+                    chatData={chatData}
                     onBlockUser={handleBlockUser}
                     onDeleteChat={handleDeleteChat}
                     onSearchChange={handleSearchChange}

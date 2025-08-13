@@ -4,9 +4,10 @@ import { faker } from '@faker-js/faker';
 import { CaretDown, MagnifyingGlass, PhoneCall, VideoCamera, X } from 'phosphor-react';
 import UserProfile from '../../layouts/dashboard/UserProfile';
 import { useParams } from 'react-router-dom';
-import { ChatList } from '../../data';
 import { clearPrivateChat } from '../../utils/chatStorage';
 import StartCall from '../../Secctions/main/StartCall';
+import { loadPV } from '../../utils/pvStorage';
+import { resolveAvatarUrl } from '../../utils/resolveAvatarUrl';
 
 const StyledBadge = styled(Badge)(({ theme }) => ({
     '& .MuiBadge-badge': {
@@ -31,7 +32,7 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
     },
 }));
 
-const Header = ({ onBlockUser, onDeleteChat, onSearchChange, isSearchActive }) => {
+const Header = ({ chatData, onBlockUser, onDeleteChat, onSearchChange, isSearchActive }) => {
     const { username } = useParams();
     const theme = useTheme();
     const [showUserProfile, setShowUserProfile] = useState(false);
@@ -41,8 +42,16 @@ const Header = ({ onBlockUser, onDeleteChat, onSearchChange, isSearchActive }) =
     });
     const [searchQuery, setSearchQuery] = useState('');
 
-    // پیدا کردن اطلاعات کاربر از ChatList
-    const chat = ChatList.find((c) => c.username === username);
+    // یافتن و نرمال‌سازی اطلاعات چت: ابتدا از prop، سپس از PV (localStorage)
+    const normalize = (p) => p ? ({
+        username: p.customUrl,
+        name: p.fullName || p.username || p.email,
+        img: resolveAvatarUrl(p.avatarUrl),
+        online: false,
+    }) : null;
+    const pv = loadPV();
+    const pvChat = (pv || []).find((p) => p.customUrl === username);
+    const chat = chatData ? normalize(chatData) : normalize(pvChat);
     const isBlocked = blockedUsers.includes(username);
 
     const handleAvatarClick = () => {

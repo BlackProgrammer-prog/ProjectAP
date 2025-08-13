@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import webSocketService from '../Login/Component/Services/WebSocketService';
 import { useAuth } from '../Login/Component/Context/AuthContext';
+import { upsertProfile, getStoredEmails } from '../utils/pvStorage';
 
 const ContactsContext = createContext();
 
@@ -60,6 +61,11 @@ export const ContactsProvider = ({ children }) => {
             } else {
                 setSearchResults([]);
             }
+        } else if (messageType === 'get_profile_response' || response.hasOwnProperty('profile')) {
+            // Handle get_profile result: store only profile in PV and upsert by email
+            if (response.status === 'success' && response.profile && response.profile.email) {
+                upsertProfile(response.profile);
+            }
         }
     }, []);
 
@@ -84,6 +90,16 @@ export const ContactsProvider = ({ children }) => {
             getContacts();
         }
     }, [isAuthenticated, token, getContacts]);
+
+    // On every refresh (mount while authenticated), re-fetch profiles for stored emails in PV
+    useEffect(() => {
+        if (!isAuthenticated || !token) return;
+        const emails = getStoredEmails();
+        if (emails.length === 0) return;
+        emails.forEach((email) => {
+            webSocketService.send({ type: 'get_profile', token, email });
+        });
+    }, [isAuthenticated, token]);
 
     const addContact = (email) => {
         if (token) {

@@ -15,7 +15,9 @@ import {
 import { useTheme } from "@mui/material/styles";
 import { CaretDown, MagnifyingGlass, Phone, VideoCamera } from "phosphor-react";
 import { faker } from "@faker-js/faker";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
+import { loadPV } from "../../utils/pvStorage";
+import { resolveAvatarUrl } from "../../utils/resolveAvatarUrl";
 import useResponsive from "../../hooks/useResponsive";
 
 const StyledBadge = styled(Badge)(({ theme }) => ({
@@ -65,6 +67,7 @@ const Conversation_Menu = [
 const ChatHeader = () => {
   const isMobile = useResponsive("between", "md", "xs", "sm");
   const [searchParams, setSearchParams] = useSearchParams();
+  const { username } = useParams();
   const theme = useTheme();
 
   const [conversationMenuAnchorEl, setConversationMenuAnchorEl] =
@@ -110,11 +113,22 @@ const ChatHeader = () => {
               }}
               variant="dot"
             >
-              <Avatar alt={faker.name.fullName()} src={faker.image.avatar()} />
+              {(() => {
+                const pv = loadPV();
+                const u = (pv || []).find((p) => p.customUrl === username) || {};
+                const name = u.fullName || u.username || u.email || faker.name.fullName();
+                const avatar = resolveAvatarUrl(u.avatarUrl) || faker.image.avatar();
+                return <Avatar alt={name} src={avatar} />;
+              })()}
             </StyledBadge>
           </Box>
           <Stack spacing={0.2}>
-            <Typography variant="subtitle2">{faker.name.fullName()}</Typography>
+            {(() => {
+              const pv = loadPV();
+              const u = (pv || []).find((p) => p.customUrl === username) || {};
+              const name = u.fullName || u.username || u.email || faker.name.fullName();
+              return <Typography variant="subtitle2">{name}</Typography>;
+            })()}
             <Typography variant="caption">Online</Typography>
           </Stack>
         </Stack>

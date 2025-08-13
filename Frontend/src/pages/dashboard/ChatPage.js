@@ -1,15 +1,17 @@
 import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Box, Stack } from "@mui/material";
-import { ChatList, Chat_History } from "../../data";
+import { Chat_History } from "../../data";
 import Conversation from "../../components/Conversation";
 import Chats from "./Chats";
 import { savePrivateChat, loadPrivateChat, clearPrivateChat } from "../../utils/chatStorage";
 import { v4 as uuidv4 } from 'uuid';
+import { loadPV } from "../../utils/pvStorage";
 
 const ChatPage = () => {
-    const { username } = useParams();
-    const chat = ChatList.find((c) => c.username === username);
+    const { username } = useParams(); // username == customUrl
+    const pv = loadPV();
+    const chatProfile = (pv || []).find((p) => p.customUrl === username);
 
     // پیام‌های چت خصوصی بین کاربر فعلی و کاربر انتخاب شده
     const [messages, setMessages] = useState(() => {
@@ -40,7 +42,7 @@ const ChatPage = () => {
             incoming: false,
             outgoing: true,
             sender: "me", // کاربر فعلی
-            receiver: username, // کاربر مقابل
+            receiver: username, // کاربر مقابل (کلید چت = customUrl)
             timestamp: new Date().toISOString(),
         };
         const updated = [...messages, newMessage];
@@ -119,7 +121,7 @@ const ChatPage = () => {
             receiver: targetUsername,
             timestamp: new Date().toISOString(),
             forwarded: true,
-            originalSender: messageToForward.sender === "me" ? "شما" : chat?.name || "کاربر",
+             originalSender: messageToForward.sender === "me" ? "شما" : chatProfile?.fullName || chatProfile?.username || chatProfile?.email || "کاربر",
             originalChat: username,
         };
 
@@ -141,7 +143,7 @@ const ChatPage = () => {
         savePrivateChat(username, updatedMessages);
     };
 
-    if (!chat) return <div>مخاطب یافت نشد</div>;
+    if (!chatProfile) return <div>مخاطب یافت نشد</div>;
 
     return (
         <Stack direction={"row"}>
@@ -156,8 +158,7 @@ const ChatPage = () => {
                 }}
             >
                 <Conversation
-                    username={username}
-                    chatData={chat}
+                    chatData={chatProfile}
                     messages={messages}
                     onSend={handleSendMessage}
                     onDeleteMessage={handleDeleteMessage}
