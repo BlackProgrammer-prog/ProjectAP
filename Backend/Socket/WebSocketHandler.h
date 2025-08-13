@@ -46,6 +46,8 @@ private:
 
     // Handlers
     json handleSendMessage(const json& data, const std::string& client_id);
+    json handleGetMessages(const json& data, const std::string& client_id);
+    json handleExportMessages(const json& data, const std::string& client_id);
     json handleAddContact(const json& data, const std::string& client_id);
     json handleRemoveContact(const json& data, const std::string& client_id);
     json handleGetContacts(const json& data, const std::string& client_id);
