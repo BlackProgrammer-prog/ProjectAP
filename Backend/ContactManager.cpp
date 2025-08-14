@@ -72,3 +72,28 @@ std::string ContactManager::findUserByEmail(const std::string& email) {
     DBUser user = database_->getUserByEmail(email);
     return user.id;
 }
+
+json ContactManager::searchUsers(const std::string& query) {
+    auto results = database_->searchUsers(query);
+    json users = json::array();
+
+    for (const auto& user : results) {
+        users.push_back({
+            {"user_id", user.id},
+            {"email", user.email},
+            {"username", user.username}
+        });
+    }
+
+    return users;
+}
+
+bool ContactManager::setUserOnlineStatus(const std::string& user_id, bool online) {
+    // Database expects user id; if empty, nothing to do
+    if (user_id.empty()) return false;
+    return database_->setUserOnlineStatus(user_id, online);
+}
+
+bool ContactManager::setAllUsersOffline() {
+    return database_->setAllUsersOffline();
+}

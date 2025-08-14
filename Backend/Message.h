@@ -35,6 +35,8 @@ struct Message {
     std::time_t      edited_timestamp;
     MessageStatus    status;
     bool             deleted;
+    bool             delivered;
+    bool             read;
 
     Message() = default;
     Message(const std::string& sender,
@@ -54,7 +56,9 @@ struct Message {
                 { "timestamp",        timestamp },
                 { "edited_timestamp", edited_timestamp },
                 { "status",           static_cast<int>(status) },
-                { "deleted",          deleted }
+                { "deleted",          deleted },
+                { "delivered",        delivered },
+                { "read",             read }
         };
     }
 
@@ -69,6 +73,8 @@ struct Message {
         msg.edited_timestamp = j.value("edited_timestamp", msg.timestamp);
         msg.status           = static_cast<MessageStatus>(j.value("status", 0));
         msg.deleted          = j.value("deleted", false);
+        msg.delivered        = j.value("delivered", false);
+        msg.read             = j.value("read", false);
         return msg;
     }
 };

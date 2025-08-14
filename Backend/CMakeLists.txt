@@ -4,6 +4,19 @@ project(Backend)
 set(CMAKE_CXX_STANDARD 20)
 
 # ────────────────────────────────
+# تنظیمات برای حل مشکل linker در Windows با MinGW
+if(WIN32 AND MINGW)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wa,-mbig-obj")
+    # حذف flag مشکل‌ساز
+    # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--large-address-aware")
+endif()
+
+# تنظیمات Build Type
+set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g1")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -DNDEBUG")
+
+# ────────────────────────────────
 # vcpkg toolchain (برای استفاده با vcpkg.json)
 #set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake"
 #        CACHE STRING "Vcpkg toolchain file")
@@ -15,6 +28,7 @@ add_subdirectory(DataBase)
 
 add_subdirectory(Socket)
 # تعریف فایل اجرایی اصلی
+
 add_executable(Backend
         main.cpp
         login.cpp login.h
@@ -37,6 +51,12 @@ add_executable(Backend
         ContactManager.h
         NotificationManager.cpp
         NotificationManager.h
+        ProfileManager.cpp
+        ProfileManager.h
+        FileManager.cpp
+        FileManager.h
+        HttpServer.cpp
+        HttpServer.h
 )
 
 # ────────────────────────────────
@@ -69,7 +89,13 @@ if(WIN32)
     target_link_libraries(Backend PRIVATE ws2_32 mswsock)
 endif()
 
-
+# ────────────────────────────────
+# تنظیمات اضافی برای حل مشکل compile
+if(WIN32 AND MINGW)
+    target_compile_options(Backend PRIVATE -Wa,-mbig-obj)
+    target_compile_options(DataBaseLib PRIVATE -Wa,-mbig-obj)
+    target_compile_options(SocketLib PRIVATE -Wa,-mbig-obj)
+endif()
 
 # ────────────────────────────────
 # اضافه کردن مسیرهای include برای کدهای داخلی
@@ -77,4 +103,3 @@ target_include_directories(Backend PRIVATE
         ${CMAKE_SOURCE_DIR}/library        # کتابخانه‌های header-only مثل json.hpp
         ${CMAKE_SOURCE_DIR}/Socket           # ماژول‌های jwt و WebSocketHandler
 )
-target_compile_options(Backend PRIVATE -Wa,-mbig-obj)

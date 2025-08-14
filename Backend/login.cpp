@@ -74,6 +74,11 @@ nlohmann::json Login::handleLogin(const nlohmann::json& data, const std::string&
             24 // 24 hours expiration
     );
 
+    // Mark user online (memory and DB)
+    try {
+        server_.setUserOnlineStatus(user.getId(), true);
+    } catch(...) {}
+
     // Return token and user info (without sensitive data)
     nlohmann::json userInfo = nlohmann::json::parse(user.toJson());
     userInfo.erase("passwordHash");

@@ -35,7 +35,7 @@ std::vector<Message> PrivateChatManager::getMessages(const std::string& user1,
     std::vector<Message> messages;
     std::string sql = R"(
         SELECT id, sender_id, receiver_id, content, timestamp, 
-               edited_timestamp, status, deleted
+               edited_timestamp, status, deleted, delivered, read
         FROM private_messages
         WHERE ((sender_id = ? AND receiver_id = ?)
         OR (sender_id = ? AND receiver_id = ?))
@@ -48,7 +48,7 @@ std::vector<Message> PrivateChatManager::getMessages(const std::string& user1,
             user1, user2, user2, user1, std::to_string(limit)
     });
 
-    for (size_t i = 0; i < result.data.size(); i += 8) {
+    for (size_t i = 0; i < result.data.size(); i += 10) {
         Message msg;
         msg.id = result.data[i];
         msg.sender_id = result.data[i+1];
@@ -58,10 +58,47 @@ std::vector<Message> PrivateChatManager::getMessages(const std::string& user1,
         msg.edited_timestamp = std::stol(result.data[i+5]);
         msg.status = static_cast<MessageStatus>(std::stoi(result.data[i+6]));
         msg.deleted = (result.data[i+7] == "1");
+        msg.delivered = (result.data[i+8] == "1");
+        msg.read = (result.data[i+9] == "1");
+        msg.type = MessageType::PRIVATE;
         messages.push_back(msg);
     }
 
     return messages;
+}
+
+bool PrivateChatManager::markAsRead(const std::string& message_id) {
+    std::string sql = R"(
+        UPDATE private_messages 
+        SET read = 1 
+        WHERE id = ? AND deleted = 0
+    )";
+
+    bool success = database->executeQueryWithParams(sql, {message_id}).success;
+
+    if (success && message_cache_.count(message_id)) {
+        // Update cache if message exists there
+        message_cache_[message_id].read = true;
+    }
+
+    return success;
+}
+
+bool PrivateChatManager::markAsDelivered(const std::string& message_id) {
+    std::string sql = R"(
+        UPDATE private_messages 
+        SET delivered = 1 
+        WHERE id = ? AND deleted = 0
+    )";
+
+    bool success = database->executeQueryWithParams(sql, {message_id}).success;
+
+    if (success && message_cache_.count(message_id)) {
+        // Update cache if message exists there
+        message_cache_[message_id].delivered = true;
+    }
+
+    return success;
 }
 
 bool PrivateChatManager::editMessage(const std::string& message_id,
@@ -112,7 +149,8 @@ std::vector<Message> PrivateChatManager::searchMessages(
     std::vector<Message> messages;
     std::string sql = R"(
         SELECT pm.id, pm.sender_id, pm.receiver_id, pm.content, 
-               pm.timestamp, pm.edited_timestamp, pm.status, pm.deleted
+               pm.timestamp, pm.edited_timestamp, pm.status, pm.deleted,
+               pm.delivered, pm.read
         FROM private_messages pm
         JOIN messages_fts mf ON pm.rowid = mf.rowid
         WHERE (pm.sender_id = ? OR pm.receiver_id = ?)
@@ -126,7 +164,7 @@ std::vector<Message> PrivateChatManager::searchMessages(
             user_id, user_id, query, std::to_string(limit)
     });
 
-    for (size_t i = 0; i < result.data.size(); i += 8) {
+    for (size_t i = 0; i < result.data.size(); i += 10) {
         Message msg;
         msg.id = result.data[i];
         msg.sender_id = result.data[i+1];
@@ -136,6 +174,9 @@ std::vector<Message> PrivateChatManager::searchMessages(
         msg.edited_timestamp = std::stol(result.data[i+5]);
         msg.status = static_cast<MessageStatus>(std::stoi(result.data[i+6]));
         msg.deleted = (result.data[i+7] == "1");
+        msg.delivered = (result.data[i+8] == "1");
+        msg.read = (result.data[i+9] == "1");
+        msg.type = MessageType::PRIVATE;
         messages.push_back(msg);
     }
 
@@ -149,14 +190,14 @@ Message PrivateChatManager::getMessageById(const std::string& message_id) {
 
     std::string sql = R"(
         SELECT id, sender_id, receiver_id, content, timestamp,
-               edited_timestamp, status, deleted
+               edited_timestamp, status, deleted, delivered, read
         FROM private_messages
         WHERE id = ?
     )";
 
     auto result = database->executeQueryWithParams(sql, {message_id});
 
-    if (result.data.size() >= 8) {
+    if (result.data.size() >= 10) {
         Message msg;
         msg.id = result.data[0];
         msg.sender_id = result.data[1];
@@ -166,6 +207,9 @@ Message PrivateChatManager::getMessageById(const std::string& message_id) {
         msg.edited_timestamp = std::stol(result.data[5]);
         msg.status = static_cast<MessageStatus>(std::stoi(result.data[6]));
         msg.deleted = (result.data[7] == "1");
+        msg.delivered = (result.data[8] == "1");
+        msg.read = (result.data[9] == "1");
+        msg.type = MessageType::PRIVATE;
 
         message_cache_[message_id] = msg;
         return msg;

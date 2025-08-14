@@ -24,6 +24,12 @@ time_t UserStatusManager::getLastActive(const std::string& user_id) {
     if (last_active_map_.count(user_id) > 0) {
         return last_active_map_.at(user_id);
     }
+    // If we don't have a record yet but status says ONLINE, treat "last active" as now
+    if (status_map_.count(user_id) > 0 && status_map_.at(user_id) == Status::ONLINE) {
+        time_t now = std::time(nullptr);
+        last_active_map_.insert_or_assign(user_id, now);
+        return now;
+    }
     return 0;
 }
 

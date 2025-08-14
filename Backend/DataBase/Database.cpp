@@ -57,15 +57,29 @@ struct Database::Impl {
                 FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
                 FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
             );
-            
-            CREATE INDEX idx_msg_sender ON private_messages(sender_id);
-            CREATE INDEX idx_msg_receiver ON private_messages(receiver_id);
-            CREATE INDEX idx_msg_timestamp ON private_messages(timestamp);
+
+            CREATE INDEX IF NOT EXISTS idx_msg_sender ON private_messages(sender_id);
+            CREATE INDEX IF NOT EXISTS idx_msg_receiver ON private_messages(receiver_id);
+            CREATE INDEX IF NOT EXISTS idx_msg_timestamp ON private_messages(timestamp);
+
+            CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts
+            USING fts5(sender_id, receiver_id, content);
             
             CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts 
             USING fts5(sender_id, receiver_id, content);
         )";
         executeQueryInternal(sql);
+
+        // Try to add 'online' column if it doesn't exist (ignore error if already exists)
+        // Add online column if missing (ignore error if exists)
+        char* errMsg = nullptr;
+        std::string add_online_col = "ALTER TABLE users ADD COLUMN online INTEGER DEFAULT 0";
+        sqlite3_exec(db, add_online_col.c_str(), nullptr, nullptr, &errMsg);
+        if (errMsg) {
+            // Suppress duplicate column error
+            std::string err = errMsg;
+            sqlite3_free(errMsg);
+        }
     }
 
     bool executeQueryInternal(const std::string& sql) {
@@ -346,3 +360,69 @@ std::vector<std::vector<std::string>> Database::getMessagesBetweenUsers(
     }
     return messages;
 }
+json Database::getPublicUserProfile(const std::string& email) {
+    DBUser user = getUserByEmail(email);
+    if (user.id.empty()) {
+        return nullptr;
+    }
+
+    // Start with the existing profile data from the database
+    json publicProfile = user.profile;
+
+    // Ensure the main fields are present
+    publicProfile["email"] = user.email;
+    publicProfile["username"] = user.username;
+    publicProfile["customUrl"] = user.customUrl;
+
+    return publicProfile;
+}
+
+std::vector<DBUser> Database::searchUsers(const std::string& query) {
+    std::vector<DBUser> users;
+    std::string sql = "SELECT * FROM users WHERE username LIKE ? OR email LIKE ? LIMIT 10";
+    
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(pImpl->db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        return users;
+    }
+    
+    std::string searchQuery = "%" + query + "%";
+    sqlite3_bind_text(stmt, 1, searchQuery.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, searchQuery.c_str(), -1, SQLITE_TRANSIENT);
+    
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        DBUser user;
+        const auto get_safe = [](sqlite3_stmt* s, int i) -> std::string {
+            const char* val = reinterpret_cast<const char*>(sqlite3_column_text(s, i));
+            return val ? val : "";
+        };
+
+        user.id = get_safe(stmt, 0);
+        user.email = get_safe(stmt, 1);
+        user.username = get_safe(stmt, 2);
+        // We don't need to load other fields for search results
+        users.push_back(user);
+    }
+    
+    sqlite3_finalize(stmt);
+    return users;
+}
+
+bool Database::setUserOnlineStatus(const std::string& userId, bool online) {
+    std::string sql = "UPDATE users SET online = ? WHERE id = ?";
+    auto result = executeQueryWithParams(sql, { online ? "1" : "0", userId });
+    if (result.success && sqlite3_changes(pImpl->db) > 0) {
+        std::cout << "Updated online status for user " << userId << " to " << (online ? 1 : 0) << std::endl;
+        return true;
+    } else {
+        std::cout << "Failed to update online status for user " << userId << ": No rows affected" << std::endl;
+        return false;
+    }
+}
+
+bool Database::setAllUsersOffline() {
+    std::string sql = "UPDATE users SET online = 0";
+    auto result = executeQuery(sql);
+    return result.success;
+}
+

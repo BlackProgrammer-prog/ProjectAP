@@ -5,3 +5,9 @@
 /Backend/cmake-build-debug
 /UI-Login/node_modules
 /UI-Login/.idea
+/Frontend/.idea
+/Backend/cmake-build-release
+/Backend/.cursor
+/Backend/%SystemDrive%
+/SeverCall/node_modules
+/SeverCall/.idea

@@ -23,4 +23,6 @@ Message::Message(const std::string& sender,
         , edited_timestamp(timestamp)
         , status(MessageStatus::SENT)
         , deleted(false)
+        , delivered(false)
+        , read(false)
 {}
