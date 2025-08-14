@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import webSocketService from '../Login/Component/Services/WebSocketService';
 import { useAuth } from '../Login/Component/Context/AuthContext';
-import { upsertProfile, getStoredEmails } from '../utils/pvStorage';
+import { upsertProfile, getStoredEmails, loadPV } from '../utils/pvStorage';
+import { savePrivateChat } from '../utils/chatStorage';
 
 const ContactsContext = createContext();
 
 export const ContactsProvider = ({ children }) => {
-    const { token, isAuthenticated } = useAuth();
+    const { token, isAuthenticated, user } = useAuth();
     const [contacts, setContacts] = useState([]);
     const [searchResults, setSearchResults] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -66,6 +67,53 @@ export const ContactsProvider = ({ children }) => {
             if (response.status === 'success' && response.profile && response.profile.email) {
                 upsertProfile(response.profile);
             }
+        } else if (response.status === 'success' && Array.isArray(response.messages)) {
+            // Store messages per chat in localStorage under chat_between_me_<customUrl>
+            try {
+                const myEmail = user?.email;
+                const first = response.messages[0] || {};
+                const getField = (obj, keys) => keys.reduce((acc, k) => acc ?? obj[k], undefined);
+                const sender = getField(first, ['sender', 'from', 'sender_email', 'senderEmail']);
+                const receiver = getField(first, ['receiver', 'to', 'receiver_email', 'receiverEmail']);
+                let peerEmail = response.with || '';
+                if (!peerEmail && myEmail && sender && receiver) {
+                    const meLower = String(myEmail).toLowerCase();
+                    const sLower = String(sender).toLowerCase();
+                    const rLower = String(receiver).toLowerCase();
+                    peerEmail = sLower === meLower ? receiver : (rLower === meLower ? sender : '');
+                } else if (!peerEmail) {
+                    peerEmail = sender || receiver || '';
+                }
+                // Map to customUrl via PV
+                const pv = loadPV();
+                const pvMatch = (pv || []).find(p => String(p.email || '').toLowerCase() === String(peerEmail || '').toLowerCase());
+                const chatKey = pvMatch?.customUrl || peerEmail || 'unknown';
+
+                // Adapt messages into internal structure used by UI
+                const adapt = (msg) => {
+                    const id = msg.id || msg._id;
+                    const text = msg.message || msg.text || msg.content || '';
+                    const ts = msg.timestamp || msg.time || msg.created_at || new Date().toISOString();
+                    const s = getField(msg, ['sender', 'from', 'sender_email', 'senderEmail']);
+                    const t = getField(msg, ['receiver', 'to', 'receiver_email', 'receiverEmail']);
+                    const outgoing = myEmail && s ? (String(s).toLowerCase() === String(myEmail).toLowerCase()) : !!msg.outgoing;
+                    return {
+                        id: id,
+                        type: 'msg',
+                        message: text,
+                        incoming: !outgoing,
+                        outgoing: outgoing,
+                        sender: s,
+                        receiver: t,
+                        timestamp: ts,
+                    };
+                };
+                const adapted = response.messages.map(adapt);
+                // Replace existing storage with fresh server copy
+                savePrivateChat(chatKey, adapted);
+            } catch (err) {
+                console.error('Failed to process get_messages response:', err);
+            }
         }
     }, []);
 
@@ -90,6 +138,21 @@ export const ContactsProvider = ({ children }) => {
             getContacts();
         }
     }, [isAuthenticated, token, getContacts]);
+
+    // On load: for each PV entry that has email/customUrl, request last N messages
+    useEffect(() => {
+        if (!isAuthenticated || !token) return;
+        try {
+            const pv = loadPV();
+            (pv || []).forEach((p) => {
+                if (p && p.email) {
+                    webSocketService.send({ type: 'get_messages', token, with: p.email, limit: 100 });
+                }
+            });
+        } catch (e) {
+            console.error('Failed to iterate PV for get_messages:', e);
+        }
+    }, [isAuthenticated, token]);
 
     // On every refresh (mount while authenticated), re-fetch profiles for stored emails in PV
     useEffect(() => {

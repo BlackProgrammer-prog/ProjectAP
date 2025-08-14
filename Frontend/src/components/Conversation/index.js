@@ -2,7 +2,7 @@
 // ..........................................................MAIN
 
 import Header from "./Header"
-import Footer from "./Footer"
+import Footer from "../Chat/Footer"
 import { Stack, Box } from "@mui/material"
 import Message from "./Message"
 import { Timeline } from "./MsgType"
@@ -115,9 +115,8 @@ const Conversation = ({ chatData, messages, onSend, onDeleteMessage, onDeleteCha
 
             {/* chat footer */}
             <Footer
-                username={username}
                 onSend={onSend}
-                isBlocked={isBlocked}
+                disabled={isBlocked}
             />
             <WallpaperDialog
                 open={openWallpaperDialog}

@@ -39,8 +39,24 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         setToken(null);
         setIsAuthenticated(false);
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
+        try {
+            // Remove auth
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            // Remove PV cache
+            localStorage.removeItem('PV');
+            // Remove all private chat caches like chat_between_me_<customUrl>
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('chat_between_me_')) {
+                    keysToRemove.push(key);
+                }
+            }
+            keysToRemove.forEach((k) => localStorage.removeItem(k));
+        } catch (e) {
+            console.error('Failed to cleanup localStorage on logout:', e);
+        }
     }, [isAuthenticated, token]);
 
 

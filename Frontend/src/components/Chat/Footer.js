@@ -65,7 +65,7 @@ const Actions = [
   },
 ];
 
-const ChatInput = ({ openPicker, setOpenPicker }) => {
+const ChatInput = ({ openPicker, setOpenPicker, value, onChange, onKeyDown }) => {
   const [openActions, setOpenActions] = React.useState(false);
 
   return (
@@ -73,6 +73,9 @@ const ChatInput = ({ openPicker, setOpenPicker }) => {
       fullWidth
       placeholder="Write a message..."
       variant="filled"
+      value={value}
+      onChange={(e) => onChange && onChange(e.target.value)}
+      onKeyDown={onKeyDown}
       InputProps={{
         disableUnderline: true,
         startAdornment: (
@@ -131,7 +134,7 @@ const ChatInput = ({ openPicker, setOpenPicker }) => {
   );
 };
 
-const Footer = () => {
+const Footer = ({ onSend, disabled = false }) => {
   const theme = useTheme();
 
   const isMobile = useResponsive("between", "md", "xs", "sm");
@@ -139,13 +142,23 @@ const Footer = () => {
   const [searchParams] = useSearchParams();
 
   const [openPicker, setOpenPicker] = React.useState(false);
+  const [text, setText] = React.useState("");
+
+  const attemptSend = React.useCallback(() => {
+    const value = (text || "").trim();
+    if (!value || !onSend || disabled) return;
+    onSend(value);
+    setText("");
+  }, [text, onSend, disabled]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      attemptSend();
+    }
+  };
   return (
-    <Box
-      sx={{
-        position: "relative",
-        backgroundColor: "transparent !important",
-      }}
-    >
+    <Box>
       <Box
         p={isMobile ? 1 : 2}
         width={"100%"}
@@ -155,6 +168,11 @@ const Footer = () => {
               ? "#F8FAFF"
               : theme.palette.background,
           boxShadow: "0px 0px 2px rgba(0, 0, 0, 0.25)",
+          position: "fixed",
+          bottom: 0,
+          left: "420px",
+          width: "calc(100vw - 420px)",
+          zIndex: 10,
         }}
       >
         <Stack direction="row" alignItems={"center"} spacing={isMobile ? 1 : 3}>
@@ -179,7 +197,13 @@ const Footer = () => {
               />
             </Box>
             {/* Chat Input */}
-            <ChatInput openPicker={openPicker} setOpenPicker={setOpenPicker} />
+            <ChatInput
+              openPicker={openPicker}
+              setOpenPicker={setOpenPicker}
+              value={text}
+              onChange={setText}
+              onKeyDown={handleKeyDown}
+            />
           </Stack>
           <Box
             sx={{
@@ -194,7 +218,7 @@ const Footer = () => {
               alignItems={"center"}
               justifyContent="center"
             >
-              <IconButton>
+              <IconButton onClick={attemptSend} disabled={disabled}>
                 <PaperPlaneTilt color="#ffffff" />
               </IconButton>
             </Stack>
