@@ -26,6 +26,23 @@ public:
     bool setUserOnlineStatus(const std::string& user_id, bool online);
     bool setAllUsersOffline();
 
+    // Blocking helpers
+    bool blockUserByEmail(const std::string& user_id, const std::string& target_email);
+    bool isBlocked(const std::string& user_id, const std::string& target_email);
+
+    // Online status by email (from DB `users.online`)
+    int getOnlineStatusByEmail(const std::string& email);
+    
+    // Unread count by user id
+    int getUnreadCountForUser(const std::string& user_id);
+
+    // Delete user by id
+    bool deleteUserById(const std::string& user_id);
+
+    // Open chats JSON helpers
+    json getOpenChats(const std::string& user_id);
+    bool setOpenChats(const std::string& user_id, const json& open_chats);
+
 private:
     std::shared_ptr<Database> database_;
 };

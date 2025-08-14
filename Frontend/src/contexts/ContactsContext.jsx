@@ -114,8 +114,22 @@ export const ContactsProvider = ({ children }) => {
             } catch (err) {
                 console.error('Failed to process get_messages response:', err);
             }
+        } else if (response.status === 'success' && Array.isArray(response.open_chats)) {
+            // Handle get_open_chats: for each email, request profile and upsert into PV when received
+            try {
+                const emails = response.open_chats || [];
+                if (token && Array.isArray(emails)) {
+                    emails.forEach((email) => {
+                        if (typeof email === 'string' && email.length > 0) {
+                            webSocketService.send({ type: 'get_profile', token, email });
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to process open_chats:', err);
+            }
         }
-    }, []);
+    }, [token, user]);
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -138,6 +152,13 @@ export const ContactsProvider = ({ children }) => {
             getContacts();
         }
     }, [isAuthenticated, token, getContacts]);
+
+    // On load: request open chats list
+    useEffect(() => {
+        if (isAuthenticated && token) {
+            webSocketService.send({ type: 'get_open_chats', token });
+        }
+    }, [isAuthenticated, token]);
 
     // On load: for each PV entry that has email/customUrl, request last N messages
     useEffect(() => {

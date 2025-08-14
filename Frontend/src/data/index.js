@@ -83,17 +83,23 @@ const PVOBJ = {
 }
 
 const PVStorage = localStorage.getItem("PV");
-if (!PVStorage) {
-  const PVArray = JSON.parse(PVStorage);
-  let n = 0;
-  PVArray.forEach(pv => {
-    PVOBJ.id = n
-    PVOBJ.username = pv.username;
-    PVOBJ.img = "http://localhost:8080/"+"uploads/avatars/abe80fee-c254-4598-941b-1297c2428646.png";
-    PVOBJ.name = pv.name;
-    ChatList.add(PVOBJ);
-    n++;
-  })
+if (PVStorage) {
+  try {
+    const PVArray = JSON.parse(PVStorage) || [];
+    let n = 0;
+    PVArray.forEach((pv) => {
+      const item = {
+        id: pv.email || n,
+        username: pv.customUrl || pv.username || pv.email || "",
+        img: pv.avatarUrl || faker.image.avatar(),
+        name: pv.fullName || pv.username || pv.email || "",
+      };
+      ChatList.push(item);
+      n++;
+    });
+  } catch (e) {
+    console.error("Failed to parse PV from localStorage:", e);
+  }
 }
 
 

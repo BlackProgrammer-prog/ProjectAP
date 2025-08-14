@@ -66,6 +66,19 @@ public:
     std::vector<DBUser> searchUsers(const std::string& query);
     bool setUserOnlineStatus(const std::string& userId, bool online);
     bool setAllUsersOffline();
+    // Online status lookup
+    int getOnlineStatusByEmail(const std::string& email);
+    
+    // Blocking
+    bool addBlock(const std::string& userId, const std::string& blockedUserId);
+    bool isBlocked(const std::string& userId, const std::string& blockedUserId);
+    
+    // Unread messages
+    int getUnreadCountForUser(const std::string& userId);
+
+    // Open chats (JSON array of counterpart emails)
+    json getOpenChats(const std::string& userId);
+    bool setOpenChats(const std::string& userId, const json& openChats);
     // Message methods
     bool storeMessage(const std::string& id,
                       const std::string& sender_id,

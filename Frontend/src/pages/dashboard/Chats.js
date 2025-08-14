@@ -5,7 +5,9 @@ import { faker } from '@faker-js/faker';
 import { Link } from "react-router-dom";
 import { PATH_DASHBOARD } from "../../routes/paths";
 import { loadPrivateChat } from "../../utils/chatStorage";
-import { loadPV } from "../../utils/pvStorage";
+import { loadPV, getStoredEmails } from "../../utils/pvStorage";
+import { useAuth } from "../../Login/Component/Context/AuthContext";
+import webSocketService from "../../Login/Component/Services/WebSocketService";
 import { resolveAvatarUrl } from "../../utils/resolveAvatarUrl";
 import { format, isToday, isYesterday, isThisYear } from "date-fns";
 
@@ -188,6 +190,7 @@ const ChatElement = ({ id, name, msg, time, unread, img, online, username }) => 
 
 const Chats = () => {
   const Theme = useTheme();
+  const { token, isAuthenticated } = useAuth();
   // chatList از PV ساخته می‌شود. username را به عنوان کلید چت = customUrl نگه می‌داریم
   const [chatList, setChatList] = useState(() => {
     const pv = loadPV();
@@ -231,6 +234,16 @@ const Chats = () => {
           online: false,
         }));
         setChatList(next);
+
+        // هر بار PV تغییر کرد، لیست ایمیل‌ها را به عنوان open_chats به سرور بفرست
+        try {
+          if (isAuthenticated && token) {
+            const emails = getStoredEmails();
+            if (Array.isArray(emails)) {
+              webSocketService.send({ type: 'update_open_chats', token, open_chats: emails });
+            }
+          }
+        } catch {}
       }
     };
     window.addEventListener('storage', onStorage);

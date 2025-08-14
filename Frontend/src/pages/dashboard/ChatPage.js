@@ -6,7 +6,7 @@ import Conversation from "../../components/Conversation";
 import Chats from "./Chats";
 import { savePrivateChat, loadPrivateChat, clearPrivateChat } from "../../utils/chatStorage";
 import { v4 as uuidv4 } from 'uuid';
-import { loadPV } from "../../utils/pvStorage";
+import { loadPV, getStoredEmails } from "../../utils/pvStorage";
 import { useAuth } from "../../Login/Component/Context/AuthContext";
 import webSocketService from "../../Login/Component/Services/WebSocketService";
 import Swal from "sweetalert2";
@@ -45,24 +45,48 @@ const ChatPage = () => {
             // toast warning if peer email missing
             Swal.fire({ toast: true, position: 'bottom-start', icon: 'warning', title: 'ایمیل مخاطب یافت نشد', showConfirmButton: false, timer: 2500, timerProgressBar: true });
         }
+
+        // Also refresh open chats list on page entry
+        if (token) {
+            webSocketService.send({ type: 'get_open_chats', token });
+        }
     }, [username, token, peerEmail]);
 
     // Helper: map server message to local message shape
     const adaptServerMessage = (msg) => {
         const serverId = msg.id || msg._id || uuidv4();
-        const text = msg.message || msg.text || msg.content || '';
-        const ts = msg.timestamp || msg.time || msg.created_at || new Date().toISOString();
-        const from = msg.sender || msg.from || msg.sender_email || msg.senderEmail;
-        const to = msg.receiver || msg.to || msg.receiver_email || msg.receiverEmail;
-        const outgoing = myEmail && from ? (String(from).toLowerCase() === String(myEmail).toLowerCase()) : !!msg.outgoing;
+        const text = msg.content || msg.message || msg.text || '';
+        // timestamp can be numeric epoch (seconds or ms) or ISO
+        let ts = msg.timestamp || msg.time || msg.created_at;
+        if (typeof ts === 'number') {
+            // Heuristic: treat < 10^12 as seconds
+            const ms = ts < 1e12 ? ts * 1000 : ts;
+            ts = new Date(ms).toISOString();
+        }
+        if (!ts) ts = new Date().toISOString();
+
+        // Derive outgoing using sender_id if available
+        const myUserId = user?.user_id || user?.id;
+        const senderId = msg.sender_id || msg.senderId || msg.sender || null;
+        const receiverId = msg.receiver_id || msg.receiverId || msg.receiver || null;
+        let outgoing = false;
+        if (myUserId && senderId) {
+            outgoing = String(myUserId) === String(senderId);
+        } else if (myEmail && (msg.sender || msg.from || msg.sender_email || msg.senderEmail)) {
+            const from = msg.sender || msg.from || msg.sender_email || msg.senderEmail;
+            outgoing = String(from).toLowerCase() === String(myEmail).toLowerCase();
+        } else if (typeof msg.outgoing === 'boolean') {
+            outgoing = msg.outgoing;
+        }
+
         return {
             id: serverId,
             type: 'msg',
             message: text,
             incoming: !outgoing,
             outgoing: outgoing,
-            sender: from || (outgoing ? myEmail : peerEmail) || 'me',
-            receiver: to || (outgoing ? peerEmail : myEmail) || username,
+            sender: outgoing ? (myEmail || 'me') : (peerEmail || username),
+            receiver: outgoing ? (peerEmail || username) : (myEmail || 'me'),
             timestamp: ts,
         };
     };
@@ -137,6 +161,16 @@ const ChatPage = () => {
             // Send using the required format
             webSocketService.send({ type: 'send_message', token, to: peerEmail, message: text });
         }
+
+        // After sending a message, push current PV emails set to server as updated open chats
+        try {
+            if (token) {
+                const emails = getStoredEmails();
+                if (Array.isArray(emails)) {
+                    webSocketService.send({ type: 'update_open_chats', token, open_chats: emails });
+                }
+            }
+        } catch {}
     };
 
     // حذف پیام از چت خصوصی

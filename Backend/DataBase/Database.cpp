@@ -30,7 +30,8 @@ struct Database::Impl {
                 profile_json TEXT NOT NULL,
                 settings_json TEXT NOT NULL,
                 custom_url TEXT UNIQUE NOT NULL,
-                contacts_json TEXT
+                contacts_json TEXT,
+                open_chats_json TEXT
             );
             
             CREATE TABLE IF NOT EXISTS contacts (
@@ -41,6 +42,17 @@ struct Database::Impl {
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                 FOREIGN KEY (contact_user_id) REFERENCES users(id) ON DELETE CASCADE,
                 UNIQUE(user_id, contact_user_id)
+            );
+            
+            -- Blocks table
+            CREATE TABLE IF NOT EXISTS blocks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                blocked_user_id TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (blocked_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE(user_id, blocked_user_id)
             );
             
             CREATE TABLE IF NOT EXISTS private_messages (
@@ -78,6 +90,15 @@ struct Database::Impl {
         if (errMsg) {
             // Suppress duplicate column error
             std::string err = errMsg;
+            sqlite3_free(errMsg);
+        }
+
+        // Try to add 'open_chats_json' column if it doesn't exist (ignore error if exists)
+        errMsg = nullptr;
+        std::string add_open_chats_col = "ALTER TABLE users ADD COLUMN open_chats_json TEXT DEFAULT '[]'";
+        sqlite3_exec(db, add_open_chats_col.c_str(), nullptr, nullptr, &errMsg);
+        if (errMsg) {
+            std::string err2 = errMsg;
             sqlite3_free(errMsg);
         }
     }
@@ -424,5 +445,68 @@ bool Database::setAllUsersOffline() {
     std::string sql = "UPDATE users SET online = 0";
     auto result = executeQuery(sql);
     return result.success;
+}
+
+json Database::getOpenChats(const std::string& userId) {
+    std::string sql = "SELECT open_chats_json FROM users WHERE id = ?";
+    auto result = executeQueryWithParams(sql, {userId});
+    if (result.success && !result.data.empty()) {
+        try {
+            return json::parse(result.data[0].empty() ? "[]" : result.data[0]);
+        } catch(...) {
+            return json::array();
+        }
+    }
+    return json::array();
+}
+
+bool Database::setOpenChats(const std::string& userId, const json& openChats) {
+    std::string sql = "UPDATE users SET open_chats_json = ? WHERE id = ?";
+    auto result = executeQueryWithParams(sql, {openChats.dump(), userId});
+    return result.success;
+}
+
+int Database::getOnlineStatusByEmail(const std::string& email) {
+    std::string sql = "SELECT online FROM users WHERE email = ?";
+    auto result = executeQueryWithParams(sql, {email});
+    if (result.success && !result.data.empty()) {
+        return std::stoi(result.data[0]);
+    }
+    return 0;
+}
+
+bool Database::addBlock(const std::string& userId, const std::string& blockedUserId) {
+    std::string sql = R"(
+        INSERT OR IGNORE INTO blocks (user_id, blocked_user_id, created_at)
+        VALUES (?, ?, ?)
+    )";
+    auto result = executeQueryWithParams(sql, {userId, blockedUserId, std::to_string(std::time(nullptr))});
+    return result.success;
+}
+
+bool Database::isBlocked(const std::string& userId, const std::string& blockedUserId) {
+    std::string sql = R"(
+        SELECT COUNT(1)
+        FROM blocks
+        WHERE user_id = ? AND blocked_user_id = ?
+    )";
+    auto result = executeQueryWithParams(sql, {userId, blockedUserId});
+    if (result.success && !result.data.empty()) {
+        return std::stoi(result.data[0]) > 0;
+    }
+    return false;
+}
+
+int Database::getUnreadCountForUser(const std::string& userId) {
+    std::string sql = R"(
+        SELECT COUNT(1)
+        FROM private_messages
+        WHERE receiver_id = ? AND read = 0 AND deleted = 0
+    )";
+    auto result = executeQueryWithParams(sql, {userId});
+    if (result.success && !result.data.empty()) {
+        return std::stoi(result.data[0]);
+    }
+    return 0;
 }
 

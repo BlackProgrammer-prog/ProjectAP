@@ -60,6 +60,14 @@ private:
     json handleHeartbeat(const json& data, const std::string& client_id);
     json handleLogout(const json& data, const std::string& client_id);
 
+    // New handlers
+    json handleCheckOnlineByEmails(const json& data, const std::string& client_id);
+    json handleDeleteAccount(const json& data, const std::string& client_id);
+    json handleBlockUser(const json& data, const std::string& client_id);
+    json handleGetUnreadCount(const json& data, const std::string& client_id);
+    json handleGetOpenChats(const json& data, const std::string& client_id);
+    json handleUpdateOpenChats(const json& data, const std::string& client_id);
+
     // Dependencies
     std::shared_ptr<JwtAuth> jwt_auth_;
     std::shared_ptr<ContactManager> contact_manager_;

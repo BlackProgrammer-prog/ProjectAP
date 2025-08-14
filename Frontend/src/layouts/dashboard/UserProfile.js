@@ -14,7 +14,7 @@ const UserProfile = ({ onClose, onBlockUser, onDeleteChat, isBlocked }) => {
     const user = {
         name: chat ? chat.name : username,
         status: chat ? (chat.online ? "Online" : "Offline") : "Unknown",
-        phone: faker.phone.number(),
+        email: faker.phone.number(),
         bio: faker.lorem.sentence(),
         avatar: chat ? chat.img : faker.image.avatar(),
         isBlocked: isBlocked || false
@@ -101,7 +101,7 @@ const UserProfile = ({ onClose, onBlockUser, onDeleteChat, isBlocked }) => {
                     <Box sx={{ width: '100%' }}>
                         <Typography variant="subtitle2" gutterBottom>Contact Info</Typography>
                         <Typography variant="body2" sx={{ mb: 2 }}>
-                            {user.phone}
+                            {user.email}
                         </Typography>
                         <Typography variant="body2">
                             {user.bio}

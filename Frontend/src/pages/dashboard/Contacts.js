@@ -6,7 +6,7 @@ import AddContactDialog from './AddContactDialog';
 import { faker } from '@faker-js/faker';
 import webSocketService from '../../Login/Component/Services/WebSocketService';
 import { useAuth } from '../../Login/Component/Context/AuthContext';
-import { loadPV } from '../../utils/pvStorage';
+import { loadPV, getStoredEmails } from '../../utils/pvStorage';
 import { resolveAvatarUrl } from '../../utils/resolveAvatarUrl';
 
 const ContactElement = ({ contact, onClick }) => {
@@ -74,6 +74,13 @@ const Contacts = () => {
         const email = contact?.email || contact?.username; // fallback if email missing in list
         if (!email) return;
         webSocketService.send({ type: 'get_profile', token, email });
+        // پس از کلیک روی مخاطب، لیست ایمیل های PV را به عنوان open_chats به سرور بفرست
+        try {
+            const emails = getStoredEmails();
+            if (Array.isArray(emails)) {
+                webSocketService.send({ type: 'update_open_chats', token, open_chats: emails });
+            }
+        } catch {}
     }, [isAuthenticated, token]);
 
     return (

@@ -576,6 +576,26 @@ void WebSocketServer::setupHandlers() {
     impl_->on("logout", [this](const json& data, const std::string& clientId) {
         return handleLogout(data, clientId);
     });
+
+    // New features
+    impl_->on("check_online_by_emails", [this](const json& data, const std::string& clientId) {
+        return handleCheckOnlineByEmails(data, clientId);
+    });
+    impl_->on("delete_account", [this](const json& data, const std::string& clientId) {
+        return handleDeleteAccount(data, clientId);
+    });
+    impl_->on("block_user", [this](const json& data, const std::string& clientId) {
+        return handleBlockUser(data, clientId);
+    });
+    impl_->on("get_unread_count", [this](const json& data, const std::string& clientId) {
+        return handleGetUnreadCount(data, clientId);
+    });
+    impl_->on("get_open_chats", [this](const json& data, const std::string& clientId) {
+        return handleGetOpenChats(data, clientId);
+    });
+    impl_->on("update_open_chats", [this](const json& data, const std::string& clientId) {
+        return handleUpdateOpenChats(data, clientId);
+    });
 }
 
 json WebSocketServer::handleSearchUser(const json& data, const std::string& client_id) {
@@ -957,3 +977,82 @@ json WebSocketServer::handleSearchMessages(const json& data, const std::string& 
     };
 }
 // Other handlers (mark_as_read, edit_message, etc.) would be implemented similarly
+
+json WebSocketServer::handleCheckOnlineByEmails(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"])) {
+        return {{"status","error"},{"message","Invalid token"}};
+    }
+    if (!data.contains("emails") || !data["emails"].is_array()) {
+        return {{"status","error"},{"message","Missing emails array"}};
+    }
+    json results = json::array();
+    for (const auto& e : data["emails"]) {
+        std::string email = e.get<std::string>();
+        int online = contact_manager_ ? contact_manager_->getOnlineStatusByEmail(email) : 0;
+        results.push_back({{"email", email}, {"online", online}});
+    }
+    return {{"status","success"},{"results",results}};
+}
+
+json WebSocketServer::handleDeleteAccount(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"])) {
+        return {{"status","error"},{"message","Invalid token"}};
+    }
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    if (user_id.empty()) return {{"status","error"},{"message","User not found"}};
+    // Delete user and cleanup sessions
+    bool ok = contact_manager_ && contact_manager_->deleteUserById(user_id);
+    if (ok) {
+        impl_->removeSession(client_id, user_id);
+        return {{"status","success"}};
+    }
+    return {{"status","error"},{"message","Failed to delete user"}};
+}
+
+json WebSocketServer::handleBlockUser(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"])) {
+        return {{"status","error"},{"message","Invalid token"}};
+    }
+    if (!data.contains("email")) {
+        return {{"status","error"},{"message","Missing email"}};
+    }
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    std::string target_email = data["email"];
+    if (user_id.empty()) return {{"status","error"},{"message","User not found"}};
+    bool ok = contact_manager_ && contact_manager_->blockUserByEmail(user_id, target_email);
+    return ok ? json{{"status","success"}} : json{{"status","error"},{"message","Failed to block"}};
+}
+
+json WebSocketServer::handleGetUnreadCount(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"])) {
+        return {{"status","error"},{"message","Invalid token"}};
+    }
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    if (user_id.empty()) return {{"status","error"},{"message","User not found"}};
+    int count = contact_manager_ ? contact_manager_->getUnreadCountForUser(user_id) : 0;
+    return {{"status","success"},{"unread",count}};
+}
+
+json WebSocketServer::handleGetOpenChats(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"])) {
+        return {{"status","error"},{"message","Invalid token"}};
+    }
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    if (user_id.empty()) return {{"status","error"},{"message","User not found"}};
+    json open_chats = contact_manager_ ? contact_manager_->getOpenChats(user_id) : json::array();
+    return {{"status","success"},{"open_chats", open_chats}};
+}
+
+json WebSocketServer::handleUpdateOpenChats(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"])) {
+        return {{"status","error"},{"message","Invalid token"}};
+    }
+    if (!data.contains("open_chats") || !data["open_chats"].is_array()) {
+        return {{"status","error"},{"message","Missing open_chats array"}};
+    }
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    if (user_id.empty()) return {{"status","error"},{"message","User not found"}};
+    json open_chats = data["open_chats"];
+    bool ok = contact_manager_ && contact_manager_->setOpenChats(user_id, open_chats);
+    return ok ? json{{"status","success"}} : json{{"status","error"},{"message","Failed to update open_chats"}};
+}
