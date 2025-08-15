@@ -4,13 +4,15 @@
 #include <string>
 #include <vector>
 
+using namespace std;
+
 class Starter {
 public:
-    Starter(const std::vector<std::string>& commands, int delaySeconds = 10);
+    Starter(const vector<string>& commands, int delaySeconds = 10);
     void execute();
 
 private:
-    std::vector<std::string> commands_;
+    vector<string> commands_;
     int delaySeconds_;
 };
 
