@@ -4,19 +4,21 @@
 #include <chrono>
 #include <cstdlib>
 
-Starter::Starter(const std::vector<std::string>& commands, int delaySeconds)
+using namespace std;
+
+Starter::Starter(const vector<string>& commands, int delaySeconds)
     : commands_(commands), delaySeconds_(delaySeconds) {}
 
 void Starter::execute() {
     for (const auto& cmd : commands_) {
-        std::cout << "[Starter] Running: " << cmd << std::endl;
+        cout << "[Starter] Running: " << cmd << endl;
 
-        int result = std::system(cmd.c_str());
+        int result = system(cmd.c_str());
 
         if (result != 0) {
-            std::cerr << "[Starter] Command failed with code: " << result << std::endl;
+            cerr << "[Starter] Command failed with code: " << result << endl;
         }
 
-        std::this_thread::sleep_for(std::chrono::seconds(delaySeconds_));
+        this_thread::sleep_for(chrono::seconds(delaySeconds_));
     }
 }
