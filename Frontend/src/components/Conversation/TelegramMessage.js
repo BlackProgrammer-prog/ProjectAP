@@ -8,9 +8,11 @@ import { loadPV } from "../../utils/pvStorage";
 import { resolveAvatarUrl } from "../../utils/resolveAvatarUrl";
 import { useState } from "react";
 import React from "react";
+import { useRef } from "react";
 
-const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForwardMessage, onEditMessage, currentUser = "me", selectMode = false, selected = false, onMessageClick, onToggleSelect }) => {
+const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForwardMessage, onEditMessage, onReportMessage, currentUser = "me", selectMode = false, selected = false, onMessageClick, onToggleSelect }) => {
     const theme = useTheme();
+    const menuRef = useRef(null);
     const { username } = useParams();
     const isOwnMessage = message.sender === currentUser || message.outgoing;
 
@@ -118,6 +120,16 @@ const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForward
                         boxShadow: theme.shadows[1], //add
                     }}
                     onClick={(!isEditing && selectMode) ? onToggleSelect : (!isEditing ? onMessageClick : undefined)}
+                    onContextMenu={(e) => {
+                        // Right-click opens the same options menu
+                        try {
+                            if (menuRef && menuRef.current && typeof menuRef.current.openAt === 'function') {
+                                menuRef.current.openAt(e);
+                            } else {
+                                e.preventDefault();
+                            }
+                        } catch {}
+                    }}
                 >
                     {/* نمایش ری‌اکشن‌ها */}
                     <MessageReactions
@@ -226,6 +238,8 @@ const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForward
                     onReactionChange={onReactionChange}
                     onForwardMessage={onForwardMessage}
                     onEditClick={isOwnMessage ? handleEditClick : undefined}
+                    onReportMessage={onReportMessage}
+                    ref={menuRef}
                 />
             </Stack>
 

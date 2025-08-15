@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import webSocketService from '../Login/Component/Services/WebSocketService';
 import { useAuth } from '../Login/Component/Context/AuthContext';
-import { upsertProfile, getStoredEmails, loadPV } from '../utils/pvStorage';
+import { upsertProfile, getStoredEmails, loadPV, savePV } from '../utils/pvStorage';
 import { savePrivateChat } from '../utils/chatStorage';
 
 const ContactsContext = createContext();
@@ -81,6 +81,29 @@ export const ContactsProvider = ({ children }) => {
             } catch (err) {
                 console.error('Failed to process open_chats:', err);
             }
+        } else if (response.status === 'success' && Array.isArray(response.results)) {
+            // Presence results: [{ email, online: 1|0 }, ...]
+            try {
+                const results = response.results || [];
+                const map = new Map();
+                results.forEach((r) => {
+                    if (r && typeof r.email === 'string') map.set(r.email, Number(r.online) === 1 ? 1 : 0);
+                });
+                // Update contacts state by email
+                setContacts((prev) => prev.map((c) => {
+                    if (c && c.email && map.has(c.email)) return { ...c, status: map.get(c.email) };
+                    return c;
+                }));
+                // Update PV profiles status and save back
+                const pv = loadPV();
+                const updatedPv = (pv || []).map((p) => {
+                    if (p && p.email && map.has(p.email)) return { ...p, status: map.get(p.email) };
+                    return p;
+                });
+                savePV(updatedPv);
+            } catch (err) {
+                console.error('Failed to process presence results:', err);
+            }
         }
     }, [token, user]);
 
@@ -127,6 +150,24 @@ export const ContactsProvider = ({ children }) => {
             console.error('Failed to iterate PV for get_messages:', e);
         }
     }, [isAuthenticated, token]);
+
+    // Every 15 seconds, check online presence for contacts + PV emails
+    useEffect(() => {
+        if (!isAuthenticated || !token) return;
+        const interval = setInterval(() => {
+            try {
+                const pvEmails = getStoredEmails();
+                const contactEmails = (contacts || []).map((c) => c && c.email).filter((e) => typeof e === 'string');
+                const emails = Array.from(new Set([...(pvEmails || []), ...(contactEmails || [])]));
+                if (emails.length > 0) {
+                    webSocketService.send({ type: 'check_online_by_emails', token, emails });
+                }
+            } catch (e) {
+                console.error('Presence interval failed:', e);
+            }
+        }, 15000);
+        return () => clearInterval(interval);
+    }, [isAuthenticated, token, contacts]);
 
     // On every refresh (mount while authenticated), re-fetch profiles for stored emails in PV
     useEffect(() => {

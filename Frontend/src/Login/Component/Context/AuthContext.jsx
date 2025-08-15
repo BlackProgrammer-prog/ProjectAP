@@ -1,6 +1,7 @@
 import React, {createContext, useContext, useState, useEffect, useCallback, useRef} from 'react';
 import webSocketService from "../Services/WebSocketService";
 import { clearAllPrivateChatsForCurrentUser } from '../../../utils/chatStorage';
+import Swal from "sweetalert2";
 
 const AuthContext = createContext();
 const HEARTBEAT_INTERVAL = 3000; // 3 ثانیه
@@ -21,6 +22,7 @@ export const AuthProvider = ({ children }) => {
     const tokenRef = useRef(null);
     const isAuthenticatedRef = useRef(false);
     const registerPendingRef = useRef(false);
+    const unreadRequestedRef = useRef(false);
 
 
 
@@ -35,6 +37,7 @@ export const AuthProvider = ({ children }) => {
         // پاک کردن تایمرها
         clearInterval(heartbeatIntervalRef.current);
         clearTimeout(heartbeatTimeoutRef.current);
+        unreadRequestedRef.current = false;
 
         // کدهای موجود برای پاک کردن state و localStorage
         setUser(null);
@@ -199,6 +202,14 @@ export const AuthProvider = ({ children }) => {
             } else {
                  console.error(`❌ Server failed update for: ${response.type}. Reason: ${response.message}`);
             }
+        } else if (response.status === 'success' && typeof response.unread === 'number') {
+            // Handle get_unread_count response
+            const count = response.unread;
+            if (count > 0) {
+                Swal.fire({ toast: true, position: 'bottom-start', icon: 'info', title: `شما ${count} پیام خوانده‌نشده دارید`, showConfirmButton: false, timer: 2800, timerProgressBar: true });
+            } else {
+                Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: 'هیچ پیام خوانده‌نشده‌ای ندارید', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+            }
         } else if (response.status === 'error' && (response.message?.includes('ورود') || response.message?.includes('ثبت نام'))) {
             setIsLoading(false);
             if (registerPendingRef.current) registerPendingRef.current = false;
@@ -231,6 +242,16 @@ export const AuthProvider = ({ children }) => {
         isAuthenticatedRef.current = isAuthenticated;
     }, [token, isAuthenticated]);
 
+    // پس از احراز هویت (ورود یا auto-login) یک‌بار درخواست unread بده
+    useEffect(() => {
+        if (isAuthenticated && token && !unreadRequestedRef.current) {
+            try {
+                webSocketService.send({ type: 'get_unread_count', token });
+                unreadRequestedRef.current = true;
+            } catch {}
+        }
+    }, [isAuthenticated, token]);
+
 
     const handleLoginSuccess = (response) => {
         localStorage.setItem('token', response.token);
@@ -245,6 +266,13 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(JSONUSER));
         setUser(response.user); setToken(response.token); setIsAuthenticated(true);
         alert('ورود با موفقیت انجام شد!');
+        // Immediately request unread count once after successful login
+        try {
+            if (!unreadRequestedRef.current && response?.token) {
+                webSocketService.send({ type: 'get_unread_count', token: response.token });
+                unreadRequestedRef.current = true;
+            }
+        } catch {}
     };
 
     const handleRegisterSuccess = (response) => {

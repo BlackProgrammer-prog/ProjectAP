@@ -20,27 +20,16 @@ const ChatPage = () => {
     const myEmail = user?.email;
 
     // پیام‌های چت خصوصی بین کاربر فعلی و کاربر انتخاب شده
-    const [messages, setMessages] = useState(() => {
-        const keyOther = peerEmail || username;
-        ensureChatExists(keyOther);
-        const loadedMessages = loadPrivateChat(keyOther) || Chat_History;
-        // اضافه کردن id به پیام‌های موجود که id ندارند
-        return loadedMessages.map(msg => ({
-            ...msg,
-            id: msg.id || uuidv4()
-        }));
-    });
+    // در رفرش صفحه، کش لوکال پاک و فقط پیام‌های سرور لود می‌شود
+    const [messages, setMessages] = useState([]);
 
     // اگر username تغییر کرد، پیام‌های چت خصوصی جدید را لود کن و از سرور درخواست بگیر
     useEffect(() => {
         const keyOther = peerEmail || username;
+        // پاکسازی کش لوکال برای جلوگیری از دوبل شدن پیام‌ها و تکیه بر پاسخ سرور
+        try { clearPrivateChat(keyOther); } catch {}
         ensureChatExists(keyOther);
-        const loadedMessages = loadPrivateChat(keyOther) || Chat_History;
-        const messagesWithIds = loadedMessages.map(msg => ({
-            ...msg,
-            id: msg.id || uuidv4()
-        }));
-        setMessages(messagesWithIds);
+        setMessages([]);
 
         // Request last N messages from server (by peer email)
         if (token && peerEmail) {
@@ -83,6 +72,8 @@ const ChatPage = () => {
             outgoing = msg.outgoing;
         }
 
+        const isRead = typeof msg.read === 'boolean' ? msg.read : (msg.read === 1 ? true : false);
+
         return {
             id: serverId,
             type: 'msg',
@@ -92,6 +83,7 @@ const ChatPage = () => {
             sender: outgoing ? (myEmail || 'me') : (peerEmail || username),
             receiver: outgoing ? (peerEmail || username) : (myEmail || 'me'),
             timestamp: ts,
+            read: isRead,
         };
     };
 
@@ -121,9 +113,51 @@ const ChatPage = () => {
             if (data && Array.isArray(data.messages)) {
                 const keyOther = peerEmail || username;
                 const adapted = data.messages.map(adaptServerMessage);
-                const merged = savePrivateChatMerged(keyOther, adapted);
-                setMessages(merged);
+                // جایگزینی کامل با پاسخ سرور
+                savePrivateChat(keyOther, adapted);
+                setMessages(adapted);
                 Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: `دریافت ${data.count ?? adapted.length} پیام`, showConfirmButton: false, timer: 1800, timerProgressBar: true });
+                return;
+            }
+
+            // پیام ویرایش‌شده برای گیرنده/نمایشگر چت
+            if (data && data.type === 'message_edited' && data.message_id) {
+                const keyOther = peerEmail || username;
+                setMessages((prev) => {
+                    const updated = (prev || []).map((m) => (
+                        m.id === data.message_id
+                            ? { ...m, message: data.new_content ?? m.message, edited: true, edited_timestamp: new Date().toISOString() }
+                            : m
+                    ));
+                    savePrivateChat(keyOther, updated);
+                    return updated;
+                });
+                Swal.fire({ toast: true, position: 'bottom-start', icon: 'info', title: 'یک پیام ویرایش شد', showConfirmButton: false, timer: 1600, timerProgressBar: true });
+                return;
+            }
+
+            // حذف پیام برای گیرنده/نمایشگر چت
+            if (data && data.type === 'message_deleted' && data.message_id) {
+                const keyOther = peerEmail || username;
+                setMessages((prev) => {
+                    const updated = (prev || []).filter((m) => m.id !== data.message_id);
+                    savePrivateChat(keyOther, updated);
+                    return updated;
+                });
+                Swal.fire({ toast: true, position: 'bottom-start', icon: 'warning', title: 'یک پیام حذف شد', showConfirmButton: false, timer: 1500, timerProgressBar: true });
+                return;
+            }
+
+            // Handle read receipt notification to sender
+            if (data && data.type === 'message_read' && data.message_id) {
+                const msgId = data.message_id;
+                const keyOther = peerEmail || username;
+                setMessages((prev) => {
+                    const updated = (prev || []).map((m) => (m.id === msgId ? { ...m, read: true } : m));
+                    savePrivateChat(keyOther, updated);
+                    return updated;
+                });
+                Swal.fire({ toast: true, position: 'bottom-start', icon: 'info', title: 'پیام شما خوانده شد', showConfirmButton: false, timer: 1800, timerProgressBar: true });
                 return;
             }
 
@@ -136,15 +170,30 @@ const ChatPage = () => {
                 if (involvesPeer) {
                     setMessages((prev) => {
                         const keyOther = peerEmail || username;
-                        const next = [...prev, incomingMsg];
-                        savePrivateChat(keyOther, next);
-                        return next;
+                        // جلوگیری از دوبل: اگر پیام ارسالی خودمان است و pending مشابه وجود دارد، جایگزین کن
+                        let replaced = false;
+                        const next = (prev || []).map((m) => {
+                            if (!replaced && incomingMsg.outgoing && m?.outgoing && m?.pending && m?.message === incomingMsg.message) {
+                                replaced = true;
+                                return { ...incomingMsg, pending: false };
+                            }
+                            return m;
+                        });
+                        const finalNext = replaced ? next : [...next, incomingMsg];
+                        savePrivateChat(keyOther, finalNext);
+                        return finalNext;
                     });
+                    // Mark as read immediately for incoming messages when viewing this chat
+                    try {
+                        if (token && incomingMsg.incoming && incomingMsg.id) {
+                            webSocketService.send({ type: 'mark_as_read', token, message_id: incomingMsg.id });
+                        }
+                    } catch {}
                 }
             }
         });
         return () => off && off();
-    }, [username, myEmail, peerEmail]);
+    }, [username, myEmail, peerEmail, token]);
 
     // ذخیره پیام جدید در چت خصوصی
     const handleSendMessage = (text) => {
@@ -157,6 +206,8 @@ const ChatPage = () => {
             sender: myEmail || "me", // کاربر فعلی
             receiver: peerEmail || username, // کاربر مقابل
             timestamp: new Date().toISOString(),
+            read: false,
+            pending: true,
         };
         const keyOther = peerEmail || username;
         const updated = [...messages, newMessage];
@@ -186,6 +237,12 @@ const ChatPage = () => {
         const updated = messages.filter(msg => msg.id !== messageId);
         setMessages(updated);
         savePrivateChat(keyOther, updated);
+        // ارسال درخواست حذف به سرور
+        try {
+            if (token && messageId) {
+                webSocketService.send({ type: 'delete_message', token, message_id: messageId });
+            }
+        } catch {}
     };
 
     // حذف کامل چت
@@ -272,8 +329,32 @@ const ChatPage = () => {
             msg.id === messageId ? { ...msg, message: newText } : msg
         );
         setMessages(updatedMessages);
-        savePrivateChat(username, updatedMessages);
+        const keyOther = peerEmail || username;
+        savePrivateChat(keyOther, updatedMessages);
+        // ارسال درخواست ویرایش به سرور
+        try {
+            if (token && messageId && typeof newText === 'string') {
+                webSocketService.send({ type: 'edit_message', token, message_id: messageId, new_content: newText });
+            }
+        } catch {}
     };
+
+    // When the conversation view loads or updates, ensure existing unread incoming messages are marked as read
+    useEffect(() => {
+        if (!token) return;
+        const keyOther = peerEmail || username;
+        const unreadIncoming = (messages || []).filter((m) => m && m.incoming === true && m.read !== true && m.id);
+        if (unreadIncoming.length === 0) return;
+        try {
+            unreadIncoming.forEach((m) => {
+                webSocketService.send({ type: 'mark_as_read', token, message_id: m.id });
+            });
+        } catch {}
+        // Optimistic local update
+        const updated = messages.map((m) => (m && m.incoming === true && m.read !== true ? { ...m, read: true } : m));
+        setMessages(updated);
+        savePrivateChat(keyOther, updated);
+    }, [token, peerEmail, username]);
 
     if (!chatProfile) return <div>مخاطب یافت نشد</div>;
 
@@ -298,6 +379,30 @@ const ChatPage = () => {
                     onReactionChange={handleReactionChange}
                     onForwardMessage={handleForwardMessage}
                     onEditMessage={handleEditMessage}
+                    onReportMessage={(msg) => {
+                        try {
+                            if (!msg?.id) return;
+                            if (!token) {
+                                Swal.fire({ toast: true, position: 'bottom-start', icon: 'error', title: 'ابتدا وارد شوید', showConfirmButton: false, timer: 1800, timerProgressBar: true });
+                                return;
+                            }
+                            Swal.fire({
+                                title: 'گزارش پیام',
+                                input: 'text',
+                                inputLabel: 'دلیل گزارش را وارد کنید',
+                                inputPlaceholder: 'مثل: محتوای نامناسب',
+                                showCancelButton: true,
+                                confirmButtonText: 'ارسال',
+                                cancelButtonText: 'انصراف'
+                            }).then((res) => {
+                                if (res.isConfirmed) {
+                                    const reason = res.value || '';
+                                    webSocketService.send({ type: 'report_message', token, message_id: msg.id, reason });
+                                    Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: 'گزارش ارسال شد', showConfirmButton: false, timer: 1800, timerProgressBar: true });
+                                }
+                            });
+                        } catch {}
+                    }}
                 />
             </Box>
         </Stack>
