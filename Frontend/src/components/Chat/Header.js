@@ -80,6 +80,22 @@ const ChatHeader = () => {
     setConversationMenuAnchorEl(null);
   };
 
+  const [online, setOnline] = React.useState(false);
+  const [profile, setProfile] = React.useState(null);
+
+  // Poll PV every 1.5s to reflect presence updates set by ContactsContext
+  React.useEffect(() => {
+    const update = () => {
+      const pv = loadPV();
+      const u = (pv || []).find((p) => p && (p.customUrl === username || p.username === username || p.email === username)) || null;
+      setProfile(u);
+      setOnline(!!u && Number(u.status) === 1);
+    };
+    update();
+    const interval = setInterval(update, 1500);
+    return () => clearInterval(interval);
+  }, [username]);
+
   return (
     <Box
       p={2}
@@ -105,31 +121,36 @@ const ChatHeader = () => {
           direction="row"
         >
           <Box>
-            <StyledBadge
-              overlap="circular"
-              anchorOrigin={{
-                vertical: "bottom",
-                horizontal: "right",
-              }}
-              variant="dot"
-            >
-              {(() => {
-                const pv = loadPV();
-                const u = (pv || []).find((p) => p.customUrl === username) || {};
-                const name = u.fullName || u.username || u.email || faker.name.fullName();
-                const avatar = resolveAvatarUrl(u.avatarUrl) || faker.image.avatar();
-                return <Avatar alt={name} src={avatar} />;
-              })()}
-            </StyledBadge>
+            {(() => {
+              const u = profile || {};
+              const name = u.fullName || u.username || u.email || faker.name.fullName();
+              const avatar = resolveAvatarUrl(u.avatarUrl) || faker.image.avatar();
+              // Only show green badge when online; otherwise plain avatar without dot
+              if (online) {
+                return (
+                  <StyledBadge
+                    overlap="circular"
+                    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                    variant="dot"
+                  >
+                    <Avatar alt={name} src={avatar} />
+                  </StyledBadge>
+                );
+              }
+              return <Avatar alt={name} src={avatar} />;
+            })()}
           </Box>
           <Stack spacing={0.2}>
             {(() => {
-              const pv = loadPV();
-              const u = (pv || []).find((p) => p.customUrl === username) || {};
+              const u = profile || {};
               const name = u.fullName || u.username || u.email || faker.name.fullName();
               return <Typography variant="subtitle2">{name}</Typography>;
             })()}
-            <Typography variant="caption">Online</Typography>
+            {online ? (
+              <Typography variant="caption" color={'success.main'}>
+                Online
+              </Typography>
+            ) : null}
           </Stack>
         </Stack>
         <Stack direction={"row"} alignItems="center" spacing={isMobile ? 1 : 3}>

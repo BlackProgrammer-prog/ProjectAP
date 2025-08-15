@@ -1,29 +1,54 @@
+import React from 'react';
 import { Avatar, Box, Typography, Divider, Button, IconButton, Stack } from '@mui/material';
 import { ArrowLeft, Phone, VideoCamera, Info } from 'phosphor-react';
 import { faker } from '@faker-js/faker';
 import { useParams } from 'react-router-dom';
 import { ChatList } from '../../data';
 import { clearPrivateChat } from '../../utils/chatStorage';
+import { loadPV } from '../../utils/pvStorage';
+import { resolveAvatarUrl } from '../../utils/resolveAvatarUrl';
+import { useAuth } from '../../Login/Component/Context/AuthContext';
+import webSocketService from '../../Login/Component/Services/WebSocketService';
+import Swal from 'sweetalert2';
 
 const UserProfile = ({ onClose, onBlockUser, onDeleteChat, isBlocked }) => {
     const { username } = useParams();
+    const { token } = useAuth();
 
     // پیدا کردن اطلاعات کاربر از ChatList
-    const chat = ChatList.find((c) => c.username === username);
-
+    const [profile, setProfile] = React.useState(() => {
+        const pv = loadPV();
+        return (pv || []).find((p) => p.customUrl === username) || {};
+    });
+    const [online, setOnline] = React.useState(() => Number(profile?.status) === 1);
+    React.useEffect(() => {
+        const update = () => {
+            const pv = loadPV();
+            const u = (pv || []).find((p) => p && (p.customUrl === username || p.username === username || p.email === username)) || {};
+            setProfile(u);
+            setOnline(Number(u?.status) === 1);
+        };
+        update();
+        const interval = setInterval(update, 1500);
+        return () => clearInterval(interval);
+    }, [username]);
     const user = {
-        name: chat ? chat.name : username,
-        status: chat ? (chat.online ? "Online" : "Offline") : "Unknown",
-        email: faker.phone.number(),
-        bio: faker.lorem.sentence(),
-        avatar: chat ? chat.img : faker.image.avatar(),
+        name: profile.fullName || profile.username || profile.email || username,
+        status: online ? 'Online' : 'Offline',
+        email: profile.email || '',
+        bio: profile.bio || faker.lorem.sentence(),
+        avatar: resolveAvatarUrl(profile.avatarUrl) || faker.image.avatar(),
         isBlocked: isBlocked || false
     };
 
     const handleBlockUser = () => {
-        if (onBlockUser) {
-            onBlockUser(username);
-        }
+        if (onBlockUser) onBlockUser(username);
+        try {
+            if (token && user.email) {
+                webSocketService.send({ type: 'block_user', token, email: user.email });
+                Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: user.isBlocked ? 'کاربر آنبلاک شد' : 'کاربر بلاک شد', showConfirmButton: false, timer: 1800, timerProgressBar: true });
+            }
+        } catch {}
     };
 
     const handleDeleteChat = () => {
@@ -101,7 +126,7 @@ const UserProfile = ({ onClose, onBlockUser, onDeleteChat, isBlocked }) => {
                     <Box sx={{ width: '100%' }}>
                         <Typography variant="subtitle2" gutterBottom>Contact Info</Typography>
                         <Typography variant="body2" sx={{ mb: 2 }}>
-                            {user.email}
+                            {user.email || '—'}
                         </Typography>
                         <Typography variant="body2">
                             {user.bio}

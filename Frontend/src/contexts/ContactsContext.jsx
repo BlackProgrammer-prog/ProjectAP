@@ -55,9 +55,26 @@ export const ContactsProvider = ({ children }) => {
             } else {
                 alert(`خطا در حذف مخاطب: ${response.message}`);
             }
-        } else if (messageType === 'search_user_response' || response.hasOwnProperty('results')) {
+        } else if (response.status === 'success' && Array.isArray(response.results) && response.results.some(r => r && Object.prototype.hasOwnProperty.call(r, 'online'))) {
+            // Presence results: [{ email, online: 1|0 }, ...]
+            try {
+                const results = response.results || [];
+                const map = new Map();
+                results.forEach((r) => {
+                    if (r && typeof r.email === 'string') map.set(r.email, Number(r.online) === 1 ? 1 : 0);
+                });
+                // Update contacts state by email
+                setContacts((prev) => prev.map((c) => (c && c.email && map.has(c.email) ? { ...c, status: map.get(c.email) } : c)));
+                // Update PV profiles status and save back
+                const pv = loadPV();
+                const updatedPv = (pv || []).map((p) => (p && p.email && map.has(p.email) ? { ...p, status: map.get(p.email) } : p));
+                savePV(updatedPv);
+            } catch (err) {
+                console.error('Failed to process presence results:', err);
+            }
+        } else if (messageType === 'search_user_response') {
             console.log('🧠 Contacts Handler: Identified as SEARCH_USER response.');
-             if (response.status === 'success') {
+            if (response.status === 'success') {
                 setSearchResults(response.results || []);
             } else {
                 setSearchResults([]);
@@ -80,29 +97,6 @@ export const ContactsProvider = ({ children }) => {
                 }
             } catch (err) {
                 console.error('Failed to process open_chats:', err);
-            }
-        } else if (response.status === 'success' && Array.isArray(response.results)) {
-            // Presence results: [{ email, online: 1|0 }, ...]
-            try {
-                const results = response.results || [];
-                const map = new Map();
-                results.forEach((r) => {
-                    if (r && typeof r.email === 'string') map.set(r.email, Number(r.online) === 1 ? 1 : 0);
-                });
-                // Update contacts state by email
-                setContacts((prev) => prev.map((c) => {
-                    if (c && c.email && map.has(c.email)) return { ...c, status: map.get(c.email) };
-                    return c;
-                }));
-                // Update PV profiles status and save back
-                const pv = loadPV();
-                const updatedPv = (pv || []).map((p) => {
-                    if (p && p.email && map.has(p.email)) return { ...p, status: map.get(p.email) };
-                    return p;
-                });
-                savePV(updatedPv);
-            } catch (err) {
-                console.error('Failed to process presence results:', err);
             }
         }
     }, [token, user]);
@@ -154,18 +148,19 @@ export const ContactsProvider = ({ children }) => {
     // Every 15 seconds, check online presence for contacts + PV emails
     useEffect(() => {
         if (!isAuthenticated || !token) return;
-        const interval = setInterval(() => {
+        const tick = () => {
             try {
-                const pvEmails = getStoredEmails();
+                const pv = loadPV();
+                const pvEmails = (pv || []).map((p) => p && p.email).filter((e) => typeof e === 'string');
                 const contactEmails = (contacts || []).map((c) => c && c.email).filter((e) => typeof e === 'string');
                 const emails = Array.from(new Set([...(pvEmails || []), ...(contactEmails || [])]));
-                if (emails.length > 0) {
-                    webSocketService.send({ type: 'check_online_by_emails', token, emails });
-                }
+                if (emails.length > 0) webSocketService.send({ type: 'check_online_by_emails', token, emails });
             } catch (e) {
                 console.error('Presence interval failed:', e);
             }
-        }, 15000);
+        };
+        const interval = setInterval(tick, 15000);
+        tick();
         return () => clearInterval(interval);
     }, [isAuthenticated, token, contacts]);
 

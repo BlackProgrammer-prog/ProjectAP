@@ -47,11 +47,25 @@ const Header = ({ chatData, onBlockUser, onDeleteChat, onSearchChange, isSearchA
         username: p.customUrl,
         name: p.fullName || p.username || p.email,
         img: resolveAvatarUrl(p.avatarUrl),
-        online: false,
     }) : null;
-    const pv = loadPV();
-    const pvChat = (pv || []).find((p) => p.customUrl === username);
-    const chat = chatData ? normalize(chatData) : normalize(pvChat);
+    const [contact, setContact] = useState(() => {
+        const pv = loadPV();
+        const pvChat = (pv || []).find((p) => p && (p.customUrl === username || p.username === username || p.email === username));
+        return chatData ? normalize(chatData) : normalize(pvChat);
+    });
+    const [online, setOnline] = useState(false);
+    useEffect(() => {
+        const update = () => {
+            const pv = loadPV();
+            const pvChat = (pv || []).find((p) => p && (p.customUrl === username || p.username === username || p.email === username));
+            const norm = chatData ? normalize(chatData) : normalize(pvChat);
+            if (norm) setContact(norm);
+            setOnline(!!pvChat && Number(pvChat.status) === 1);
+        };
+        update();
+        const id = setInterval(update, 1500);
+        return () => clearInterval(id);
+    }, [username, chatData]);
     const isBlocked = blockedUsers.includes(username);
 
     const handleAvatarClick = () => {
@@ -111,7 +125,7 @@ const Header = ({ chatData, onBlockUser, onDeleteChat, onSearchChange, isSearchA
     }
 
     // اگر کاربر پیدا نشد، هدر خالی نمایش بده
-    if (!chat) {
+    if (!contact) {
         return (
             <Stack>
                 <Box
@@ -167,10 +181,10 @@ const Header = ({ chatData, onBlockUser, onDeleteChat, onSearchChange, isSearchA
                                 vertical: 'bottom',
                                 horizontal: 'right'
                             }}
-                            variant={chat.online && !isBlocked ? 'dot' : undefined}
+                            variant={online && !isBlocked ? 'dot' : undefined}
                         >
                             <Avatar
-                                src={chat.img}
+                                src={contact.img}
                                 onClick={handleAvatarClick}
                                 sx={{
                                     cursor: 'pointer',
@@ -187,14 +201,16 @@ const Header = ({ chatData, onBlockUser, onDeleteChat, onSearchChange, isSearchA
                             top: 30,
                             left: 520
                         }}>
-                            <Typography variant="h6">{chat.name}</Typography>
+                            <Typography variant="h6">{contact.name}</Typography>
                             <Stack sx={{
                                 position: 'fixed',
                                 top: 60
                             }}>
-                                <Typography variant='caption'>
-                                    {isBlocked ? "Blocked" : (chat.online ? "Online" : "Offline")}
-                                </Typography>
+                                {!isBlocked && online && (
+                                    <Typography variant='caption' color={'success.main'}>
+                                        Online
+                                    </Typography>
+                                )}
                             </Stack>
                         </Stack>
                         <Stack

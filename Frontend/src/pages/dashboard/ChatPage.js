@@ -339,7 +339,7 @@ const ChatPage = () => {
         } catch {}
     };
 
-    // When the conversation view loads or updates, ensure existing unread incoming messages are marked as read
+    // When opening a chat or messages arrive, mark all unread incoming as read
     useEffect(() => {
         if (!token) return;
         const keyOther = peerEmail || username;
@@ -354,7 +354,7 @@ const ChatPage = () => {
         const updated = messages.map((m) => (m && m.incoming === true && m.read !== true ? { ...m, read: true } : m));
         setMessages(updated);
         savePrivateChat(keyOther, updated);
-    }, [token, peerEmail, username]);
+    }, [token, peerEmail, username, messages]);
 
     if (!chatProfile) return <div>مخاطب یافت نشد</div>;
 

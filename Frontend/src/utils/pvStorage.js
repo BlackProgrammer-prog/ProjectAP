@@ -25,9 +25,19 @@ export function savePV(profiles) {
 export function upsertProfile(profile) {
   if (!profile || !profile.email) return;
   const current = loadPV();
-  const without = current.filter((p) => p && p.email !== profile.email);
-  const updated = [...without, profile];
-  savePV(updated);
+  const existing = (current || []).find((p) => p && p.email === profile.email) || null;
+  // Merge while preserving customUrl and other local-only fields if missing in incoming profile
+  const merged = existing
+    ? {
+        ...existing,
+        ...profile,
+        customUrl: profile.customUrl || existing.customUrl,
+        status: typeof profile.status !== 'undefined' ? profile.status : existing.status,
+      }
+    : profile;
+  const next = (current || []).filter((p) => p && p.email !== profile.email);
+  next.push(merged);
+  savePV(next);
 }
 
 export function getStoredEmails() {
