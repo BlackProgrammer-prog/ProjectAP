@@ -26,6 +26,7 @@ public:
     Group getGroup(const std::string& group_id);
     bool isMember(const std::string& group_id, const std::string& user_id);
     std::vector<Group> getUserGroups(const std::string& user_id);
+    bool groupExists(const std::string& group_id) { return !getGroup(group_id).id.empty(); }
 
 private:
     std::shared_ptr<Database> db_;

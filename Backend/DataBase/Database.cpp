@@ -79,8 +79,93 @@ struct Database::Impl {
             
             CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts 
             USING fts5(sender_id, receiver_id, content);
+
+            -- Groups core tables
+            CREATE TABLE IF NOT EXISTS groups (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                creator_id TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                custom_url TEXT UNIQUE NOT NULL,
+                FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS group_members (
+                group_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                joined_at INTEGER NOT NULL,
+                PRIMARY KEY (group_id, user_id),
+                FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS group_messages (
+                id TEXT PRIMARY KEY,
+                group_id TEXT NOT NULL,
+                sender_id TEXT NOT NULL,
+                content TEXT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                edited_timestamp INTEGER DEFAULT 0,
+                deleted INTEGER DEFAULT 0,
+                pinned INTEGER DEFAULT 0,
+                FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+                FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS group_message_logs (
+                id TEXT PRIMARY KEY,
+                message_id TEXT NOT NULL,
+                group_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                FOREIGN KEY (message_id) REFERENCES group_messages(id) ON DELETE CASCADE,
+                FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_group_members_gid ON group_members(group_id);
+            CREATE INDEX IF NOT EXISTS idx_group_messages_gid_ts ON group_messages(group_id, timestamp);
         )";
         executeQueryInternal(sql);
+
+        // Migrations / compatibility adjustments (idempotent best-effort)
+        // 1) Ensure groups.custom_url exists and is populated with id
+        {
+            char* errMsg = nullptr;
+            sqlite3_exec(db, "ALTER TABLE groups ADD COLUMN custom_url TEXT", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "UPDATE groups SET custom_url = id WHERE custom_url IS NULL OR custom_url = ''", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "CREATE UNIQUE INDEX IF NOT EXISTS idx_groups_custom_url ON groups(custom_url)", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+        }
+
+        // 2) Normalize group_messages schema in case of legacy (few-column) tables
+        // Add missing columns if they don't exist; ignore errors if already exist
+        {
+            char* errMsg = nullptr;
+            sqlite3_exec(db, "ALTER TABLE group_messages ADD COLUMN edited_timestamp INTEGER DEFAULT 0", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "ALTER TABLE group_messages ADD COLUMN deleted INTEGER DEFAULT 0", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "ALTER TABLE group_messages ADD COLUMN pinned INTEGER DEFAULT 0", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            // Ensure timestamp column exists; if a legacy table lacks it, attempt to add with default 0
+            sqlite3_exec(db, "ALTER TABLE group_messages ADD COLUMN timestamp INTEGER DEFAULT 0", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            // Drop any legacy tables with incorrect casing or schema (best-effort)
+            sqlite3_exec(db, "DROP TABLE IF EXISTS Group_messages", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "DROP TABLE IF EXISTS group_message", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "DROP TABLE IF EXISTS Group_message", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "DROP TABLE IF EXISTS GROUP_MESSAGES", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "DROP TABLE IF EXISTS GROUP_MESSAGE", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+        }
 
         // Try to add 'online' column if it doesn't exist (ignore error if already exists)
         // Add online column if missing (ignore error if exists)

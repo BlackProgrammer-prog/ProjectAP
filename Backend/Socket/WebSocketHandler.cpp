@@ -600,6 +600,12 @@ void WebSocketServer::setupHandlers() {
     impl_->on("update_open_chats", [this](const json& data, const std::string& clientId) {
         return handleUpdateOpenChats(data, clientId);
     });
+    // (گروه) رویدادهای پایه برای آینده نزدیک – هنوز هندلر نداریم تا منطق فعلی آسیب نبیند
+    // impl_->on("create_group", [this](const json& d, const std::string& c){ return handleCreateGroup(d,c); });
+    // impl_->on("join_group", [this](const json& d, const std::string& c){ return handleJoinGroup(d,c); });
+    // impl_->on("leave_group", [this](const json& d, const std::string& c){ return handleLeaveGroup(d,c); });
+    // impl_->on("send_group_message", [this](const json& d, const std::string& c){ return handleSendGroupMessage(d,c); });
+    // impl_->on("get_group_messages", [this](const json& d, const std::string& c){ return handleGetGroupMessages(d,c); });
 }
 
 json WebSocketServer::handleSearchUser(const json& data, const std::string& client_id) {
@@ -1109,5 +1115,37 @@ json WebSocketServer::handleUpdateOpenChats(const json& data, const std::string&
     if (user_id.empty()) return {{"status","error"},{"message","User not found"}};
     json open_chats = data["open_chats"];
     bool ok = contact_manager_ && contact_manager_->setOpenChats(user_id, open_chats);
-    return ok ? json{{"status","success"}} : json{{"status","error"},{"message","Failed to update open_chats"}};
+    if (!ok) {
+        return {{"status","error"},{"message","Failed to update open_chats"}};
+    }
+
+    // Sync reciprocal open chats: for each email in user's list, ensure the other user also
+    // has this user's email in their open_chats_json.
+    try {
+        if (contact_manager_) {
+            // Get this user's email
+            std::string my_email = contact_manager_->getEmailByUserId(user_id);
+            if (!my_email.empty()) {
+                for (const auto& item : open_chats) {
+                    if (!item.is_string()) continue;
+                    std::string peer_email = static_cast<std::string>(item);
+                    // Resolve peer id
+                    std::string peer_id = contact_manager_->findUserByEmail(peer_email);
+                    if (peer_id.empty()) continue;
+                    // Read peer's current open chats
+                    json peer_open = contact_manager_->getOpenChats(peer_id);
+                    bool exists = false;
+                    for (const auto& p : peer_open) {
+                        if (p.is_string() && static_cast<std::string>(p) == my_email) { exists = true; break; }
+                    }
+                    if (!exists) {
+                        peer_open.push_back(my_email);
+                        contact_manager_->setOpenChats(peer_id, peer_open);
+                    }
+                }
+            }
+        }
+    } catch(...) { /* best-effort sync, ignore errors */ }
+
+    return {{"status","success"}};
 }

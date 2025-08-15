@@ -20,6 +20,8 @@ public:
     std::vector<std::string> getContacts(const std::string& user_id);
     bool isContact(const std::string& user_id, const std::string& contact_email);
     std::string findUserByEmail(const std::string& email);
+    // Lookup email by user id
+    std::string getEmailByUserId(const std::string& user_id);
     json searchUsers(const std::string& query);
 
     // Persist online/offline flag in database

@@ -73,6 +73,11 @@ std::string ContactManager::findUserByEmail(const std::string& email) {
     return user.id;
 }
 
+std::string ContactManager::getEmailByUserId(const std::string& user_id) {
+    DBUser user = database_->getUserById(user_id);
+    return user.email;
+}
+
 json ContactManager::searchUsers(const std::string& query) {
     auto results = database_->searchUsers(query);
     json users = json::array();
