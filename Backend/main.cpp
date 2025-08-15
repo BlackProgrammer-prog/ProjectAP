@@ -21,6 +21,7 @@
 
 int main() {
     // تنظیمات اولیه
+    // Use the database file in Backend directory to match runtime data
     const std::string DB_PATH = "C:/Users/HOME/Desktop/ProjectAP/ProjectAP/Database/app_database.db";
     const int WS_PORT = 8081;
     const int HTTP_PORT = 8080;

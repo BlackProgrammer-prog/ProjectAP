@@ -4,7 +4,7 @@ import { Box, Stack } from "@mui/material";
 import { Chat_History } from "../../data";
 import Conversation from "../../components/Conversation";
 import Chats from "./Chats";
-import { savePrivateChat, loadPrivateChat, clearPrivateChat } from "../../utils/chatStorage";
+import { savePrivateChat, loadPrivateChat, clearPrivateChat, ensureChatExists, savePrivateChatMerged } from "../../utils/chatStorage";
 import { v4 as uuidv4 } from 'uuid';
 import { loadPV, getStoredEmails } from "../../utils/pvStorage";
 import { useAuth } from "../../Login/Component/Context/AuthContext";
@@ -15,13 +15,15 @@ const ChatPage = () => {
     const { username } = useParams(); // username == customUrl
     const { token, user } = useAuth();
     const pv = loadPV();
-    const chatProfile = useMemo(() => (pv || []).find((p) => p.customUrl === username), [pv, username]);
-    const peerEmail = chatProfile?.email || chatProfile?.username; // fallback if email is absent
+    const chatProfile = useMemo(() => (pv || []).find((p) => p.customUrl === username || p.email === username || p.username === username), [pv, username]);
+    const peerEmail = chatProfile?.email || (username && username.includes('@') ? username : undefined) || chatProfile?.username; // prefer real email
     const myEmail = user?.email;
 
     // پیام‌های چت خصوصی بین کاربر فعلی و کاربر انتخاب شده
     const [messages, setMessages] = useState(() => {
-        const loadedMessages = loadPrivateChat(username) || Chat_History;
+        const keyOther = peerEmail || username;
+        ensureChatExists(keyOther);
+        const loadedMessages = loadPrivateChat(keyOther) || Chat_History;
         // اضافه کردن id به پیام‌های موجود که id ندارند
         return loadedMessages.map(msg => ({
             ...msg,
@@ -31,16 +33,18 @@ const ChatPage = () => {
 
     // اگر username تغییر کرد، پیام‌های چت خصوصی جدید را لود کن و از سرور درخواست بگیر
     useEffect(() => {
-        const loadedMessages = loadPrivateChat(username) || Chat_History;
+        const keyOther = peerEmail || username;
+        ensureChatExists(keyOther);
+        const loadedMessages = loadPrivateChat(keyOther) || Chat_History;
         const messagesWithIds = loadedMessages.map(msg => ({
             ...msg,
             id: msg.id || uuidv4()
         }));
         setMessages(messagesWithIds);
 
-        // Request last N messages from server
+        // Request last N messages from server (by peer email)
         if (token && peerEmail) {
-            webSocketService.send({ type: 'get_messages', token, with: peerEmail, limit: 100 });
+            webSocketService.send({ type: 'get_messages', token, with: peerEmail, limit: 100, order: 'asc' });
         } else if (!peerEmail) {
             // toast warning if peer email missing
             Swal.fire({ toast: true, position: 'bottom-start', icon: 'warning', title: 'ایمیل مخاطب یافت نشد', showConfirmButton: false, timer: 2500, timerProgressBar: true });
@@ -113,11 +117,12 @@ const ChatPage = () => {
                 return;
             }
 
-            // Handle bulk messages response
-            if (data && data.status === 'success' && Array.isArray(data.messages)) {
+            // Handle bulk messages response (be lenient on status)
+            if (data && Array.isArray(data.messages)) {
+                const keyOther = peerEmail || username;
                 const adapted = data.messages.map(adaptServerMessage);
-                setMessages(adapted);
-                savePrivateChat(username, adapted);
+                const merged = savePrivateChatMerged(keyOther, adapted);
+                setMessages(merged);
                 Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: `دریافت ${data.count ?? adapted.length} پیام`, showConfirmButton: false, timer: 1800, timerProgressBar: true });
                 return;
             }
@@ -130,8 +135,9 @@ const ChatPage = () => {
                                      (incomingMsg.receiver && myEmail && String(incomingMsg.receiver).toLowerCase() === String(myEmail).toLowerCase());
                 if (involvesPeer) {
                     setMessages((prev) => {
+                        const keyOther = peerEmail || username;
                         const next = [...prev, incomingMsg];
-                        savePrivateChat(username, next);
+                        savePrivateChat(keyOther, next);
                         return next;
                     });
                 }
@@ -152,9 +158,10 @@ const ChatPage = () => {
             receiver: peerEmail || username, // کاربر مقابل
             timestamp: new Date().toISOString(),
         };
+        const keyOther = peerEmail || username;
         const updated = [...messages, newMessage];
         setMessages(updated);
-        savePrivateChat(username, updated);
+        savePrivateChat(keyOther, updated);
 
         // Try to send to server as well (API contract)
         if (token && peerEmail) {
@@ -175,9 +182,10 @@ const ChatPage = () => {
 
     // حذف پیام از چت خصوصی
     const handleDeleteMessage = (messageId) => {
+        const keyOther = peerEmail || username;
         const updated = messages.filter(msg => msg.id !== messageId);
         setMessages(updated);
-        savePrivateChat(username, updated);
+        savePrivateChat(keyOther, updated);
     };
 
     // حذف کامل چت
@@ -227,8 +235,9 @@ const ChatPage = () => {
             return msg;
         });
 
+        const keyOther = peerEmail || username;
         setMessages(updatedMessages);
-        savePrivateChat(username, updatedMessages);
+        savePrivateChat(keyOther, updatedMessages);
     };
 
     // فوروارد پیام به مخاطب دیگر

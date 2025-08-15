@@ -1,9 +1,28 @@
-// تعریف کاربر فعلی (می‌توانید این را از context یا redux بگیرید)
-const CURRENT_USER = "me"; // یا هر نامی که می‌خواهید
+// شناسه کاربر فعلی را از localStorage می‌خوانیم (ترجیح: email)
+function getCurrentUserKeyPart() {
+    try {
+        const raw = localStorage.getItem('user');
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            const id = parsed?.email || parsed?.username || parsed?.id || 'me';
+            return String(id);
+        }
+    } catch {}
+    return 'me';
+}
 
 // کلید ذخیره‌سازی را بر اساس شناسه چت (معمولاً customUrl) بسازید
 export function getChatKey(otherUser) {
-    return `chat_between_${CURRENT_USER}_${otherUser}`;
+    const current = getCurrentUserKeyPart();
+    return `chat_between_${current}_${otherUser}`;
+}
+
+// اگر کلید چت وجود ندارد، با آرایه خالی ایجاد کند
+export function ensureChatExists(otherUser) {
+    const chatKey = getChatKey(otherUser);
+    if (localStorage.getItem(chatKey) == null) {
+        localStorage.setItem(chatKey, JSON.stringify([]));
+    }
 }
 
 // ذخیره پیام‌های چت خصوصی بین دو کاربر (جایگزینی کامل)
@@ -71,8 +90,10 @@ export function getAllPrivateChats() {
     const chats = {};
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith(`chat_between_${CURRENT_USER}_`)) {
-            const otherUser = key.replace(`chat_between_${CURRENT_USER}_`, '');
+        const current = getCurrentUserKeyPart();
+        const prefix = `chat_between_${current}_`;
+        if (key && key.startsWith(prefix)) {
+            const otherUser = key.replace(prefix, '');
             try { chats[otherUser] = JSON.parse(localStorage.getItem(key)); } catch { chats[otherUser] = []; }
         }
     }
@@ -84,7 +105,9 @@ export function clearAllPrivateChatsForCurrentUser() {
     const keys = [];
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith(`chat_between_${CURRENT_USER}_`)) keys.push(key);
+        const current = getCurrentUserKeyPart();
+        const prefix = `chat_between_${current}_`;
+        if (key && key.startsWith(prefix)) keys.push(key);
     }
     keys.forEach((k) => localStorage.removeItem(k));
 }

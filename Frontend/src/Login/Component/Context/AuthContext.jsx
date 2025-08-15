@@ -1,5 +1,6 @@
 import React, {createContext, useContext, useState, useEffect, useCallback, useRef} from 'react';
 import webSocketService from "../Services/WebSocketService";
+import { clearAllPrivateChatsForCurrentUser } from '../../../utils/chatStorage';
 
 const AuthContext = createContext();
 const HEARTBEAT_INTERVAL = 3000; // 3 ثانیه
@@ -40,20 +41,13 @@ export const AuthProvider = ({ children }) => {
         setToken(null);
         setIsAuthenticated(false);
         try {
+            // Remove all private chat caches for current user (email-based prefix)
+            clearAllPrivateChatsForCurrentUser();
+            // Remove PV cache
+            localStorage.removeItem('PV');
             // Remove auth
             localStorage.removeItem('user');
             localStorage.removeItem('token');
-            // Remove PV cache
-            localStorage.removeItem('PV');
-            // Remove all private chat caches like chat_between_me_<customUrl>
-            const keysToRemove = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith('chat_between_me_')) {
-                    keysToRemove.push(key);
-                }
-            }
-            keysToRemove.forEach((k) => localStorage.removeItem(k));
         } catch (e) {
             console.error('Failed to cleanup localStorage on logout:', e);
         }

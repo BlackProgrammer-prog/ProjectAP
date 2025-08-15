@@ -562,6 +562,10 @@ void WebSocketServer::setupHandlers() {
     impl_->on("search_messages", [this](const json& data, const std::string& clientId) {
         return handleSearchMessages(data, clientId);
     });
+    
+    impl_->on("get_messages", [this](const json& data, const std::string& clientId) {
+        return handleGetMessages(data, clientId);
+    });
 
     impl_->on("search_user", [this](const json& data, const std::string& clientId) {
         return handleSearchUser(data, clientId);
@@ -703,6 +707,11 @@ json WebSocketServer::handleSendMessage(const json& data, const std::string& cli
     msg.timestamp = std::time(nullptr);
     msg.type = MessageType::PRIVATE;
     msg.status = MessageStatus::SENT;
+    // Ensure default flags are set so messages are retrievable
+    msg.deleted = false;
+    msg.delivered = false;
+    msg.read = false;
+    msg.edited_timestamp = msg.timestamp;
 
     if(chat_manager_->sendMessage(msg)) {
         // Notify receiver
@@ -720,6 +729,52 @@ json WebSocketServer::handleSendMessage(const json& data, const std::string& cli
     }
 
     return {{"status", "error"}, {"message", "Failed to send message"}};
+}
+
+json WebSocketServer::handleGetMessages(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"])) {
+        return {{"status","error"},{"message","Invalid token"}};
+    }
+    if (!data.contains("with")) {
+        return {{"status","error"},{"message","Missing 'with' (peer email)"}};
+    }
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    std::string peer_email = data["with"];
+    int limit = 100;
+    try {
+        if (data.contains("limit")) {
+            if (data["limit"].is_number_integer()) {
+                limit = data["limit"].get<int>();
+            } else if (data["limit"].is_string()) {
+                limit = std::stoi(static_cast<std::string>(data["limit"]));
+            }
+        }
+    } catch(...) {}
+    if (limit <= 0) limit = 1;
+    if (limit > 1000) limit = 1000;
+    
+    std::string order = "asc";
+    if (data.contains("order") && data["order"].is_string()) {
+        order = static_cast<std::string>(data["order"]);
+    }
+    if (user_id.empty()) {
+        return {{"status","error"},{"message","User not found"}};
+    }
+    if (!chat_manager_) {
+        return {{"status","error"},{"message","Chat manager not initialized"}};
+    }
+    std::string peer_id = contact_manager_ ? contact_manager_->findUserByEmail(peer_email) : "";
+    if (peer_id.empty()) {
+        return {{"status","error"},{"message","Peer not found"}};
+    }
+    auto messages = chat_manager_->getMessages(user_id, peer_id, limit);
+    // DB returns latest first; convert to ascending if requested (default asc)
+    if (order != "desc") {
+        std::reverse(messages.begin(), messages.end());
+    }
+    json arr = json::array();
+    for (const auto& m : messages) arr.push_back(m.toJson());
+    return {{"status","success"},{"messages", arr}};
 }
 
 json WebSocketServer::handleAddContact(const json& data, const std::string& client_id) {

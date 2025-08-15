@@ -344,7 +344,7 @@ bool Database::storeMessage(const std::string& id,
             sender_id,
             receiver_id,
             content,
-            std::to_string(timestamp),
+            std::to_string(timestamp > 0 ? timestamp : std::time(nullptr)),
             delivered ? "1" : "0",
             read ? "1" : "0"
     }).success;
@@ -357,7 +357,8 @@ std::vector<std::vector<std::string>> Database::getMessagesBetweenUsers(
 ) {
     std::vector<std::vector<std::string>> messages;
     std::string sql = R"(
-        SELECT id, sender_id, receiver_id, content, timestamp, delivered, read
+        SELECT id, sender_id, receiver_id, content,
+               COALESCE(timestamp, 0), COALESCE(delivered, 0), COALESCE(read, 0)
         FROM private_messages
         WHERE (sender_id = ? AND receiver_id = ?)
         OR (sender_id = ? AND receiver_id = ?)
