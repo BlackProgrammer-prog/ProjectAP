@@ -13,3 +13,5 @@ private:
     std::vector<std::string> commands_;
     int delaySeconds_;
 };
+
+#endif // STARTER_H
