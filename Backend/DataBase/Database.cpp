@@ -87,6 +87,7 @@ struct Database::Impl {
                 creator_id TEXT NOT NULL,
                 created_at INTEGER NOT NULL,
                 custom_url TEXT UNIQUE NOT NULL,
+                profile_image TEXT DEFAULT '',
                 FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
             );
 
@@ -130,7 +131,7 @@ struct Database::Impl {
         executeQueryInternal(sql);
 
         // Migrations / compatibility adjustments (idempotent best-effort)
-        // 1) Ensure groups.custom_url exists and is populated with id
+        // 1) Ensure groups.custom_url exists and is populated with id; add profile_image column
         {
             char* errMsg = nullptr;
             sqlite3_exec(db, "ALTER TABLE groups ADD COLUMN custom_url TEXT", nullptr, nullptr, &errMsg);
@@ -138,6 +139,10 @@ struct Database::Impl {
             sqlite3_exec(db, "UPDATE groups SET custom_url = id WHERE custom_url IS NULL OR custom_url = ''", nullptr, nullptr, &errMsg);
             if (errMsg) sqlite3_free(errMsg);
             sqlite3_exec(db, "CREATE UNIQUE INDEX IF NOT EXISTS idx_groups_custom_url ON groups(custom_url)", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "ALTER TABLE groups ADD COLUMN profile_image TEXT", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "UPDATE groups SET profile_image = '' WHERE profile_image IS NULL", nullptr, nullptr, &errMsg);
             if (errMsg) sqlite3_free(errMsg);
         }
 
@@ -155,13 +160,9 @@ struct Database::Impl {
             sqlite3_exec(db, "ALTER TABLE group_messages ADD COLUMN timestamp INTEGER DEFAULT 0", nullptr, nullptr, &errMsg);
             if (errMsg) sqlite3_free(errMsg);
             // Drop any legacy tables with incorrect casing or schema (best-effort)
-            sqlite3_exec(db, "DROP TABLE IF EXISTS Group_messages", nullptr, nullptr, &errMsg);
-            if (errMsg) sqlite3_free(errMsg);
             sqlite3_exec(db, "DROP TABLE IF EXISTS group_message", nullptr, nullptr, &errMsg);
             if (errMsg) sqlite3_free(errMsg);
             sqlite3_exec(db, "DROP TABLE IF EXISTS Group_message", nullptr, nullptr, &errMsg);
-            if (errMsg) sqlite3_free(errMsg);
-            sqlite3_exec(db, "DROP TABLE IF EXISTS GROUP_MESSAGES", nullptr, nullptr, &errMsg);
             if (errMsg) sqlite3_free(errMsg);
             sqlite3_exec(db, "DROP TABLE IF EXISTS GROUP_MESSAGE", nullptr, nullptr, &errMsg);
             if (errMsg) sqlite3_free(errMsg);

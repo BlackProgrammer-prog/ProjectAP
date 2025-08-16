@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, {createContext, useContext, useState, useEffect, useCallback, useRef} from 'react';
 import webSocketService from '../Login/Component/Services/WebSocketService';
 import { useAuth } from '../Login/Component/Context/AuthContext';
 import { upsertProfile, getStoredEmails, loadPV, savePV } from '../utils/pvStorage';
@@ -145,24 +145,28 @@ export const ContactsProvider = ({ children }) => {
         }
     }, [isAuthenticated, token]);
 
-    // Every 15 seconds, check online presence for contacts + PV emails
+    // Keep latest contacts in a ref to avoid re-creating the interval on each contacts update
+    const contactsRef = useRef(contacts);
+    useEffect(() => { contactsRef.current = contacts; }, [contacts]);
+
+    // Every 15 seconds, check online presence for contacts + PV emails (interval set up once per auth)
     useEffect(() => {
         if (!isAuthenticated || !token) return;
         const tick = () => {
             try {
                 const pv = loadPV();
                 const pvEmails = (pv || []).map((p) => p && p.email).filter((e) => typeof e === 'string');
-                const contactEmails = (contacts || []).map((c) => c && c.email).filter((e) => typeof e === 'string');
+                const contactEmails = (contactsRef.current || []).map((c) => c && c.email).filter((e) => typeof e === 'string');
                 const emails = Array.from(new Set([...(pvEmails || []), ...(contactEmails || [])]));
                 if (emails.length > 0) webSocketService.send({ type: 'check_online_by_emails', token, emails });
             } catch (e) {
                 console.error('Presence interval failed:', e);
             }
         };
-        const interval = setInterval(tick, 15000);
+        const interval = setInterval(tick, 10000);
         tick();
         return () => clearInterval(interval);
-    }, [isAuthenticated, token, contacts]);
+    }, [isAuthenticated, token]);
 
     // On every refresh (mount while authenticated), re-fetch profiles for stored emails in PV
     useEffect(() => {

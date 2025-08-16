@@ -22,6 +22,8 @@ public:
     std::string findUserByEmail(const std::string& email);
     // Lookup email by user id
     std::string getEmailByUserId(const std::string& user_id);
+    // Expose database handle for internal server queries (read-only usage preferred)
+    std::shared_ptr<Database> getDatabase() { return database_; }
     json searchUsers(const std::string& query);
 
     // Persist online/offline flag in database

@@ -16,6 +16,8 @@
 #include "PrivateChatManager.h"
 #include "NotificationManager.h"
 #include "ProfileManager.h"
+#include "GroupManager.hpp"
+#include "GroupChatManagre.hpp"
 #include "HttpServer.h"
 #include <filesystem>
 
@@ -45,6 +47,8 @@ int main() {
         auto status_manager = std::make_shared<UserStatusManager>();
         auto contact_manager = std::make_shared<ContactManager>(db);
         auto chat_manager = std::make_shared<PrivateChatManager>(db);
+        auto group_manager = std::make_shared<GroupManager>(db);
+        auto group_chat_manager = std::make_shared<GroupChatManager>(db, group_manager);
         
         // 4. راه‌اندازی سرور WebSocket با وابستگی‌های جدید
         WebSocketServer server(
@@ -60,6 +64,7 @@ int main() {
         // 5. تنظیم chat_manager برای سرور
         server.setChatManager(chat_manager);
         server.setProfileManager(profile_manager);
+        server.setGroupManagers(group_manager, group_chat_manager);
 
 
         // 6. ایجاد و تنظیم NotificationManager
