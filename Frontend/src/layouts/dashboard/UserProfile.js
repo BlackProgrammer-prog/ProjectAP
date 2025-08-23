@@ -10,7 +10,7 @@ import { resolveAvatarUrl } from '../../utils/resolveAvatarUrl';
 import { useAuth } from '../../Login/Component/Context/AuthContext';
 import webSocketService from '../../Login/Component/Services/WebSocketService';
 import Swal from 'sweetalert2';
-import { findGroupByIdOrUrl } from '../../utils/groupStorage';
+import { findGroupByIdOrUrl, removeGroupById } from '../../utils/groupStorage';
 
 const UserProfile = ({ onClose, onBlockUser, onDeleteChat, isBlocked }) => {
     const { username, groupId } = useParams();
@@ -103,10 +103,41 @@ const UserProfile = ({ onClose, onBlockUser, onDeleteChat, isBlocked }) => {
                         <Typography variant="h5" sx={{ fontWeight: 600 }}>{group.name}</Typography>
 
                         <Divider sx={{ width: '100%', my: 2 }} />
-
-                        <Button color="error" variant="outlined" fullWidth onClick={onClose}>
-                            Leave Group
-                        </Button>
+                        <Stack spacing={1} sx={{ width: '100%' }}>
+                            <Button
+                                color="error"
+                                variant="outlined"
+                                fullWidth
+                                onClick={() => {
+                                    try {
+                                        if (token && group?.id) {
+                                            webSocketService.send({ type: 'leave_group', token, group_id: group.id });
+                                            removeGroupById(group.id);
+                                            onClose && onClose();
+                                            Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: 'از گروه خارج شدید', showConfirmButton: false, timer: 1600, timerProgressBar: true });
+                                        }
+                                    } catch {}
+                                }}
+                            >
+                                Leave Group
+                            </Button>
+                            <Button
+                                variant="contained"
+                                fullWidth
+                                onClick={() => {
+                                    const email = prompt('ایمیل عضو جدید را وارد کنید:');
+                                    if (!email) return;
+                                    try {
+                                        if (token && group?.id) {
+                                            webSocketService.send({ type: 'invite_to_group', token, group_id: group.id, email });
+                                            Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: 'دعوت‌نامه ارسال شد', showConfirmButton: false, timer: 1600, timerProgressBar: true });
+                                        }
+                                    } catch {}
+                                }}
+                            >
+                                Invite Member
+                            </Button>
+                        </Stack>
                     </Stack>
                 </Box>
             </Box>

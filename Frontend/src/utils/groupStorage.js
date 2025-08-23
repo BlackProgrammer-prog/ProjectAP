@@ -30,6 +30,16 @@ export function upsertGroup(group) {
   saveGroups(next);
 }
 
+export function removeGroupById(groupId) {
+  try {
+    const current = loadGroups();
+    const next = (current || []).filter((g) => g && g.id !== groupId);
+    saveGroups(next);
+  } catch (e) {
+    console.error('Failed to remove group from storage:', e);
+  }
+}
+
 export function getStoredGroupIds() {
   const current = loadGroups();
   return (current || [])

@@ -22,6 +22,9 @@ const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForward
 
     // تعیین آواتار بر اساس فرستنده
     const getAvatar = () => {
+        if (message && message.senderAvatar) {
+            return message.senderAvatar;
+        }
         if (isOwnMessage) {
             return faker.image.avatar();
         } else {
@@ -131,6 +134,20 @@ const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForward
                         } catch {}
                     }}
                 >
+                    {/* نام فرستنده برای پیام‌های گروهی */}
+                    {message?.senderName && (
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                color: isOwnMessage ? "rgba(255,255,255,0.85)" : theme.palette.text.secondary,
+                                fontWeight: 600,
+                                display: 'block',
+                                mb: 0.5,
+                            }}
+                        >
+                            {message.senderName}
+                        </Typography>
+                    )}
                     {/* نمایش ری‌اکشن‌ها */}
                     <MessageReactions
                         message={message}
