@@ -18,7 +18,10 @@ import { Camera } from 'phosphor-react';
 import RHFAutocomplete from "../../components/hook-form/RHFAutocomplete";
 // import { TAGS_OPTION } from 'path/to/your/file';
 import React from 'react'
-import { useNavigate } from 'react-router-dom';
+import Swal from "sweetalert2";
+import { useAuth } from "../../Login/Component/Context/AuthContext";
+import webSocketService from "../../Login/Component/Services/WebSocketService";
+import { useContacts } from "../../contexts/ContactsContext";
 
 
 const Transition = React.forwardRef(function Transition(props, ref) {
@@ -27,7 +30,8 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 
 
 const CreateGroupForm = ({ onCancel }) => {
-    const navigate = useNavigate()
+    const { token } = useAuth();
+    const { contacts } = useContacts();
     const handleBack = () => {
         onCancel && onCancel();
     };
@@ -58,17 +62,54 @@ const CreateGroupForm = ({ onCancel }) => {
 
     const onSubmit = async (data) => {
         try {
-            //  API Call
-            console.log("DATA", data);
-            onCancel && onCancel();
+            if (!token) {
+                Swal.fire({ icon: 'error', title: 'وارد نشده‌اید', text: 'ابتدا وارد حساب کاربری شوید.' });
+                return;
+            }
+
+            const payload = {
+                type: 'create_group',
+                token,
+                name: data?.title?.trim() || 'New Group',
+                members: Array.isArray(data?.members) ? data.members.map((m) => (typeof m === 'string' ? m : String(m))).filter(Boolean) : [],
+            };
+
+            let resolved = false;
+            const off = webSocketService.addGeneralListener((raw) => {
+                try {
+                    const res = JSON.parse(raw);
+                    // Accept either a typed response or a bare success payload
+                    const looksLikeCreateGroup = (res && (res.type === 'create_group_response' || (res.status && (res.group_id || res.custom_url))));
+                    if (!looksLikeCreateGroup) return;
+
+                    resolved = true;
+                    off && off();
+                    clearTimeout(timerId);
+
+                    if (res.status === 'success') {
+                        Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: 'گروه با موفقیت ساخته شد', showConfirmButton: false, timer: 1800, timerProgressBar: true });
+                        onCancel && onCancel();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'خطا در ساخت گروه', text: res.message || 'لطفا دوباره تلاش کنید.' });
+                    }
+                } catch {}
+            });
+
+            const timerId = setTimeout(() => {
+                if (resolved) return;
+                off && off();
+                Swal.fire({ icon: 'warning', title: 'پاسخی دریافت نشد', text: 'اتصال را بررسی کرده و مجدد تلاش کنید.' });
+            }, 10000);
+
+            webSocketService.send(payload);
         } catch (error) {
             console.error(error);
+            Swal.fire({ icon: 'error', title: 'خطای غیرمنتظره', text: 'مشکلی پیش آمد. دوباره تلاش کنید.' });
         }
     };
 
     return (
-        <FormProvider methods={methods} >
-            {/* onSubmit={handleSubmit(onSubmit)} */}
+        <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
             <Stack spacing={3}>
                 <RHFTextField name="title" label="Title" />
                 <RHFAutocomplete
@@ -76,7 +117,8 @@ const CreateGroupForm = ({ onCancel }) => {
                     label="Members"
                     multiple
                     freeSolo
-                    // options={TAGS_OPTION.map((option) => option)}
+                    options={(contacts || []).map((c) => c?.email).filter(Boolean)}
+                    filterSelectedOptions
                     ChipProps={{ size: "medium" }}
                 />
                 {/* Optional group icon upload */}
