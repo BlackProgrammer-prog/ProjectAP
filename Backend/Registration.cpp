@@ -62,5 +62,14 @@ json Registration::handleRegistration(const json& data, const std::string& clien
         return {{"status", "error"}, {"message", "خطا در ایجاد حساب کاربری"}};
     }
 
+    // Log register event in stat table
+    DBUser newUser = db_->getUserByEmail(email);
+    if (!newUser.id.empty()) {
+        db_->executeQueryWithParams(
+            "INSERT INTO stat (user_id, event, timestamp) VALUES (?, 'register', ?)",
+            { newUser.id, std::to_string(std::time(nullptr)) }
+        );
+    }
+
     return {{"status", "success"}, {"message", "ثبت‌نام با موفقیت انجام شد"}};
 }

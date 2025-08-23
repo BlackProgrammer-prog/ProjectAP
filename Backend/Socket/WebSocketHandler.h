@@ -86,6 +86,8 @@ private:
     json handleSearchGroupMessages(const json& data, const std::string& client_id);
     json handleGetGroupInfo(const json& data, const std::string& client_id);
     json handleGetUserGroupsByEmail(const json& data, const std::string& client_id);
+    json handleGetGroupMembers(const json& data, const std::string& client_id);
+    json handleGetAndClearInvitations(const json& data, const std::string& client_id);
 
     // Dependencies
     std::shared_ptr<JwtAuth> jwt_auth_;

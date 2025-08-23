@@ -31,7 +31,17 @@ struct Database::Impl {
                 settings_json TEXT NOT NULL,
                 custom_url TEXT UNIQUE NOT NULL,
                 contacts_json TEXT,
-                open_chats_json TEXT
+                open_chats_json TEXT,
+                invitation TEXT
+            );
+            
+            -- Stats table for user login/register events
+            CREATE TABLE IF NOT EXISTS stat (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                event TEXT NOT NULL, -- 'register' or 'login'
+                timestamp INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
             
             CREATE TABLE IF NOT EXISTS contacts (
@@ -134,6 +144,11 @@ struct Database::Impl {
         // 1) Ensure groups.custom_url exists and is populated with id; add profile_image column
         {
             char* errMsg = nullptr;
+            // invitations column for users
+            sqlite3_exec(db, "ALTER TABLE users ADD COLUMN invitation TEXT", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "UPDATE users SET invitation = '[]' WHERE invitation IS NULL OR invitation = ''", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
             sqlite3_exec(db, "ALTER TABLE groups ADD COLUMN custom_url TEXT", nullptr, nullptr, &errMsg);
             if (errMsg) sqlite3_free(errMsg);
             sqlite3_exec(db, "UPDATE groups SET custom_url = id WHERE custom_url IS NULL OR custom_url = ''", nullptr, nullptr, &errMsg);

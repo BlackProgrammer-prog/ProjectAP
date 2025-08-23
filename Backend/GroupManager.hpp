@@ -13,6 +13,7 @@ struct Group {
     std::string creator_id;
     time_t created_at;
     std::vector<std::string> members;
+    std::string profile_image;
 };
 
 class GroupManager {
