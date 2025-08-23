@@ -32,8 +32,6 @@ const GroupChatPage = () => {
     // Refresh group info and messages from server
     useEffect(() => {
         if (!token || !groupId) return;
-        webSocketService.send({ type: 'get_group_info', token, group_id: group?.id || groupId });
-        webSocketService.send({ type: 'get_group_messages', token, group_id: group?.id || groupId, limit: 50, order: 'asc' });
         const off = webSocketService.addGeneralListener((raw) => {
             try {
                 const data = JSON.parse(raw);
@@ -107,8 +105,12 @@ const GroupChatPage = () => {
                 }
             } catch {}
         });
+        // Ensure connection is active before sending; send after listener is registered
+        try { webSocketService.connect(); } catch {}
+        webSocketService.send({ type: 'get_group_info', token, group_id: group?.id || groupId });
+        webSocketService.send({ type: 'get_group_messages', token, group_id: group?.id || groupId, limit: 50, order: 'asc' });
         return () => off && off();
-    }, [token, groupId, group]);
+    }, [token, groupId]);
 
     // Placeholder handlers; will be implemented with group messaging later
     const handleSend = (text) => {

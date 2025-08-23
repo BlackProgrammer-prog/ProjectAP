@@ -48,6 +48,8 @@ export const AuthProvider = ({ children }) => {
             clearAllPrivateChatsForCurrentUser();
             // Remove PV cache
             localStorage.removeItem('PV');
+            // Remove Groups cache
+            localStorage.removeItem('GROUPS');
             // Remove auth
             localStorage.removeItem('user');
             localStorage.removeItem('token');
