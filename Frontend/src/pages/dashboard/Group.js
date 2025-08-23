@@ -197,12 +197,15 @@
 
 import { alpha, Avatar, Badge, Box, Divider, IconButton, InputBase, Stack, styled, Typography, useTheme } from '@mui/material';
 import { CaretLeft, MagnifyingGlass, Plus, Users } from 'phosphor-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { faker } from '@faker-js/faker';
 import { ChatList } from '../../data';
 import { Link, useNavigate } from "react-router-dom";
 import { PATH_DASHBOARD } from "../../routes/paths";
 import CreateGroup from './CreateGroup';
+import { useAuth } from "../../Login/Component/Context/AuthContext";
+import webSocketService from "../../Login/Component/Services/WebSocketService";
+import { loadGroups, upsertGroup } from "../../utils/groupStorage";
 
 const avatar = faker.image.avatar();
 
@@ -311,10 +314,65 @@ const Group = () => {
     const Theme = useTheme();
     const navigate = useNavigate();
     const [openDialog, setOpenDialog] = useState(false);
+    const { token, user, isAuthenticated } = useAuth();
+    const [groups, setGroups] = useState(() => loadGroups());
 
     const handleCloseDialog = () => {
         setOpenDialog(false);
     };
+
+    // Keep groups synced with localStorage changes from other tabs/components
+    useEffect(() => {
+        const onStorage = (e) => {
+            if (e.storageArea === localStorage && e.key === 'GROUPS') {
+                setGroups(loadGroups());
+            }
+        };
+        window.addEventListener('storage', onStorage);
+        return () => window.removeEventListener('storage', onStorage);
+    }, []);
+
+    // Fetch user groups on load
+    useEffect(() => {
+        if (!isAuthenticated || !token || !user?.email) return;
+        webSocketService.send({ type: 'get_user_groups_by_email', token, email: user.email });
+    }, [isAuthenticated, token, user]);
+
+    // Listen for group list and group info responses
+    const handleWs = useCallback((raw) => {
+        let data;
+        try { data = JSON.parse(raw); } catch { return; }
+        if (!data) return;
+
+        // Handle group list
+        if (data.type === 'get_user_groups_by_email_response' || Array.isArray(data.group_ids)) {
+            if (data.status === 'success' && Array.isArray(data.group_ids)) {
+                (data.group_ids || []).forEach((gid) => {
+                    try {
+                        if (token && typeof gid === 'string') {
+                            webSocketService.send({ type: 'get_group_info', token, group_id: gid });
+                        }
+                    } catch {}
+                });
+            }
+            return;
+        }
+
+        // Handle group info
+        if (data.type === 'get_group_info_response' || (data.status === 'success' && data.group && data.group.id)) {
+            if (data.status === 'success' && data.group) {
+                upsertGroup(data.group);
+                setGroups(loadGroups());
+            }
+            return;
+        }
+    }, [token]);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        const off = webSocketService.addGeneralListener(handleWs);
+        return () => off && off();
+    }, [isAuthenticated, handleWs]);
 
     return (
         <>
@@ -359,13 +417,35 @@ const Group = () => {
                     </Stack>
                     <Stack direction={"column"} sx={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'scroll' }}>
                         <Stack spacing={2.4}>
-                            <Typography variant='subtitle2' sx={{ color: '#676767' }}>Pinned</Typography>
-                            {ChatList.filter((el) => el.pinned).map((el) => (
-                                <ChatElement key={el.id} {...el} />
-                            ))}
-                        </Stack>
-                        <Stack spacing={2.4}>
                             <Typography variant='subtitle2' sx={{ color: '#676767' }}>All Groups</Typography>
+                            {groups.map((g) => (
+                                <Link
+                                    key={g.id}
+                                    to={`/app/group/${g.custom_url || g.id}`}
+                                    style={{ textDecoration: 'none', display: 'block', width: '100%' }}
+                                >
+                                    <Box
+                                        sx={{
+                                            width: '100%',
+                                            height: 60,
+                                            backgroundColor: Theme.palette.mode === 'light' ? '#fff' : Theme.palette.background.paper,
+                                            borderRadius: 1,
+                                            '&:hover': { backgroundColor: Theme.palette.mode === 'light' ? '#f5f5f5' : Theme.palette.action.hover, cursor: 'pointer' }
+                                        }}
+                                        p={2}
+                                    >
+                                        <Stack direction={'row'} alignItems={'center'} justifyContent={'space-between'}>
+                                            <Stack direction={'row'} spacing={2}>
+                                                <Avatar src={g.profile_image || avatar} />
+                                                <Stack spacing={0.3}>
+                                                    <Typography variant='subtitle2'>{g.name}</Typography>
+                                                    <Typography variant='caption'>Group</Typography>
+                                                </Stack>
+                                            </Stack>
+                                        </Stack>
+                                    </Box>
+                                </Link>
+                            ))}
                         </Stack>
                     </Stack>
                 </Stack>
