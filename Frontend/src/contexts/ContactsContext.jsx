@@ -3,6 +3,8 @@ import webSocketService from '../Login/Component/Services/WebSocketService';
 import { useAuth } from '../Login/Component/Context/AuthContext';
 import { upsertProfile, getStoredEmails, loadPV, savePV } from '../utils/pvStorage';
 import { savePrivateChat } from '../utils/chatStorage';
+import Swal from 'sweetalert2';
+import { upsertGroup } from '../utils/groupStorage';
 
 const ContactsContext = createContext();
 
@@ -12,6 +14,59 @@ export const ContactsProvider = ({ children }) => {
     const [searchResults, setSearchResults] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+
+    // Invitation handling refs
+    const invitationIdsRef = useRef(new Set());
+    const invitationQueueRef = useRef([]);
+    const showingInvitationRef = useRef(false);
+    const invitationGroupInfoMapRef = useRef(new Map());
+    const invitesRequestedRef = useRef(false);
+
+    const maybeShowNextInvitation = useCallback(() => {
+        if (showingInvitationRef.current) return;
+        const next = invitationQueueRef.current.shift();
+        if (!next) return;
+        showingInvitationRef.current = true;
+
+        const group = next;
+        const name = group?.name || 'Group';
+        const gid = group?.id;
+
+        Swal.fire({
+            title: name || 'دعوت به گروه',
+            text: `شما به عضویت در گروه «${name}» دعوت شده‌اید.`,
+            icon: 'info',
+            showCloseButton: true,
+            showCancelButton: true,
+            confirmButtonText: 'تایید عضویت',
+            cancelButtonText: 'رد عضویت',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            reverseButtons: true,
+        }).then((result) => {
+            if (result.isConfirmed) {
+                try {
+                    const { token } = authContextValueRef.current || {};
+                    const gidToSend = group?.id ?? group?.custom_url ?? gid;
+                    if (token && gidToSend) {
+                        webSocketService.send({ type: 'join_group', token, group_id: gidToSend });
+                        // Remove from pending invites cache
+                        try {
+                            const raw = localStorage.getItem('PENDING_INVITES');
+                            const arr = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+                            const norm = String(gidToSend);
+                            const next = (arr || []).filter((x) => String(x) !== norm);
+                            localStorage.setItem('PENDING_INVITES', JSON.stringify(next));
+                        } catch {}
+                    }
+                } catch {}
+            }
+            // If canceled or closed via X, just dismiss without action
+        }).finally(() => {
+            showingInvitationRef.current = false;
+            maybeShowNextInvitation();
+        });
+    }, []);
 
     const handleWebSocketMessage = useCallback((rawData) => {
         let response;
@@ -84,6 +139,42 @@ export const ContactsProvider = ({ children }) => {
             if (response.status === 'success' && response.profile && response.profile.email) {
                 upsertProfile(response.profile);
             }
+        } else if (messageType === 'get_and_clear_invitations_response' || (response.status === 'success' && Array.isArray(response.invitations))) {
+            try {
+                const invitesRaw = Array.isArray(response.invitations) ? response.invitations : [];
+                // Keep a normalized set for matching regardless of type (string/number)
+                const normalizedSet = new Set(invitesRaw.filter((v) => v !== null && v !== undefined).map((v) => String(v)));
+                invitationIdsRef.current = normalizedSet;
+                // Persist pending invites for cross-component checks (e.g., Group list UI)
+                try { localStorage.setItem('PENDING_INVITES', JSON.stringify(Array.from(normalizedSet))); } catch {}
+                if (invitesRaw.length > 0 && token) {
+                    invitesRaw.forEach((groupId) => {
+                        try { webSocketService.send({ type: 'get_group_info', token, group_id: groupId }); } catch {}
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to process invitations:', e);
+            }
+        } else if (messageType === 'get_group_info_response' || (response.status === 'success' && response.group && (response.group.id || response.group.custom_url))) {
+            // If this group is part of invitations, queue a prompt and persist under 'inv'
+            if (response.status === 'success' && response.group && (response.group.id || response.group.custom_url)) {
+                const g = response.group;
+                const gNorm = (g.id !== undefined && g.id !== null) ? String(g.id) : (g.custom_url !== undefined && g.custom_url !== null ? String(g.custom_url) : null);
+                if (gNorm && invitationIdsRef.current.has(gNorm)) {
+                    invitationGroupInfoMapRef.current.set(g.id || g.custom_url, g);
+                    invitationQueueRef.current.push(g);
+                    maybeShowNextInvitation();
+                }
+                // Persist latest invited group info objects under single key 'inv'
+                try {
+                    const raw = localStorage.getItem('inv');
+                    const arr = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+                    const idKey = String(g.id ?? g.custom_url ?? '');
+                    const next = (arr || []).filter((x) => String((x && (x.id ?? x.custom_url)) ?? '') !== idKey);
+                    next.push(g);
+                    localStorage.setItem('inv', JSON.stringify(next));
+                } catch {}
+            }
         } else if (response.status === 'success' && Array.isArray(response.open_chats)) {
             // Handle get_open_chats: for each email, request profile and upsert into PV when received
             try {
@@ -99,7 +190,7 @@ export const ContactsProvider = ({ children }) => {
                 console.error('Failed to process open_chats:', err);
             }
         }
-    }, [token, user]);
+    }, [token, user, maybeShowNextInvitation]);
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -122,6 +213,17 @@ export const ContactsProvider = ({ children }) => {
             getContacts();
         }
     }, [isAuthenticated, token, getContacts]);
+
+    // On refresh: request invitations once per refresh (no sessionStorage persistence)
+    useEffect(() => {
+        if (!isAuthenticated || !token) return;
+        // Guard against duplicate sends within the same mount/render cycle
+        if (invitesRequestedRef.current) return;
+        try {
+            webSocketService.send({ type: 'get_and_clear_invitations', token });
+            invitesRequestedRef.current = true;
+        } catch {}
+    }, [isAuthenticated, token]);
 
     // On load: request open chats list
     useEffect(() => {
@@ -202,6 +304,10 @@ export const ContactsProvider = ({ children }) => {
         contacts, searchResults, isLoading, error,
         getContacts, addContact, removeContact, searchUsers, setSearchResults
     };
+
+    // Keep token accessible in invitation flow (for confirm handler)
+    const authContextValueRef = useRef({ token });
+    useEffect(() => { authContextValueRef.current = { token }; }, [token]);
 
     return (
         <ContactsContext.Provider value={value}>

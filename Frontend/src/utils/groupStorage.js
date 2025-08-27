@@ -1,57 +1,61 @@
-// Utilities for managing Groups cache in localStorage
+// LocalStorage helpers for Groups list
 
-const GROUPS_STORAGE_KEY = "GROUPS";
+const STORAGE_KEY = 'GROUPS';
 
-export function loadGroups() {
+function safeParse(json) {
   try {
-    const raw = localStorage.getItem(GROUPS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(json);
     return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.error("Failed to load GROUPS from localStorage:", error);
+  } catch {
     return [];
   }
 }
 
+function normalize(value) {
+  if (value === null || value === undefined) return '';
+  return String(value);
+}
+
+export function loadGroups() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  return safeParse(raw);
+}
+
 export function saveGroups(groups) {
   try {
-    localStorage.setItem(GROUPS_STORAGE_KEY, JSON.stringify(groups || []));
-  } catch (error) {
-    console.error("Failed to save GROUPS to localStorage:", error);
-  }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.isArray(groups) ? groups : []));
+  } catch {}
 }
 
 export function upsertGroup(group) {
-  if (!group || !group.id) return;
-  const current = loadGroups();
-  const next = (current || []).filter((g) => g && g.id !== group.id);
-  next.push(group);
-  saveGroups(next);
-}
+  if (!group || (group.id === undefined && group.custom_url === undefined)) return;
+  const idNorm = normalize(group.id);
+  const urlNorm = normalize(group.custom_url);
 
-export function removeGroupById(groupId) {
-  try {
-    const current = loadGroups();
-    const next = (current || []).filter((g) => g && g.id !== groupId);
-    saveGroups(next);
-  } catch (e) {
-    console.error('Failed to remove group from storage:', e);
-  }
-}
-
-export function getStoredGroupIds() {
   const current = loadGroups();
-  return (current || [])
-    .map((g) => g && (g.id || g.custom_url))
-    .filter((id) => typeof id === "string" && id.length > 0);
+  const filtered = (current || []).filter((g) => {
+    const gid = normalize(g && g.id);
+    const gurl = normalize(g && g.custom_url);
+    return gid !== idNorm && (urlNorm ? gurl !== urlNorm : true);
+  });
+  filtered.push(group);
+  saveGroups(filtered);
+  return group;
 }
 
 export function findGroupByIdOrUrl(idOrUrl) {
-  const current = loadGroups();
-  return (current || []).find(
-    (g) => g && (g.id === idOrUrl || g.custom_url === idOrUrl)
-  );
+  const key = normalize(idOrUrl);
+  if (!key) return null;
+  const list = loadGroups();
+  const found = (list || []).find((g) => normalize(g && g.id) === key || normalize(g && g.custom_url) === key);
+  return found || null;
+}
+
+export function removeGroupById(id) {
+  const key = normalize(id);
+  const list = loadGroups();
+  const next = (list || []).filter((g) => normalize(g && g.id) !== key);
+  saveGroups(next);
 }
 
 

@@ -197,7 +197,7 @@
 
 import { alpha, Avatar, Badge, Box, Divider, IconButton, InputBase, Stack, styled, Typography, useTheme } from '@mui/material';
 import { CaretLeft, MagnifyingGlass, Plus, Users } from 'phosphor-react';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { faker } from '@faker-js/faker';
 import { ChatList } from '../../data';
 import { Link, useNavigate } from "react-router-dom";
@@ -316,6 +316,7 @@ const Group = () => {
     const [openDialog, setOpenDialog] = useState(false);
     const { token, user, isAuthenticated } = useAuth();
     const [groups, setGroups] = useState(() => loadGroups());
+    const requestedMyGroupsRef = useRef(new Set());
 
     const handleCloseDialog = () => {
         setOpenDialog(false);
@@ -349,7 +350,9 @@ const Group = () => {
             if (data.status === 'success' && Array.isArray(data.group_ids)) {
                 (data.group_ids || []).forEach((gid) => {
                     try {
-                        if (token && typeof gid === 'string') {
+                        const key = String(gid);
+                        requestedMyGroupsRef.current.add(key);
+                        if (token && (typeof gid === 'string' || typeof gid === 'number')) {
                             webSocketService.send({ type: 'get_group_info', token, group_id: gid });
                         }
                     } catch {}
@@ -358,12 +361,28 @@ const Group = () => {
             return;
         }
 
-        // Handle group info
-        if (data.type === 'get_group_info_response' || (data.status === 'success' && data.group && data.group.id)) {
+        // Handle group info only for my groups (exclude pending invites)
+        if (data.type === 'get_group_info_response' || (data.status === 'success' && data.group && (data.group.id || data.group.custom_url))) {
             if (data.status === 'success' && data.group) {
+                const key = String(data.group.id ?? data.group.custom_url);
+                const pendingInvites = (() => {
+                    try { return new Set((JSON.parse(localStorage.getItem('PENDING_INVITES') || '[]') || []).map(String)); } catch { return new Set(); }
+                })();
+                if (!requestedMyGroupsRef.current.has(key)) return;
+                if (pendingInvites.has(key)) return;
                 upsertGroup(data.group);
                 setGroups(loadGroups());
             }
+            return;
+        }
+
+        // After successful join, refresh my groups
+        if ((data.type === 'join_group_response' || data.type === 'join_group') && data.status === 'success') {
+            try {
+                if (token && user?.email) {
+                    webSocketService.send({ type: 'get_user_groups_by_email', token, email: user.email });
+                }
+            } catch {}
             return;
         }
     }, [token]);

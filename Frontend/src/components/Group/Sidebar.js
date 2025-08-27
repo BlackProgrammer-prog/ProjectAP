@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { alpha, Avatar, Box, Divider, IconButton, InputBase, Stack, styled, Typography, useTheme } from '@mui/material';
 import { CaretLeft, MagnifyingGlass, Plus } from 'phosphor-react';
 import { faker } from '@faker-js/faker';
@@ -43,6 +43,7 @@ const GroupSidebar = () => {
     const { token, user, isAuthenticated } = useAuth();
     const [openDialog, setOpenDialog] = useState(false);
     const [groups, setGroups] = useState(() => loadGroups());
+    const requestedMyGroupsRef = useRef(new Set());
 
     const handleCloseDialog = () => setOpenDialog(false);
 
@@ -69,7 +70,9 @@ const GroupSidebar = () => {
             if (data.status === 'success' && Array.isArray(data.group_ids)) {
                 (data.group_ids || []).forEach((gid) => {
                     try {
-                        if (token && typeof gid === 'string') {
+                        const key = String(gid);
+                        requestedMyGroupsRef.current.add(key);
+                        if (token && (typeof gid === 'string' || typeof gid === 'number')) {
                             webSocketService.send({ type: 'get_group_info', token, group_id: gid });
                         }
                     } catch {}
@@ -77,11 +80,23 @@ const GroupSidebar = () => {
             }
             return;
         }
-        if (data.type === 'get_group_info_response' || (data.status === 'success' && data.group && data.group.id)) {
+        if (data.type === 'get_group_info_response' || (data.status === 'success' && data.group && (data.group.id || data.group.custom_url))) {
             if (data.status === 'success' && data.group) {
+                const key = String(data.group.id ?? data.group.custom_url);
+                // Block invited-only groups from being upserted here
+                const pendingInvites = (() => {
+                    try { return new Set((JSON.parse(localStorage.getItem('PENDING_INVITES') || '[]') || []).map(String)); } catch { return new Set(); }
+                })();
+                if (!requestedMyGroupsRef.current.has(key)) return;
+                if (pendingInvites.has(key)) return;
                 upsertGroup(data.group);
                 setGroups(loadGroups());
             }
+            return;
+        }
+        if ((data.type === 'join_group_response' || data.type === 'join_group') && data.status === 'success') {
+            // refresh my groups after successful join
+            try { if (token && user?.email) webSocketService.send({ type: 'get_user_groups_by_email', token, email: user.email }); } catch {}
             return;
         }
     }, [token]);
@@ -175,6 +190,7 @@ const GroupSidebar = () => {
 };
 
 export default GroupSidebar;
+
 
 
 

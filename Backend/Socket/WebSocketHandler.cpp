@@ -43,18 +43,22 @@ json WebSocketServer::handleInviteToGroup(const json& data, const std::string& c
         return {{"status","error"},{"message","Not a group member"}};
     std::string uid = contact_manager_->findUserByEmail(data["email"]);
     if (uid.empty()) return {{"status","error"},{"message","User not found"}};
-    bool ok = group_manager_->addMember(gid, uid);
-    if (ok) {
-        // Append invitation (group_id) to user's invitation JSON (as array)
-        auto db = contact_manager_->getDatabase();
-        auto cur = db->executeQueryWithParams("SELECT invitation FROM users WHERE id = ?", {uid});
-        std::string inv = cur.data.empty() ? "[]" : cur.data[0];
-        json arr;
-        try { arr = json::parse(inv); } catch(...) { arr = json::array(); }
-        arr.push_back(gid);
-        db->executeQueryWithParams("UPDATE users SET invitation = ? WHERE id = ?", {arr.dump(), uid});
+    // Append invitation (group_id) to user's invitation JSON (as array) without adding to group
+    auto db = contact_manager_->getDatabase();
+    auto cur = db->executeQueryWithParams("SELECT invitation FROM users WHERE id = ?", {uid});
+    std::string inv = cur.data.empty() ? "[]" : cur.data[0];
+    json arr;
+    try { arr = json::parse(inv); } catch(...) { arr = json::array(); }
+    bool exists = false;
+    for (const auto& it : arr) {
+        if (it.is_string() && static_cast<std::string>(it) == gid) { exists = true; break; }
     }
-    return ok ? json{{"status","success"}} : json{{"status","error"},{"message","Failed to invite"}};
+    if (!exists) arr.push_back(gid);
+    auto upd = db->executeQueryWithParams("UPDATE users SET invitation = ? WHERE id = ?", {arr.dump(), uid});
+    if (!upd.success) {
+        return {{"status","error"},{"message","Failed to store invitation"}};
+    }
+    return {{"status","success"}};
 }
 
 json WebSocketServer::handleJoinGroup(const json& data, const std::string& client_id) {

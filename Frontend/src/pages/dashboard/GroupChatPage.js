@@ -5,7 +5,7 @@ import GroupSidebar from '../../components/Group/Sidebar';
 import { useAuth } from '../../Login/Component/Context/AuthContext';
 import webSocketService from '../../Login/Component/Services/WebSocketService';
 import { findGroupByIdOrUrl, upsertGroup } from '../../utils/groupStorage';
-import { ensureGroupChatExists, saveGroupChat, loadGroupChat } from '../../utils/groupChatStorage';
+import { ensureGroupChatExists, saveGroupChat, loadGroupChat, clearGroupChat } from '../../utils/groupChatStorage';
 import { v4 as uuidv4 } from 'uuid';
 import { loadGroupMembers, saveGroupMembers, upsertGroupMember } from '../../utils/groupMembersStorage';
 
@@ -27,23 +27,34 @@ const GroupChatPage = () => {
     }, [group]);
 
     useEffect(() => {
-        setGroup(findGroupByIdOrUrl(groupId));
-        ensureGroupChatExists(groupId);
-        setMessages(loadGroupChat(groupId));
-        setMembers(loadGroupMembers(groupId));
+        const resolved = findGroupByIdOrUrl(groupId);
+        setGroup(resolved || null);
+        const keyId = (resolved && resolved.id) ? resolved.id : groupId;
+        // Reset local cache to avoid showing stale/wrong messages from previous bug
+        try { clearGroupChat(keyId); } catch {}
+        ensureGroupChatExists(keyId);
+        setMessages([]);
+        setMembers(loadGroupMembers(keyId));
     }, [groupId]);
 
     // Refresh group info, messages, and members from server
     useEffect(() => {
         if (!token || !groupId) return;
+        // Always resolve a stable key from current URL param to avoid stale state
+        const resolved = findGroupByIdOrUrl(groupId);
+        const keyId = (resolved && resolved.id) ? resolved.id : groupId;
         const off = webSocketService.addGeneralListener((raw) => {
             try {
                 const data = JSON.parse(raw);
-                // Group info
-                if (data && (data.type === 'get_group_info_response' || (data.status === 'success' && data.group && data.group.id))) {
+                // Group info (only for the current group context)
+                if (data && (data.type === 'get_group_info_response' || (data.status === 'success' && data.group && (data.group.id || data.group.custom_url)))) {
                     if (data.status === 'success' && data.group) {
-                        upsertGroup(data.group);
-                        setGroup(data.group);
+                        const incomingKey = String(data.group.id ?? data.group.custom_url);
+                        const currentKey = String((group && (group.id ?? group.custom_url)) ?? groupId);
+                        if (incomingKey === currentKey) {
+                            upsertGroup(data.group);
+                            setGroup(data.group);
+                        }
                     }
                     return;
                 }
@@ -53,8 +64,8 @@ const GroupChatPage = () => {
                         const emails = (data.members || []).filter((e) => typeof e === 'string');
                         memberEmailsRef.current = emails;
                         // Save minimal members immediately (emails only) while profiles load
-                        saveGroupMembers(groupId, emails.map((email) => ({ email })));
-                        setMembers(loadGroupMembers(groupId));
+                        saveGroupMembers(keyId, emails.map((email) => ({ email })));
+                        setMembers(loadGroupMembers(keyId));
                         // Request profiles for each member
                         emails.forEach((email) => {
                             try { webSocketService.send({ type: 'get_profile', token, email }); } catch {}
@@ -67,14 +78,35 @@ const GroupChatPage = () => {
                     if (data.status === 'success' && data.profile && data.profile.email) {
                         const email = String(data.profile.email);
                         if (memberEmailsRef.current.includes(email)) {
-                            upsertGroupMember(groupId, data.profile);
-                            setMembers(loadGroupMembers(groupId));
+                            upsertGroupMember(keyId, data.profile);
+                            setMembers(loadGroupMembers(keyId));
                         }
                     }
                     return;
                 }
-                // Bulk messages
+                // Bulk group messages (guard strictly to the current group)
                 if (data && Array.isArray(data.messages)) {
+                    const gid = keyId;
+                    const typeStr = typeof data.type === 'string' ? data.type : '';
+
+                    // Ignore PV-like bulk payloads (e.g., get_messages for private chats)
+                    const isPvLike = typeStr === 'get_messages_response' || typeStr === 'get_messages' || Object.prototype.hasOwnProperty.call(data, 'with');
+                    if (isPvLike) return;
+
+                    // If envelope specifies a group_id, require it to match
+                    if (data.group_id && String(data.group_id) !== String(gid)) return;
+
+                    // If no group_id on envelope, try to infer from first item if available
+                    const first = data.messages[0];
+                    if (!data.group_id && first && first.group_id && String(first.group_id) !== String(gid)) return;
+
+                    // If we cannot determine group context at all, ignore to avoid cross-contamination
+                    const hasSomeGroupContext = !!data.group_id || !!(first && first.group_id);
+                    if (!hasSomeGroupContext) return;
+
+                    // If there is a type string and it doesn't mention group, ignore
+                    if (typeStr && !typeStr.includes('group')) return;
+
                     const myId = user?.user_id || user?.id;
                     const adapted = (data.messages || []).map((m) => {
                         const ms = typeof m.timestamp === 'number' ? (m.timestamp < 1e12 ? m.timestamp * 1000 : m.timestamp) : null;
@@ -94,12 +126,12 @@ const GroupChatPage = () => {
                             senderAvatar: isOutgoing ? (user?.profile?.avatarUrl || '') : '',
                         };
                     });
-                    saveGroupChat(groupId, adapted);
+                    saveGroupChat(gid, adapted);
                     setMessages(adapted);
                     return;
                 }
                 // Single group message event (if any)
-                if (data && data.type && String(data.type).includes('group') && (data.content || data.message) && (data.group_id === group?.id || data.group_id === groupId)) {
+                if (data && data.type && String(data.type).includes('group') && (data.content || data.message) && (String(data.group_id) === String(keyId))) {
                     const myId = user?.user_id || user?.id;
                     const ts = data.timestamp ? (typeof data.timestamp === 'number' ? new Date((data.timestamp < 1e12 ? data.timestamp * 1000 : data.timestamp)).toISOString() : data.timestamp) : new Date().toISOString();
                     const isOutgoing = myId && data.sender_id ? String(data.sender_id) === String(myId) : false;
@@ -118,7 +150,7 @@ const GroupChatPage = () => {
                     };
                     setMessages((prev) => {
                         const next = [...(prev || []), incomingMsg];
-                        saveGroupChat(groupId, next);
+                        saveGroupChat(keyId, next);
                         return next;
                     });
                     return;
@@ -128,7 +160,7 @@ const GroupChatPage = () => {
                     const ackId = data.message_id;
                     setMessages((prev) => {
                         const next = (prev || []).map((m) => (m.pending ? { ...m, id: ackId, pending: false } : m));
-                        saveGroupChat(groupId, next);
+                        saveGroupChat(keyId, next);
                         return next;
                     });
                     return;
@@ -137,11 +169,10 @@ const GroupChatPage = () => {
         });
         // Ensure connection is active before sending; send after listener is registered
         try { webSocketService.connect(); } catch {}
-        const gid = group?.id || groupId;
-        webSocketService.send({ type: 'get_group_info', token, group_id: gid });
-        webSocketService.send({ type: 'get_group_messages', token, group_id: gid, limit: 50, order: 'asc' });
+        webSocketService.send({ type: 'get_group_info', token, group_id: keyId });
+        webSocketService.send({ type: 'get_group_messages', token, group_id: keyId, limit: 50, order: 'asc' });
         // On refresh: request group members once
-        webSocketService.send({ type: 'get_group_members', token, group_id: gid });
+        webSocketService.send({ type: 'get_group_members', token, group_id: keyId });
         return () => off && off();
     }, [token, groupId]);
 
@@ -161,12 +192,16 @@ const GroupChatPage = () => {
         };
         setMessages((prev) => {
             const next = [...(prev || []), pending];
-            saveGroupChat(groupId, next);
+            const resolved = findGroupByIdOrUrl(groupId);
+            const keyId = (resolved && resolved.id) ? resolved.id : groupId;
+            saveGroupChat(keyId, next);
             return next;
         });
         try {
-            if (token && (group?.id || groupId)) {
-                webSocketService.send({ type: 'send_group_message', token, group_id: group?.id || groupId, message: text });
+            if (token && groupId) {
+                const resolved = findGroupByIdOrUrl(groupId);
+                const keyId = (resolved && resolved.id) ? resolved.id : groupId;
+                webSocketService.send({ type: 'send_group_message', token, group_id: keyId, message: text });
             }
         } catch {}
     };
@@ -181,6 +216,7 @@ const GroupChatPage = () => {
         <>
             <GroupSidebar />
             <Conversation
+                key={(group && group.id) ? String(group.id) : String(groupId)}
                 chatData={chatData}
                 messages={messages}
                 onSend={handleSend}
