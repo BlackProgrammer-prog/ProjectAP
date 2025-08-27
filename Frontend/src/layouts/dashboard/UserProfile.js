@@ -1,29 +1,57 @@
+import React from 'react';
 import { Avatar, Box, Typography, Divider, Button, IconButton, Stack } from '@mui/material';
 import { ArrowLeft, Phone, VideoCamera, Info } from 'phosphor-react';
 import { faker } from '@faker-js/faker';
 import { useParams } from 'react-router-dom';
 import { ChatList } from '../../data';
 import { clearPrivateChat } from '../../utils/chatStorage';
+import { loadPV } from '../../utils/pvStorage';
+import { resolveAvatarUrl } from '../../utils/resolveAvatarUrl';
+import { loadGroupMembers } from '../../utils/groupMembersStorage';
+import { useAuth } from '../../Login/Component/Context/AuthContext';
+import webSocketService from '../../Login/Component/Services/WebSocketService';
+import Swal from 'sweetalert2';
+import { findGroupByIdOrUrl, removeGroupById } from '../../utils/groupStorage';
 
 const UserProfile = ({ onClose, onBlockUser, onDeleteChat, isBlocked }) => {
-    const { username } = useParams();
+    const { username, groupId } = useParams();
+    const { token } = useAuth();
+    const group = groupId ? findGroupByIdOrUrl(groupId) : null;
 
-    // پیدا کردن اطلاعات کاربر از ChatList
-    const chat = ChatList.find((c) => c.username === username);
-
+    // Hooks must be called unconditionally
+    const [profile, setProfile] = React.useState(() => {
+        const pv = loadPV();
+        return (pv || []).find((p) => p.customUrl === username) || {};
+    });
+    const [online, setOnline] = React.useState(() => Number(profile?.status) === 1);
+    React.useEffect(() => {
+        const update = () => {
+            const pv = loadPV();
+            const u = (pv || []).find((p) => p && (p.customUrl === username || p.username === username || p.email === username)) || {};
+            setProfile(u);
+            setOnline(Number(u?.status) === 1);
+        };
+        update();
+        const interval = setInterval(update, 1500);
+        return () => clearInterval(interval);
+    }, [username]);
     const user = {
-        name: chat ? chat.name : username,
-        status: chat ? (chat.online ? "Online" : "Offline") : "Unknown",
-        phone: faker.phone.number(),
-        bio: faker.lorem.sentence(),
-        avatar: chat ? chat.img : faker.image.avatar(),
+        name: profile.fullName || profile.username || profile.email || username,
+        status: online ? 'Online' : 'Offline',
+        email: profile.email || '',
+        bio: profile.bio || faker.lorem.sentence(),
+        avatar: resolveAvatarUrl(profile.avatarUrl) || faker.image.avatar(),
         isBlocked: isBlocked || false
     };
 
     const handleBlockUser = () => {
-        if (onBlockUser) {
-            onBlockUser(username);
-        }
+        if (onBlockUser) onBlockUser(username);
+        try {
+            if (token && user.email) {
+                webSocketService.send({ type: 'block_user', token, email: user.email });
+                Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: user.isBlocked ? 'کاربر آنبلاک شد' : 'کاربر بلاک شد', showConfirmButton: false, timer: 1800, timerProgressBar: true });
+            }
+        } catch {}
     };
 
     const handleDeleteChat = () => {
@@ -33,110 +61,233 @@ const UserProfile = ({ onClose, onBlockUser, onDeleteChat, isBlocked }) => {
         }
     };
 
+    const [members, setMembers] = React.useState(() => (group ? loadGroupMembers(group.id) : []));
+    React.useEffect(() => {
+        if (!group) return;
+        setMembers(loadGroupMembers(group.id));
+        const off = webSocketService.addGeneralListener((raw) => {
+            try {
+                const data = JSON.parse(raw);
+                if (!data) return;
+                if ((data.type === 'get_group_members_response' || Array.isArray(data.members)) && data.status === 'success') {
+                    setMembers(loadGroupMembers(group.id));
+                }
+                if ((data.type === 'get_profile_response' || data.profile) && data.status === 'success' && data.profile && data.profile.email) {
+                    const email = String(data.profile.email);
+                    const currentEmails = (loadGroupMembers(group.id) || []).map((m) => m && m.email);
+                    if (currentEmails.includes(email)) {
+                        setMembers(loadGroupMembers(group.id));
+                    }
+                }
+            } catch {}
+        });
+        return () => off && off();
+    }, [group]);
+
     return (
-        <Box sx={{
-            width: 320,
-            height: '100vh',
-            backgroundColor: 'background.paper',
-            boxShadow: 3,
-            position: 'fixed',
-            top: 0,
-            right: 0,
-            zIndex: 1300,
-            display: 'flex',
-            flexDirection: 'column'
-        }}>
-            {/* هدر با دکمه بازگشت */}
+        group ? (
             <Box sx={{
+                width: 320,
+                height: '100vh',
+                backgroundColor: 'background.paper',
+                boxShadow: 3,
+                position: 'fixed',
+                top: 0,
+                right: 0,
+                zIndex: 1300,
                 display: 'flex',
-                alignItems: 'center',
-                p: 2,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-                backgroundColor: 'primary.main',
-                color: 'primary.contrastText'
+                flexDirection: 'column'
             }}>
-                <IconButton onClick={onClose} sx={{ color: 'inherit' }}>
-                    <ArrowLeft size={24} />
-                </IconButton>
-                <Typography variant="h6" sx={{ ml: 2, fontWeight: 600 }}>Profile</Typography>
-            </Box>
+                <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    p: 2,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    backgroundColor: 'primary.main',
+                    color: 'primary.contrastText'
+                }}>
+                    <IconButton onClick={onClose} sx={{ color: 'inherit' }}>
+                        <ArrowLeft size={24} />
+                    </IconButton>
+                    <Typography variant="h6" sx={{ ml: 2, fontWeight: 600 }}>Group</Typography>
+                </Box>
 
-            {/* محتوای پروفایل */}
-            <Box sx={{ p: 3, overflowY: 'auto', flex: 1 }}>
-                <Stack alignItems="center" spacing={2}>
-                    <Avatar
-                        src={user.avatar}
-                        sx={{
-                            width: 100,
-                            height: 100,
-                            border: '3px solid',
-                            borderColor: 'primary.main'
-                        }}
-                    />
-                    <Typography variant="h5" sx={{ fontWeight: 600 }}>{user.name}</Typography>
-                    <Typography color="text.secondary">{user.status}</Typography>
+                <Box sx={{ p: 3, overflowY: 'auto', flex: 1 }}>
+                    <Stack alignItems="center" spacing={2}>
+                        <Avatar
+                            src={group.profile_image || ''}
+                            sx={{
+                                width: 100,
+                                height: 100,
+                                border: '3px solid',
+                                borderColor: 'primary.main'
+                            }}
+                        />
+                        <Typography variant="h5" sx={{ fontWeight: 600 }}>{group.name}</Typography>
 
-                    <Stack direction="row" spacing={2} sx={{ my: 2, width: '100%' }}>
-                        <Button
-                            variant="contained"
-                            startIcon={<Phone />}
-                            fullWidth
-                            sx={{ py: 1.5 }}
-                        >
-                            Call
-                        </Button>
-                        <Button
-                            variant="contained"
-                            startIcon={<VideoCamera />}
-                            fullWidth
-                            sx={{ py: 1.5 }}
-                        >
-                            Video
-                        </Button>
+                        <Divider sx={{ width: '100%', my: 2 }} />
+                        <Box sx={{ width: '100%' }}>
+                            <Typography variant="subtitle2" gutterBottom>Members</Typography>
+                            <Stack spacing={1} sx={{ width: '100%' }}>
+                                {(members || []).map((m, idx) => (
+                                    <Stack key={(m && m.email) || idx} direction="row" spacing={1.5} alignItems="center">
+                                        <Avatar src={resolveAvatarUrl(m && m.avatarUrl)} sx={{ width: 36, height: 36 }} />
+                                        <Box>
+                                            <Typography variant="body2">{(m && (m.fullName || m.username || m.email)) || '-'}</Typography>
+                                            <Typography variant="caption" color="text.secondary">{m && m.email}</Typography>
+                                        </Box>
+                                    </Stack>
+                                ))}
+                                {(!members || members.length === 0) && (
+                                    <Typography variant="caption" color="text.secondary">No members to display</Typography>
+                                )}
+                            </Stack>
+                        </Box>
+                        <Divider sx={{ width: '100%', my: 2 }} />
+                        <Stack spacing={1} sx={{ width: '100%' }}>
+                            <Button
+                                color="error"
+                                variant="outlined"
+                                fullWidth
+                                onClick={() => {
+                                    try {
+                                        if (token && group?.id) {
+                                            webSocketService.send({ type: 'leave_group', token, group_id: group.id });
+                                            removeGroupById(group.id);
+                                            onClose && onClose();
+                                            Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: 'از گروه خارج شدید', showConfirmButton: false, timer: 1600, timerProgressBar: true });
+                                        }
+                                    } catch {}
+                                }}
+                            >
+                                Leave Group
+                            </Button>
+                            <Button
+                                variant="contained"
+                                fullWidth
+                                onClick={() => {
+                                    const email = prompt('ایمیل عضو جدید را وارد کنید:');
+                                    if (!email) return;
+                                    try {
+                                        if (token && group?.id) {
+                                            webSocketService.send({ type: 'invite_to_group', token, group_id: group.id, email });
+                                            Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: 'دعوت‌نامه ارسال شد', showConfirmButton: false, timer: 1600, timerProgressBar: true });
+                                        }
+                                    } catch {}
+                                }}
+                            >
+                                Invite Member
+                            </Button>
+                        </Stack>
                     </Stack>
-
-                    <Divider sx={{ width: '100%', my: 2 }} />
-
-                    <Box sx={{ width: '100%' }}>
-                        <Typography variant="subtitle2" gutterBottom>Contact Info</Typography>
-                        <Typography variant="body2" sx={{ mb: 2 }}>
-                            {user.phone}
-                        </Typography>
-                        <Typography variant="body2">
-                            {user.bio}
-                        </Typography>
-                    </Box>
-
-                    <Divider sx={{ width: '100%', my: 2 }} />
-
-                    <Box sx={{ width: '100%' }}>
-                        <Typography variant="subtitle2" gutterBottom>Media, Links & Docs</Typography>
-                        <Typography variant="body2">401 items</Typography>
-                    </Box>
-
-                    <Divider sx={{ width: '100%', my: 2 }} />
-
-                    <Stack spacing={2} sx={{ width: '100%' }}>
-                        <Button
-                            startIcon={<Info />}
-                            fullWidth
-                            onClick={handleBlockUser}
-                            color={user.isBlocked ? "success" : "warning"}
-                        >
-                            {user.isBlocked ? 'Unblock' : 'Block'}
-                        </Button>
-                        <Button
-                            color="error"
-                            fullWidth
-                            onClick={handleDeleteChat}
-                        >
-                            Delete Chat
-                        </Button>
-                    </Stack>
-                </Stack>
+                </Box>
             </Box>
-        </Box>
+        ) : (
+            <Box sx={{
+                width: 320,
+                height: '100vh',
+                backgroundColor: 'background.paper',
+                boxShadow: 3,
+                position: 'fixed',
+                top: 0,
+                right: 0,
+                zIndex: 1300,
+                display: 'flex',
+                flexDirection: 'column'
+            }}>
+                {/* هدر با دکمه بازگشت */}
+                <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    p: 2,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    backgroundColor: 'primary.main',
+                    color: 'primary.contrastText'
+                }}>
+                    <IconButton onClick={onClose} sx={{ color: 'inherit' }}>
+                        <ArrowLeft size={24} />
+                    </IconButton>
+                    <Typography variant="h6" sx={{ ml: 2, fontWeight: 600 }}>Profile</Typography>
+                </Box>
+
+                {/* محتوای پروفایل */}
+                <Box sx={{ p: 3, overflowY: 'auto', flex: 1 }}>
+                    <Stack alignItems="center" spacing={2}>
+                        <Avatar
+                            src={user.avatar}
+                            sx={{
+                                width: 100,
+                                height: 100,
+                                border: '3px solid',
+                                borderColor: 'primary.main'
+                            }}
+                        />
+                        <Typography variant="h5" sx={{ fontWeight: 600 }}>{user.name}</Typography>
+                        <Typography color="text.secondary">{user.status}</Typography>
+
+                        <Stack direction="row" spacing={2} sx={{ my: 2, width: '100%' }}>
+                            <Button
+                                variant="contained"
+                                startIcon={<Phone />}
+                                fullWidth
+                                sx={{ py: 1.5 }}
+                            >
+                                Call
+                            </Button>
+                            <Button
+                                variant="contained"
+                                startIcon={<VideoCamera />}
+                                fullWidth
+                                sx={{ py: 1.5 }}
+                            >
+                                Video
+                            </Button>
+                        </Stack>
+
+                        <Divider sx={{ width: '100%', my: 2 }} />
+
+                        <Box sx={{ width: '100%' }}>
+                            <Typography variant="subtitle2" gutterBottom>Contact Info</Typography>
+                            <Typography variant="body2" sx={{ mb: 2 }}>
+                                {user.email || '—'}
+                            </Typography>
+                            <Typography variant="body2">
+                                {user.bio}
+                            </Typography>
+                        </Box>
+
+                        <Divider sx={{ width: '100%', my: 2 }} />
+
+                        <Box sx={{ width: '100%' }}>
+                            <Typography variant="subtitle2" gutterBottom>Media, Links & Docs</Typography>
+                            <Typography variant="body2">401 items</Typography>
+                        </Box>
+
+                        <Divider sx={{ width: '100%', my: 2 }} />
+
+                        <Stack spacing={2} sx={{ width: '100%' }}>
+                            <Button
+                                startIcon={<Info />}
+                                fullWidth
+                                onClick={handleBlockUser}
+                                color={user.isBlocked ? "success" : "warning"}
+                            >
+                                {user.isBlocked ? 'Unblock' : 'Block'}
+                            </Button>
+                            <Button
+                                color="error"
+                                fullWidth
+                                onClick={handleDeleteChat}
+                            >
+                                Delete Chat
+                            </Button>
+                        </Stack>
+                    </Stack>
+                </Box>
+            </Box>
+        )
     );
 };
 

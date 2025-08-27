@@ -13,7 +13,7 @@ import {
     Trash,
     Copy,
 } from "phosphor-react"
-import { useState } from "react"
+import { useState, forwardRef, useImperativeHandle } from "react"
 import ForwardDialog from "./ForwardDialog"
 import { MdEdit } from "react-icons/md";
 
@@ -56,7 +56,7 @@ const Message_options = [
     },
 ]
 
-export const MessageOption = ({ el, message, onDeleteMessage, onReactionChange, onForwardMessage, onEditClick }) => {
+export const MessageOption = forwardRef(({ el, message, onDeleteMessage, onReactionChange, onForwardMessage, onEditClick, onReportMessage }, ref) => {
     const [anchorEl, setAnchorEl] = useState(null)
     const [reactionAnchorEl, setReactionAnchorEl] = useState(null)
     const [forwardDialogOpen, setForwardDialogOpen] = useState(false)
@@ -76,6 +76,14 @@ export const MessageOption = ({ el, message, onDeleteMessage, onReactionChange, 
     const handleClick = (e) => {
         setAnchorEl(e.currentTarget)
     }
+
+    // Allow parent (message bubble) to open the menu on right-click
+    useImperativeHandle(ref, () => ({
+        openAt: (event) => {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault()
+            setAnchorEl(event.currentTarget || event.target || null)
+        }
+    }))
 
     const handleClose = () => {
         setAnchorEl(null)
@@ -110,6 +118,8 @@ export const MessageOption = ({ el, message, onDeleteMessage, onReactionChange, 
             setForwardDialogOpen(true);
         } else if (option.title === "Edit message") {
             if (onEditClick) onEditClick();
+        } else if (option.title === "Report") {
+            if (onReportMessage) onReportMessage(el);
         }
         handleClose();
     }
@@ -294,7 +304,7 @@ export const MessageOption = ({ el, message, onDeleteMessage, onReactionChange, 
             />
         </>
     )
-}
+})
 
 export const DocMsg = ({ el, onDeleteMessage, onReactionChange, onForwardMessage }) => {
     const theme = useTheme()
@@ -340,7 +350,7 @@ export const DocMsg = ({ el, onDeleteMessage, onReactionChange, onForwardMessage
                         </Typography>
                     </Stack>
                 </Box>
-                {!el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} />}
+                {!el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} onReportMessage={undefined} />}
             </Stack>
         </Stack>
     )
@@ -351,7 +361,7 @@ export const LinkMsg = ({ el, onDeleteMessage, onReactionChange, onForwardMessag
     return (
         <Stack direction={"row"} justifyContent={el.incoming ? "start" : "end"}>
             <Stack direction="row" alignItems="flex-start" spacing={1}>
-                {el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} />}
+                {el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} onReportMessage={undefined} />}
                 <Box
                     p={1.5}
                     sx={{
@@ -379,7 +389,7 @@ export const LinkMsg = ({ el, onDeleteMessage, onReactionChange, onForwardMessag
                         </Stack>
                     </Stack>
                 </Box>
-                {!el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} />}
+                {!el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} onReportMessage={undefined} />}
             </Stack>
         </Stack>
     )
@@ -390,7 +400,7 @@ export const MediaMsg = ({ el, onDeleteMessage, onReactionChange, onForwardMessa
     return (
         <Stack direction={"row"} justifyContent={el.incoming ? "start" : "end"}>
             <Stack direction="row" alignItems="flex-start" spacing={1}>
-                {el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} />}
+                {el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} onReportMessage={undefined} />}
                 <Box
                     p={1.5}
                     sx={{
@@ -406,7 +416,7 @@ export const MediaMsg = ({ el, onDeleteMessage, onReactionChange, onForwardMessa
                         </Typography>
                     </Stack>
                 </Box>
-                {!el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} />}
+                {!el.incoming && <MessageOption el={el} message={el.message} onDeleteMessage={onDeleteMessage} onReactionChange={onReactionChange} onForwardMessage={onForwardMessage} onEditClick={undefined} onReportMessage={undefined} />}
             </Stack>
         </Stack>
     )

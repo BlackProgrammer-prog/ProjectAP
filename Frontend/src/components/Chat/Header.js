@@ -15,7 +15,9 @@ import {
 import { useTheme } from "@mui/material/styles";
 import { CaretDown, MagnifyingGlass, Phone, VideoCamera } from "phosphor-react";
 import { faker } from "@faker-js/faker";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
+import { loadPV } from "../../utils/pvStorage";
+import { resolveAvatarUrl } from "../../utils/resolveAvatarUrl";
 import useResponsive from "../../hooks/useResponsive";
 
 const StyledBadge = styled(Badge)(({ theme }) => ({
@@ -65,6 +67,7 @@ const Conversation_Menu = [
 const ChatHeader = () => {
   const isMobile = useResponsive("between", "md", "xs", "sm");
   const [searchParams, setSearchParams] = useSearchParams();
+  const { username } = useParams();
   const theme = useTheme();
 
   const [conversationMenuAnchorEl, setConversationMenuAnchorEl] =
@@ -76,6 +79,22 @@ const ChatHeader = () => {
   const handleCloseConversationMenu = () => {
     setConversationMenuAnchorEl(null);
   };
+
+  const [online, setOnline] = React.useState(false);
+  const [profile, setProfile] = React.useState(null);
+
+  // Poll PV every 1.5s to reflect presence updates set by ContactsContext
+  React.useEffect(() => {
+    const update = () => {
+      const pv = loadPV();
+      const u = (pv || []).find((p) => p && (p.customUrl === username || p.username === username || p.email === username)) || null;
+      setProfile(u);
+      setOnline(!!u && Number(u.status) === 1);
+    };
+    update();
+    const interval = setInterval(update, 1500);
+    return () => clearInterval(interval);
+  }, [username]);
 
   return (
     <Box
@@ -102,20 +121,36 @@ const ChatHeader = () => {
           direction="row"
         >
           <Box>
-            <StyledBadge
-              overlap="circular"
-              anchorOrigin={{
-                vertical: "bottom",
-                horizontal: "right",
-              }}
-              variant="dot"
-            >
-              <Avatar alt={faker.name.fullName()} src={faker.image.avatar()} />
-            </StyledBadge>
+            {(() => {
+              const u = profile || {};
+              const name = u.fullName || u.username || u.email || faker.name.fullName();
+              const avatar = resolveAvatarUrl(u.avatarUrl) || faker.image.avatar();
+              // Only show green badge when online; otherwise plain avatar without dot
+              if (online) {
+                return (
+                  <StyledBadge
+                    overlap="circular"
+                    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                    variant="dot"
+                  >
+                    <Avatar alt={name} src={avatar} />
+                  </StyledBadge>
+                );
+              }
+              return <Avatar alt={name} src={avatar} />;
+            })()}
           </Box>
           <Stack spacing={0.2}>
-            <Typography variant="subtitle2">{faker.name.fullName()}</Typography>
-            <Typography variant="caption">Online</Typography>
+            {(() => {
+              const u = profile || {};
+              const name = u.fullName || u.username || u.email || faker.name.fullName();
+              return <Typography variant="subtitle2">{name}</Typography>;
+            })()}
+            {online ? (
+              <Typography variant="caption" color={'success.main'}>
+                Online
+              </Typography>
+            ) : null}
           </Stack>
         </Stack>
         <Stack direction={"row"} alignItems="center" spacing={isMobile ? 1 : 3}>

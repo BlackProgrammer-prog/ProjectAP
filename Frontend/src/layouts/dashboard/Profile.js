@@ -15,13 +15,14 @@ import {
 } from "@mui/material";
 import { faker } from "@faker-js/faker";
 import React, {useEffect, useState} from "react";
-import { ArrowLeft, Phone, Pencil } from "phosphor-react";
+import { ArrowLeft, Pencil } from "phosphor-react";
 
 const Profile = ({ onClose }) => {
 
     const [NameFull , setNameFull] = useState('');
     const [EmailFull, setEmailFull] = useState('');
     const [Biography , setBiography] = useState('');
+    const [avatarUrl, setAvatarUrl] = useState('');
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -32,6 +33,7 @@ const Profile = ({ onClose }) => {
                 setNameFull(ObjectProfile.fullName);
                 setEmailFull(UserObject.email);
                 setBiography(ObjectProfile.bio);
+                setAvatarUrl(ObjectProfile.avatarUrl);
 
             }catch (error) {
                 console.error("Error while fetching user data", error);
@@ -43,7 +45,7 @@ const Profile = ({ onClose }) => {
         name: NameFull,
         email: EmailFull,
         bio: Biography,
-        avatar: faker.image.avatar(),
+        avatar: avatarUrl,
     };
 
     const [bio, setBio] = React.useState(user.bio);

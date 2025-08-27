@@ -57,14 +57,15 @@ bool GroupManager::removeMember(const std::string& group_id, const std::string& 
 Group GroupManager::getGroup(const std::string& group_id) {
     Group group;
     auto result = db_->executeQueryWithParams(
-            "SELECT id, name, creator_id, created_at FROM groups WHERE id = ?", {group_id}
+            "SELECT id, name, creator_id, created_at, profile_image FROM groups WHERE id = ?", {group_id}
     );
 
-    if (result.data.size() >= 4) {
+    if (result.data.size() >= 5) {
         group.id = result.data[0];
         group.name = result.data[1];
         group.creator_id = result.data[2];
         group.created_at = std::stol(result.data[3]);
+        group.profile_image = result.data[4];
 
         auto members_result = db_->executeQueryWithParams(
                 "SELECT user_id FROM group_members WHERE group_id = ?", {group_id}
@@ -99,7 +100,8 @@ std::vector<Group> GroupManager::getUserGroups(const std::string& user_id) {
                 result.data[i+1],
                 result.data[i+2],
                 std::stol(result.data[i+3]),
-                {}
+                {},
+                ""
         };
 
         auto members_result = db_->executeQueryWithParams(

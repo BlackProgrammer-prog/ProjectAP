@@ -1,19 +1,295 @@
+// Ensure required includes are available before handler definitions
 #include "WebSocketHandler.h"
-#include "PrivateChatManager.h"
+#include "GroupManager.hpp"
+#include "GroupChatManagre.hpp"
+#include <vector>
+#include <ctime>
+#include <iostream>
+#include <deque>
+#include <unordered_set>
+// Boost UUID for generating connection ids
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
-#include <boost/asio/strand.hpp>
-#include <thread>
-#include <mutex>
-#include <iostream>
-#include <iomanip>
-#include <ctime>
-#include <sstream>
-#include <deque>
-#include <chrono>
-#include <vector>
-#include "json.hpp"
+// Group handlers
+json WebSocketServer::handleCreateGroup(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"]))
+        return {{"status","error"},{"message","Invalid token"}};
+    if (!data.contains("name"))
+        return {{"status","error"},{"message","Missing group name"}};
+    std::string creator_id = jwt_auth_->getUserId(data["token"]);
+    std::vector<std::string> members;
+    if (data.contains("members") && data["members"].is_array()) {
+        for (const auto& m : data["members"]) {
+            if (m.is_string()) {
+                std::string email = static_cast<std::string>(m);
+                std::string uid = contact_manager_->findUserByEmail(email);
+                if (!uid.empty()) members.push_back(uid);
+            }
+        }
+    }
+    auto group = group_manager_->createGroup(data["name"], creator_id, members);
+    return {{"status","success"},{"group_id", group.id},{"custom_url", group.id}};
+}
+
+json WebSocketServer::handleInviteToGroup(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"]))
+        return {{"status","error"},{"message","Invalid token"}};
+    if (!data.contains("group_id") || !data.contains("email"))
+        return {{"status","error"},{"message","Missing group_id or email"}};
+    std::string inviter = jwt_auth_->getUserId(data["token"]);
+    std::string gid = data["group_id"];
+    if (!group_manager_->isMember(gid, inviter))
+        return {{"status","error"},{"message","Not a group member"}};
+    std::string uid = contact_manager_->findUserByEmail(data["email"]);
+    if (uid.empty()) return {{"status","error"},{"message","User not found"}};
+    // Append invitation (group_id) to user's invitation JSON (as array) without adding to group
+    auto db = contact_manager_->getDatabase();
+    auto cur = db->executeQueryWithParams("SELECT invitation FROM users WHERE id = ?", {uid});
+    std::string inv = cur.data.empty() ? "[]" : cur.data[0];
+    json arr;
+    try { arr = json::parse(inv); } catch(...) { arr = json::array(); }
+    bool exists = false;
+    for (const auto& it : arr) {
+        if (it.is_string() && static_cast<std::string>(it) == gid) { exists = true; break; }
+    }
+    if (!exists) arr.push_back(gid);
+    auto upd = db->executeQueryWithParams("UPDATE users SET invitation = ? WHERE id = ?", {arr.dump(), uid});
+    if (!upd.success) {
+        return {{"status","error"},{"message","Failed to store invitation"}};
+    }
+    return {{"status","success"}};
+}
+
+json WebSocketServer::handleJoinGroup(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"]))
+        return {{"status","error"},{"message","Invalid token"}};
+    if (!data.contains("group_id"))
+        return {{"status","error"},{"message","Missing group_id"}};
+    std::string uid = jwt_auth_->getUserId(data["token"]);
+    bool ok = group_manager_->addMember(static_cast<std::string>(data["group_id"]), uid);
+    return ok ? json{{"status","success"}} : json{{"status","error"},{"message","Failed to join"}};
+}
+
+json WebSocketServer::handleLeaveGroup(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"]))
+        return {{"status","error"},{"message","Invalid token"}};
+    if (!data.contains("group_id"))
+        return {{"status","error"},{"message","Missing group_id"}};
+    std::string uid = jwt_auth_->getUserId(data["token"]);
+    bool ok = group_manager_->removeMember(static_cast<std::string>(data["group_id"]), uid);
+    return ok ? json{{"status","success"}} : json{{"status","error"},{"message","Failed to leave"}};
+}
+
+json WebSocketServer::handleSendGroupMessage(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"]))
+        return {{"status","error"},{"message","Invalid token"}};
+    if (!data.contains("group_id") || !data.contains("message"))
+        return {{"status","error"},{"message","Missing group_id or message"}};
+    std::string uid = jwt_auth_->getUserId(data["token"]);
+    std::string gid = data["group_id"];
+    if (!group_manager_->isMember(gid, uid)) return {{"status","error"},{"message","Not a group member"}};
+    Message msg;
+    msg.id = Message::generateUUID();
+    msg.sender_id = uid;
+    msg.receiver_id = "";
+    msg.content = data["message"];
+    msg.timestamp = std::time(nullptr);
+    msg.edited_timestamp = msg.timestamp;
+    msg.type = MessageType::GROUP;
+    msg.status = MessageStatus::SENT;
+    msg.deleted = false;
+    msg.delivered = false;
+    msg.read = false;
+    // Detect command prefixes
+    std::string content_str = msg.content;
+    bool is_echo = false;
+    bool is_all = false;
+    if (content_str.rfind("@echo", 0) == 0) {
+        is_echo = true;
+    } else if (content_str.rfind("@all", 0) == 0) {
+        is_all = true;
+    }
+
+    bool ok = group_chat_manager_->sendGroupMessage(gid, msg);
+    if (!ok) return {{"status","error"},{"message","Failed to send"}};
+
+    // If @echo: send the same message again to the group (duplicate)
+    if (is_echo) {
+        Message dup = msg;
+        dup.id = Message::generateUUID();
+        group_chat_manager_->sendGroupMessage(gid, dup);
+    }
+
+    // If @all: DM the message to each group member who is in sender's contacts
+    if (is_all) {
+        // Strip command for DM body if present as '@all ' prefix
+        std::string dm_body = content_str;
+        if (dm_body.size() > 5 && dm_body.substr(0, 5) == "@all ") {
+            dm_body = dm_body.substr(5);
+        }
+        // Build contact email set
+        std::unordered_set<std::string> contact_emails;
+        for (const auto& e : contact_manager_->getContacts(uid)) contact_emails.insert(e);
+        auto group = group_manager_->getGroup(gid);
+        for (const auto& member_id : group.members) {
+            if (member_id == uid) continue;
+            std::string member_email = contact_manager_->getEmailByUserId(member_id);
+            if (member_email.empty()) continue;
+            if (contact_emails.find(member_email) == contact_emails.end()) continue; // only if in contacts
+
+            Message dm;
+            dm.id = Message::generateUUID();
+            dm.sender_id = uid;
+            dm.receiver_id = member_id;
+            dm.content = dm_body;
+            dm.timestamp = std::time(nullptr);
+            dm.edited_timestamp = dm.timestamp;
+            dm.type = MessageType::PRIVATE;
+            dm.status = MessageStatus::SENT;
+            dm.deleted = false;
+            dm.delivered = false;
+            dm.read = false;
+            if (chat_manager_ && chat_manager_->sendMessage(dm)) {
+                // Reuse existing new_message notification pattern
+                json payload = {
+                        {"type", "new_message"},
+                        {"message", dm.toJson()}
+                };
+                auto client_ids = session_manager_->getClientIds(member_id);
+                for (const auto& cid : client_ids) {
+                    sendToClient(cid, payload);
+                }
+            }
+        }
+    }
+
+    return {{"status","success"},{"message_id", msg.id}};
+}
+
+json WebSocketServer::handleGetGroupMessages(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"]))
+        return {{"status","error"},{"message","Invalid token"}};
+    if (!data.contains("group_id"))
+        return {{"status","error"},{"message","Missing group_id"}};
+    std::string uid = jwt_auth_->getUserId(data["token"]);
+    std::string gid = data["group_id"];
+    if (!group_manager_->isMember(gid, uid)) return {{"status","error"},{"message","Not a group member"}};
+    int limit = 100;
+    if (data.contains("limit")) {
+        try { limit = data["limit"].get<int>(); } catch(...) {}
+        if (limit <= 0) limit = 1; if (limit > 1000) limit = 1000;
+    }
+    std::string order = data.contains("order") && data["order"].is_string() ? static_cast<std::string>(data["order"]) : "asc";
+    auto messages = group_chat_manager_->getGroupMessages(gid, limit);
+    if (order != "desc") std::reverse(messages.begin(), messages.end());
+    json arr = json::array();
+    for (const auto& m : messages) arr.push_back(m.toJson());
+    return {{"status","success"},{"messages", arr}};
+}
+
+json WebSocketServer::handleSearchGroupMessages(const json& data, const std::string& client_id) {
+    // Simple LIKE-based search (no FTS yet)
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"]))
+        return {{"status","error"},{"message","Invalid token"}};
+    if (!data.contains("group_id") || !data.contains("query"))
+        return {{"status","error"},{"message","Missing group_id or query"}};
+    std::string uid = jwt_auth_->getUserId(data["token"]);
+    std::string gid = data["group_id"];
+    if (!group_manager_->isMember(gid, uid)) return {{"status","error"},{"message","Not a group member"}};
+    int limit = 50;
+    if (data.contains("limit")) { try { limit = data["limit"].get<int>(); } catch(...) {} }
+    std::string sql = R"(
+        SELECT id, sender_id, content, timestamp, edited_timestamp, deleted, pinned
+        FROM group_messages
+        WHERE group_id = ? AND deleted = 0 AND content LIKE ?
+        ORDER BY timestamp DESC
+        LIMIT ?
+    )";
+    auto like = std::string("%") + static_cast<std::string>(data["query"]) + "%";
+    auto res = contact_manager_->getDatabase()->executeQueryWithParams(sql, {gid, like, std::to_string(limit)});
+    json arr = json::array();
+    for (size_t i = 0; i + 7 <= res.data.size(); i += 7) {
+        json m = {
+            {"id", res.data[i]},
+            {"sender_id", res.data[i+1]},
+            {"content", res.data[i+2]},
+            {"timestamp", std::stoll(res.data[i+3])},
+            {"edited_timestamp", std::stoll(res.data[i+4])},
+            {"deleted", res.data[i+5] == "1"},
+            {"pinned", res.data[i+6] == "1"},
+            {"type", "GROUP"}
+        };
+        arr.push_back(m);
+    }
+    return {{"status","success"},{"results", arr}};
+}
+
+json WebSocketServer::handleGetGroupInfo(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"]))
+        return {{"status","error"},{"message","Invalid token"}};
+    if (!data.contains("group_id"))
+        return {{"status","error"},{"message","Missing group_id"}};
+    std::string gid = data["group_id"];
+    auto g = group_manager_->getGroup(gid);
+    if (g.id.empty()) return {{"status","error"},{"message","Group not found"}};
+    json info = {
+        {"id", g.id},
+        {"name", g.name},
+        {"creator_id", g.creator_id},
+        {"created_at", g.created_at},
+        {"custom_url", g.id}
+    };
+    // fetch profile_image if exists
+    auto res = contact_manager_->getDatabase()->executeQueryWithParams(
+        "SELECT profile_image FROM groups WHERE id = ?", {gid}
+    );
+    if (!res.data.empty()) info["profile_image"] = res.data[0];
+    return {{"status","success"},{"group", info}};
+}
+
+json WebSocketServer::handleGetUserGroupsByEmail(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"]))
+        return {{"status","error"},{"message","Invalid token"}};
+    if (!data.contains("email"))
+        return {{"status","error"},{"message","Missing email"}};
+    std::string uid = contact_manager_->findUserByEmail(data["email"]);
+    if (uid.empty()) return {{"status","error"},{"message","User not found"}};
+    auto groups = group_manager_->getUserGroups(uid);
+    json ids = json::array();
+    for (const auto& g : groups) ids.push_back(g.id);
+    return {{"status","success"},{"group_ids", ids}};
+}
+
+json WebSocketServer::handleGetGroupMembers(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"]))
+        return {{"status","error"},{"message","Invalid token"}};
+    if (!data.contains("group_id"))
+        return {{"status","error"},{"message","Missing group_id"}};
+    std::string gid = data["group_id"];
+    auto g = group_manager_->getGroup(gid);
+    if (g.id.empty()) return {{"status","error"},{"message","Group not found"}};
+    json emails = json::array();
+    for (const auto& uid : g.members) {
+        emails.push_back(contact_manager_->getEmailByUserId(uid));
+    }
+    return {{"status","success"},{"members", emails}};
+}
+
+json WebSocketServer::handleGetAndClearInvitations(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"]))
+        return {{"status","error"},{"message","Invalid token"}};
+    std::string uid = jwt_auth_->getUserId(data["token"]);
+    auto db = contact_manager_->getDatabase();
+    auto cur = db->executeQueryWithParams("SELECT invitation FROM users WHERE id = ?", {uid});
+    std::string inv = cur.data.empty() ? "[]" : cur.data[0];
+    // Clear after reading
+    db->executeQueryWithParams("UPDATE users SET invitation = '[]' WHERE id = ?", {uid});
+    json arr;
+    try { arr = json::parse(inv); } catch(...) { arr = json::array(); }
+    return {{"status","success"},{"invitations", arr}};
+}
+#include "PrivateChatManager.h"
 
 namespace beast = boost::beast;
 namespace websocket = beast::websocket;
@@ -468,6 +744,7 @@ WebSocketServer::WebSocketServer(int port,
     // Initialize chat_manager_ - this will be set later via a setter or passed in constructor
     chat_manager_ = nullptr;
     profile_manager_ = nullptr;
+    // Initialize group managers lazily in main and provide setters if needed
 }
 
 void WebSocketServer::setProfileManager(std::shared_ptr<ProfileManager> profile_manager) {
@@ -562,6 +839,10 @@ void WebSocketServer::setupHandlers() {
     impl_->on("search_messages", [this](const json& data, const std::string& clientId) {
         return handleSearchMessages(data, clientId);
     });
+    
+    impl_->on("get_messages", [this](const json& data, const std::string& clientId) {
+        return handleGetMessages(data, clientId);
+    });
 
     impl_->on("search_user", [this](const json& data, const std::string& clientId) {
         return handleSearchUser(data, clientId);
@@ -576,6 +857,38 @@ void WebSocketServer::setupHandlers() {
     impl_->on("logout", [this](const json& data, const std::string& clientId) {
         return handleLogout(data, clientId);
     });
+
+    // New features
+    impl_->on("check_online_by_emails", [this](const json& data, const std::string& clientId) {
+        return handleCheckOnlineByEmails(data, clientId);
+    });
+    impl_->on("delete_account", [this](const json& data, const std::string& clientId) {
+        return handleDeleteAccount(data, clientId);
+    });
+    impl_->on("block_user", [this](const json& data, const std::string& clientId) {
+        return handleBlockUser(data, clientId);
+    });
+    impl_->on("get_unread_count", [this](const json& data, const std::string& clientId) {
+        return handleGetUnreadCount(data, clientId);
+    });
+    impl_->on("get_open_chats", [this](const json& data, const std::string& clientId) {
+        return handleGetOpenChats(data, clientId);
+    });
+    impl_->on("update_open_chats", [this](const json& data, const std::string& clientId) {
+        return handleUpdateOpenChats(data, clientId);
+    });
+    // Group events
+    impl_->on("create_group", [this](const json& d, const std::string& c){ return handleCreateGroup(d,c); });
+    impl_->on("invite_to_group", [this](const json& d, const std::string& c){ return handleInviteToGroup(d,c); });
+    impl_->on("join_group", [this](const json& d, const std::string& c){ return handleJoinGroup(d,c); });
+    impl_->on("leave_group", [this](const json& d, const std::string& c){ return handleLeaveGroup(d,c); });
+    impl_->on("send_group_message", [this](const json& d, const std::string& c){ return handleSendGroupMessage(d,c); });
+    impl_->on("get_group_messages", [this](const json& d, const std::string& c){ return handleGetGroupMessages(d,c); });
+    impl_->on("search_group_messages", [this](const json& d, const std::string& c){ return handleSearchGroupMessages(d,c); });
+    impl_->on("get_group_info", [this](const json& d, const std::string& c){ return handleGetGroupInfo(d,c); });
+    impl_->on("get_user_groups_by_email", [this](const json& d, const std::string& c){ return handleGetUserGroupsByEmail(d,c); });
+    impl_->on("get_group_members", [this](const json& d, const std::string& c){ return handleGetGroupMembers(d,c); });
+    impl_->on("get_and_clear_invitations", [this](const json& d, const std::string& c){ return handleGetAndClearInvitations(d,c); });
 }
 
 json WebSocketServer::handleSearchUser(const json& data, const std::string& client_id) {
@@ -683,6 +996,11 @@ json WebSocketServer::handleSendMessage(const json& data, const std::string& cli
     msg.timestamp = std::time(nullptr);
     msg.type = MessageType::PRIVATE;
     msg.status = MessageStatus::SENT;
+    // Ensure default flags are set so messages are retrievable
+    msg.deleted = false;
+    msg.delivered = false;
+    msg.read = false;
+    msg.edited_timestamp = msg.timestamp;
 
     if(chat_manager_->sendMessage(msg)) {
         // Notify receiver
@@ -700,6 +1018,52 @@ json WebSocketServer::handleSendMessage(const json& data, const std::string& cli
     }
 
     return {{"status", "error"}, {"message", "Failed to send message"}};
+}
+
+json WebSocketServer::handleGetMessages(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"])) {
+        return {{"status","error"},{"message","Invalid token"}};
+    }
+    if (!data.contains("with")) {
+        return {{"status","error"},{"message","Missing 'with' (peer email)"}};
+    }
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    std::string peer_email = data["with"];
+    int limit = 100;
+    try {
+        if (data.contains("limit")) {
+            if (data["limit"].is_number_integer()) {
+                limit = data["limit"].get<int>();
+            } else if (data["limit"].is_string()) {
+                limit = std::stoi(static_cast<std::string>(data["limit"]));
+            }
+        }
+    } catch(...) {}
+    if (limit <= 0) limit = 1;
+    if (limit > 1000) limit = 1000;
+    
+    std::string order = "asc";
+    if (data.contains("order") && data["order"].is_string()) {
+        order = static_cast<std::string>(data["order"]);
+    }
+    if (user_id.empty()) {
+        return {{"status","error"},{"message","User not found"}};
+    }
+    if (!chat_manager_) {
+        return {{"status","error"},{"message","Chat manager not initialized"}};
+    }
+    std::string peer_id = contact_manager_ ? contact_manager_->findUserByEmail(peer_email) : "";
+    if (peer_id.empty()) {
+        return {{"status","error"},{"message","Peer not found"}};
+    }
+    auto messages = chat_manager_->getMessages(user_id, peer_id, limit);
+    // DB returns latest first; convert to ascending if requested (default asc)
+    if (order != "desc") {
+        std::reverse(messages.begin(), messages.end());
+    }
+    json arr = json::array();
+    for (const auto& m : messages) arr.push_back(m.toJson());
+    return {{"status","success"},{"messages", arr}};
 }
 
 json WebSocketServer::handleAddContact(const json& data, const std::string& client_id) {
@@ -957,3 +1321,114 @@ json WebSocketServer::handleSearchMessages(const json& data, const std::string& 
     };
 }
 // Other handlers (mark_as_read, edit_message, etc.) would be implemented similarly
+
+json WebSocketServer::handleCheckOnlineByEmails(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"])) {
+        return {{"status","error"},{"message","Invalid token"}};
+    }
+    if (!data.contains("emails") || !data["emails"].is_array()) {
+        return {{"status","error"},{"message","Missing emails array"}};
+    }
+    json results = json::array();
+    for (const auto& e : data["emails"]) {
+        std::string email = e.get<std::string>();
+        int online = contact_manager_ ? contact_manager_->getOnlineStatusByEmail(email) : 0;
+        results.push_back({{"email", email}, {"online", online}});
+    }
+    return {{"status","success"},{"results",results}};
+}
+
+json WebSocketServer::handleDeleteAccount(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"])) {
+        return {{"status","error"},{"message","Invalid token"}};
+    }
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    if (user_id.empty()) return {{"status","error"},{"message","User not found"}};
+    // Delete user and cleanup sessions
+    bool ok = contact_manager_ && contact_manager_->deleteUserById(user_id);
+    if (ok) {
+        impl_->removeSession(client_id, user_id);
+        return {{"status","success"}};
+    }
+    return {{"status","error"},{"message","Failed to delete user"}};
+}
+
+json WebSocketServer::handleBlockUser(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"])) {
+        return {{"status","error"},{"message","Invalid token"}};
+    }
+    if (!data.contains("email")) {
+        return {{"status","error"},{"message","Missing email"}};
+    }
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    std::string target_email = data["email"];
+    if (user_id.empty()) return {{"status","error"},{"message","User not found"}};
+    bool ok = contact_manager_ && contact_manager_->blockUserByEmail(user_id, target_email);
+    return ok ? json{{"status","success"}} : json{{"status","error"},{"message","Failed to block"}};
+}
+
+json WebSocketServer::handleGetUnreadCount(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"])) {
+        return {{"status","error"},{"message","Invalid token"}};
+    }
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    if (user_id.empty()) return {{"status","error"},{"message","User not found"}};
+    int count = contact_manager_ ? contact_manager_->getUnreadCountForUser(user_id) : 0;
+    return {{"status","success"},{"unread",count}};
+}
+
+json WebSocketServer::handleGetOpenChats(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"])) {
+        return {{"status","error"},{"message","Invalid token"}};
+    }
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    if (user_id.empty()) return {{"status","error"},{"message","User not found"}};
+    json open_chats = contact_manager_ ? contact_manager_->getOpenChats(user_id) : json::array();
+    return {{"status","success"},{"open_chats", open_chats}};
+}
+
+json WebSocketServer::handleUpdateOpenChats(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"])) {
+        return {{"status","error"},{"message","Invalid token"}};
+    }
+    if (!data.contains("open_chats") || !data["open_chats"].is_array()) {
+        return {{"status","error"},{"message","Missing open_chats array"}};
+    }
+    std::string user_id = jwt_auth_->getUserId(data["token"]);
+    if (user_id.empty()) return {{"status","error"},{"message","User not found"}};
+    json open_chats = data["open_chats"];
+    bool ok = contact_manager_ && contact_manager_->setOpenChats(user_id, open_chats);
+    if (!ok) {
+        return {{"status","error"},{"message","Failed to update open_chats"}};
+    }
+
+    // Sync reciprocal open chats: for each email in user's list, ensure the other user also
+    // has this user's email in their open_chats_json.
+    try {
+        if (contact_manager_) {
+            // Get this user's email
+            std::string my_email = contact_manager_->getEmailByUserId(user_id);
+            if (!my_email.empty()) {
+                for (const auto& item : open_chats) {
+                    if (!item.is_string()) continue;
+                    std::string peer_email = static_cast<std::string>(item);
+                    // Resolve peer id
+                    std::string peer_id = contact_manager_->findUserByEmail(peer_email);
+                    if (peer_id.empty()) continue;
+                    // Read peer's current open chats
+                    json peer_open = contact_manager_->getOpenChats(peer_id);
+                    bool exists = false;
+                    for (const auto& p : peer_open) {
+                        if (p.is_string() && static_cast<std::string>(p) == my_email) { exists = true; break; }
+                    }
+                    if (!exists) {
+                        peer_open.push_back(my_email);
+                        contact_manager_->setOpenChats(peer_id, peer_open);
+                    }
+                }
+            }
+        }
+    } catch(...) { /* best-effort sync, ignore errors */ }
+
+    return {{"status","success"}};
+}

@@ -2,10 +2,13 @@ import { alpha, Avatar, Badge, Box, Button, Divider, IconButton, InputBase, Stac
 import { ArchiveBox, CircleDashed, MagnifyingGlass } from 'phosphor-react';
 import React, { useState, useEffect } from 'react';
 import { faker } from '@faker-js/faker';
-import { ChatList } from '../../data';
 import { Link } from "react-router-dom";
 import { PATH_DASHBOARD } from "../../routes/paths";
 import { loadPrivateChat } from "../../utils/chatStorage";
+import { loadPV, getStoredEmails } from "../../utils/pvStorage";
+import { useAuth } from "../../Login/Component/Context/AuthContext";
+import webSocketService from "../../Login/Component/Services/WebSocketService";
+import { resolveAvatarUrl } from "../../utils/resolveAvatarUrl";
 import { format, isToday, isYesterday, isThisYear } from "date-fns";
 
 const avatar = faker.image.avatar();
@@ -60,10 +63,10 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
   },
 }));
 
-// تابع برای دریافت آخرین پیام از چت خصوصی
-const getLastMessage = (username) => {
+// تابع برای دریافت آخرین پیام از چت خصوصی (کلید چت = customUrl)
+const getLastMessage = (chatKey) => {
   try {
-    const privateChat = loadPrivateChat(username);
+    const privateChat = loadPrivateChat(chatKey);
     if (privateChat && privateChat.length > 0) {
       const lastMessage = privateChat[privateChat.length - 1];
       return lastMessage.message || "No messages yet";
@@ -75,9 +78,9 @@ const getLastMessage = (username) => {
 };
 
 // تابع برای دریافت زمان آخرین پیام
-const getLastMessageTime = (username) => {
+const getLastMessageTime = (chatKey) => {
   try {
-    const privateChat = loadPrivateChat(username);
+    const privateChat = loadPrivateChat(chatKey);
     if (privateChat && privateChat.length > 0) {
       const lastMessage = privateChat[privateChat.length - 1];
       if (lastMessage.timestamp) {
@@ -151,10 +154,10 @@ const ChatElement = ({ id, name, msg, time, unread, img, online, username }) => 
           <Stack direction={'row'} spacing={2}>
             {online ? (
               <StyledBadge overlap="circular" anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} variant="dot">
-                <Avatar src={img || avatar} />
+                <Avatar src={resolveAvatarUrl(img) || avatar} />
               </StyledBadge>
             ) : (
-              <Avatar src={img || avatar} />
+              <Avatar src={resolveAvatarUrl(img) || avatar} />
             )}
 
             <Stack spacing={0.3}>
@@ -187,20 +190,67 @@ const ChatElement = ({ id, name, msg, time, unread, img, online, username }) => 
 
 const Chats = () => {
   const Theme = useTheme();
-  const [chatList, setChatList] = useState(ChatList);
+  const { token, isAuthenticated } = useAuth();
+  // chatList از PV ساخته می‌شود. username را به عنوان کلید چت = customUrl نگه می‌داریم
+  const [chatList, setChatList] = useState(() => {
+    const pv = loadPV();
+    return (pv || []).map((p, idx) => ({
+      id: p.email || idx,
+      username: p.customUrl, // کلید چت و پارام در URL
+      name: p.fullName || p.username || p.email,
+      img: p.avatarUrl,
+      msg: getLastMessage(p.customUrl),
+      time: getLastMessageTime(p.customUrl),
+      unread: 0,
+      pinned: false,
+      online: false,
+    }));
+  });
 
-  // به‌روزرسانی لیست چت‌ها هر 3 ثانیه
+  // بروزرسانی دوره‌ای پیام/زمان و گوش دادن به تغییر PV از storage
   useEffect(() => {
     const interval = setInterval(() => {
-      const updatedChatList = ChatList.map(chat => ({
-        ...chat,
-        msg: getLastMessage(chat.username),
-        time: getLastMessageTime(chat.username)
-      }));
-      setChatList(updatedChatList);
+      setChatList((prev) =>
+        prev.map((chat) => ({
+          ...chat,
+          msg: getLastMessage(chat.username),
+          time: getLastMessageTime(chat.username),
+        }))
+      );
     }, 3000);
 
-    return () => clearInterval(interval);
+    const onStorage = (e) => {
+      if (e.storageArea === localStorage && e.key === 'PV') {
+        const pv = loadPV();
+        const next = (pv || []).map((p, idx) => ({
+          id: p.email || idx,
+          username: p.customUrl,
+          name: p.fullName || p.username || p.email,
+          img: p.avatarUrl,
+          msg: getLastMessage(p.customUrl),
+          time: getLastMessageTime(p.customUrl),
+          unread: 0,
+          pinned: false,
+          online: false,
+        }));
+        setChatList(next);
+
+        // هر بار PV تغییر کرد، لیست ایمیل‌ها را به عنوان open_chats به سرور بفرست
+        try {
+          if (isAuthenticated && token) {
+            const emails = getStoredEmails();
+            if (Array.isArray(emails)) {
+              webSocketService.send({ type: 'update_open_chats', token, open_chats: emails });
+            }
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', onStorage);
+    };
   }, []);
 
   return (

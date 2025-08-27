@@ -75,6 +75,11 @@ nlohmann::json Login::handleLogin(const nlohmann::json& data, const std::string&
     );
 
     // Mark user online (memory and DB)
+    // Log login event in stat table
+    db_->executeQueryWithParams(
+        "INSERT INTO stat (user_id, event, timestamp) VALUES (?, 'login', ?)",
+        { user.getId(), std::to_string(std::time(nullptr)) }
+    );
     try {
         server_.setUserOnlineStatus(user.getId(), true);
     } catch(...) {}

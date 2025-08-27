@@ -1,16 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Box, Typography, Stack, Avatar, IconButton, Button, Divider, CircularProgress } from '@mui/material';
 import { UserPlus, Trash } from 'phosphor-react';
 import { useContacts } from '../../contexts/ContactsContext';
 import AddContactDialog from './AddContactDialog';
 import { faker } from '@faker-js/faker';
+import webSocketService from '../../Login/Component/Services/WebSocketService';
+import { useAuth } from '../../Login/Component/Context/AuthContext';
+import { loadPV, getStoredEmails } from '../../utils/pvStorage';
+import { resolveAvatarUrl } from '../../utils/resolveAvatarUrl';
 
-const ContactElement = ({ contact }) => {
+const ContactElement = ({ contact, onClick }) => {
     const { removeContact } = useContacts();
 
     // --- THE FIX IS HERE ---
     // 1. Determine online status from numeric value.
     const isOnline = contact.status === 1;
+
+    // Avatar from PV by matching email/username/customUrl
+    const pv = loadPV();
+    const pvMatch = (pv || []).find((p) =>
+        (contact?.email && p?.email === contact.email) ||
+        (contact?.username && p?.username === contact.username) ||
+        (contact?.customUrl && p?.customUrl === contact.customUrl)
+    );
+    const avatarSrc = resolveAvatarUrl(pvMatch?.avatarUrl) || faker.image.avatar();
 
     return (
         <Stack
@@ -25,9 +38,10 @@ const ContactElement = ({ contact }) => {
                 transition: 'box-shadow 0.3s ease-in-out',
                 '&:hover': { boxShadow: (theme) => theme.shadows[4] }
             }}
+            onClick={onClick}
         >
             <Stack direction="row" spacing={2} alignItems="center">
-                <Avatar src={contact.profile?.avatar || faker.image.avatar()} />
+                <Avatar src={avatarSrc} />
                 <Stack>
                     {/* 2. Display username, but fallback to email if it doesn't exist. */}
                     <Typography variant="subtitle1" fontWeight={600}>
@@ -39,7 +53,7 @@ const ContactElement = ({ contact }) => {
                     </Typography>
                 </Stack>
             </Stack>
-            <IconButton onClick={() => removeContact(contact.email)} color="error">
+            <IconButton onClick={(e) => { e.stopPropagation(); removeContact(contact.email); }} color="error">
                 <Trash />
             </IconButton>
         </Stack>
@@ -49,10 +63,25 @@ const ContactElement = ({ contact }) => {
 
 const Contacts = () => {
     const { contacts, isLoading, error } = useContacts();
+    const { token, isAuthenticated } = useAuth();
     const [openDialog, setOpenDialog] = useState(false);
     
     const handleOpenDialog = () => setOpenDialog(true);
     const handleCloseDialog = () => setOpenDialog(false);
+
+    const handleContactClick = useCallback((contact) => {
+        if (!isAuthenticated || !token) return;
+        const email = contact?.email || contact?.username; // fallback if email missing in list
+        if (!email) return;
+        webSocketService.send({ type: 'get_profile', token, email });
+        // پس از کلیک روی مخاطب، لیست ایمیل های PV را به عنوان open_chats به سرور بفرست
+        try {
+            const emails = getStoredEmails();
+            if (Array.isArray(emails)) {
+                webSocketService.send({ type: 'update_open_chats', token, open_chats: emails });
+            }
+        } catch {}
+    }, [isAuthenticated, token]);
 
     return (
         <Box sx={{ p: 3, height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -75,8 +104,11 @@ const Contacts = () => {
                     <Stack spacing={2}>
                         {contacts.length > 0 ? (
                             contacts.map((contact, index) => (
-                                // Use a combination of user_id or index for a more robust key
-                                <ContactElement key={contact.user_id || index} contact={contact} />
+                                <ContactElement
+                                    key={contact.user_id || contact.email || index}
+                                    contact={contact}
+                                    onClick={() => handleContactClick(contact)}
+                                />
                             ))
                         ) : (
                             <Typography textAlign="center" color="text.secondary">لیست مخاطبین شما خالی است.</Typography>

@@ -2,7 +2,7 @@
 // ..........................................................MAIN
 
 import Header from "./Header"
-import Footer from "./Footer"
+import Footer from "../Chat/Footer"
 import { Stack, Box } from "@mui/material"
 import Message from "./Message"
 import { Timeline } from "./MsgType"
@@ -10,7 +10,7 @@ import { useParams } from "react-router-dom"
 import { useState, useEffect } from "react"
 import WallpaperDialog from "../WallpaperDialog"
 
-const Conversation = ({ messages, onSend, onDeleteMessage, onDeleteChat, onReactionChange, onForwardMessage, onEditMessage }) => {
+const Conversation = ({ chatData, messages, onSend, onDeleteMessage, onDeleteChat, onReactionChange, onForwardMessage, onEditMessage, onReportMessage }) => {
     const { username } = useParams()
     const [blockedUsers, setBlockedUsers] = useState(() => {
         const stored = localStorage.getItem('blocked_users');
@@ -73,6 +73,7 @@ const Conversation = ({ messages, onSend, onDeleteMessage, onDeleteChat, onReact
                     backgroundSize: 'cover',
                 }}>
                 <Header
+                    chatData={chatData}
                     onBlockUser={handleBlockUser}
                     onDeleteChat={handleDeleteChat}
                     onSearchChange={handleSearchChange}
@@ -106,6 +107,7 @@ const Conversation = ({ messages, onSend, onDeleteMessage, onDeleteChat, onReact
                     onReactionChange={onReactionChange}
                     onForwardMessage={onForwardMessage}
                     onEditMessage={onEditMessage}
+                    onReportMessage={onReportMessage}
                     isSearchActive={isSearchActive}
                     searchQuery={searchQuery}
                     onSearchChange={handleSearchChange}
@@ -114,9 +116,8 @@ const Conversation = ({ messages, onSend, onDeleteMessage, onDeleteChat, onReact
 
             {/* chat footer */}
             <Footer
-                username={username}
                 onSend={onSend}
-                isBlocked={isBlocked}
+                disabled={isBlocked}
             />
             <WallpaperDialog
                 open={openWallpaperDialog}

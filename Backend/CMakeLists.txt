@@ -57,7 +57,10 @@ add_executable(Backend
         FileManager.h
         HttpServer.cpp
         HttpServer.h
-        GroupNotificationManager.cpp
+        GroupManager.cpp
+        GroupManager.hpp
+        GroupChatManagre.cpp
+        GroupChatManagre.hpp
 )
 
 # ────────────────────────────────

@@ -13,7 +13,7 @@ import Timeline from "./Timeline"
 import { AppBar, Toolbar, Checkbox, Button, Typography } from "@mui/material";
 import { useState } from "react";
 
-const Message = ({ messages, onDeleteMessage, onReactionChange, onForwardMessage, onEditMessage, isSearchActive, searchQuery, onSearchChange }) => {
+const Message = ({ messages, onDeleteMessage, onReactionChange, onForwardMessage, onEditMessage, onReportMessage, isSearchActive, searchQuery, onSearchChange }) => {
     // گروه‌بندی پیام‌ها بر اساس تاریخ
     const groupMessagesByDate = (messages) => {
         if (!messages || messages.length === 0) return [];
@@ -148,6 +148,7 @@ const Message = ({ messages, onDeleteMessage, onReactionChange, onForwardMessage
                             onReactionChange={onReactionChange}
                             onForwardMessage={onForwardMessage}
                             onEditMessage={onEditMessage}
+                            onReportMessage={onReportMessage}
                             selectMode={selectMode}
                             selected={selectedMessages.includes(message.id)}
                             onMessageClick={() => handleMessageClick(message.id)}

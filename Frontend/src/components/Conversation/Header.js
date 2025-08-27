@@ -4,9 +4,10 @@ import { faker } from '@faker-js/faker';
 import { CaretDown, MagnifyingGlass, PhoneCall, VideoCamera, X } from 'phosphor-react';
 import UserProfile from '../../layouts/dashboard/UserProfile';
 import { useParams } from 'react-router-dom';
-import { ChatList } from '../../data';
 import { clearPrivateChat } from '../../utils/chatStorage';
 import StartCall from '../../Secctions/main/StartCall';
+import { loadPV } from '../../utils/pvStorage';
+import { resolveAvatarUrl } from '../../utils/resolveAvatarUrl';
 
 const StyledBadge = styled(Badge)(({ theme }) => ({
     '& .MuiBadge-badge': {
@@ -31,7 +32,7 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
     },
 }));
 
-const Header = ({ onBlockUser, onDeleteChat, onSearchChange, isSearchActive }) => {
+const Header = ({ chatData, onBlockUser, onDeleteChat, onSearchChange, isSearchActive }) => {
     const { username } = useParams();
     const theme = useTheme();
     const [showUserProfile, setShowUserProfile] = useState(false);
@@ -41,8 +42,30 @@ const Header = ({ onBlockUser, onDeleteChat, onSearchChange, isSearchActive }) =
     });
     const [searchQuery, setSearchQuery] = useState('');
 
-    // پیدا کردن اطلاعات کاربر از ChatList
-    const chat = ChatList.find((c) => c.username === username);
+    // یافتن و نرمال‌سازی اطلاعات چت: ابتدا از prop، سپس از PV (localStorage)
+    const normalize = (p) => p ? ({
+        username: p.customUrl,
+        name: p.fullName || p.username || p.email,
+        img: resolveAvatarUrl(p.avatarUrl),
+    }) : null;
+    const [contact, setContact] = useState(() => {
+        const pv = loadPV();
+        const pvChat = (pv || []).find((p) => p && (p.customUrl === username || p.username === username || p.email === username));
+        return chatData ? normalize(chatData) : normalize(pvChat);
+    });
+    const [online, setOnline] = useState(false);
+    useEffect(() => {
+        const update = () => {
+            const pv = loadPV();
+            const pvChat = (pv || []).find((p) => p && (p.customUrl === username || p.username === username || p.email === username));
+            const norm = chatData ? normalize(chatData) : normalize(pvChat);
+            if (norm) setContact(norm);
+            setOnline(!!pvChat && Number(pvChat.status) === 1);
+        };
+        update();
+        const id = setInterval(update, 1500);
+        return () => clearInterval(id);
+    }, [username, chatData]);
     const isBlocked = blockedUsers.includes(username);
 
     const handleAvatarClick = () => {
@@ -102,7 +125,7 @@ const Header = ({ onBlockUser, onDeleteChat, onSearchChange, isSearchActive }) =
     }
 
     // اگر کاربر پیدا نشد، هدر خالی نمایش بده
-    if (!chat) {
+    if (!contact) {
         return (
             <Stack>
                 <Box
@@ -158,10 +181,10 @@ const Header = ({ onBlockUser, onDeleteChat, onSearchChange, isSearchActive }) =
                                 vertical: 'bottom',
                                 horizontal: 'right'
                             }}
-                            variant={chat.online && !isBlocked ? 'dot' : undefined}
+                            variant={online && !isBlocked ? 'dot' : undefined}
                         >
                             <Avatar
-                                src={chat.img}
+                                src={contact.img}
                                 onClick={handleAvatarClick}
                                 sx={{
                                     cursor: 'pointer',
@@ -178,14 +201,16 @@ const Header = ({ onBlockUser, onDeleteChat, onSearchChange, isSearchActive }) =
                             top: 30,
                             left: 520
                         }}>
-                            <Typography variant="h6">{chat.name}</Typography>
+                            <Typography variant="h6">{contact.name}</Typography>
                             <Stack sx={{
                                 position: 'fixed',
                                 top: 60
                             }}>
-                                <Typography variant='caption'>
-                                    {isBlocked ? "Blocked" : (chat.online ? "Online" : "Offline")}
-                                </Typography>
+                                {!isBlocked && online && (
+                                    <Typography variant='caption' color={'success.main'}>
+                                        Online
+                                    </Typography>
+                                )}
                             </Stack>
                         </Stack>
                         <Stack

@@ -13,6 +13,7 @@ struct Group {
     std::string creator_id;
     time_t created_at;
     std::vector<std::string> members;
+    std::string profile_image;
 };
 
 class GroupManager {
@@ -26,6 +27,7 @@ public:
     Group getGroup(const std::string& group_id);
     bool isMember(const std::string& group_id, const std::string& user_id);
     std::vector<Group> getUserGroups(const std::string& user_id);
+    bool groupExists(const std::string& group_id) { return !getGroup(group_id).id.empty(); }
 
 private:
     std::shared_ptr<Database> db_;

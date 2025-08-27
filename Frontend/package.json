@@ -38,6 +38,7 @@
     "simplebar-react": "^2.4.3",
     "socket.io-client": "^4.8.1",
     "stylis-plugin-rtl": "^2.0.2",
+    "sweetalert2": "^11.22.3",
     "web-vitals": "^2.1.4",
     "yup": "^1.6.1"
   },

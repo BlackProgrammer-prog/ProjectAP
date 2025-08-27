@@ -4,24 +4,31 @@ import { MessageOption } from "./MsgType";
 import MessageReactions from "./MessageReactions";
 import { faker } from "@faker-js/faker";
 import { useParams } from "react-router-dom";
-import { ChatList } from "../../data";
+import { loadPV } from "../../utils/pvStorage";
+import { resolveAvatarUrl } from "../../utils/resolveAvatarUrl";
 import { useState } from "react";
 import React from "react";
+import { useRef } from "react";
 
-const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForwardMessage, onEditMessage, currentUser = "me", selectMode = false, selected = false, onMessageClick, onToggleSelect }) => {
+const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForwardMessage, onEditMessage, onReportMessage, currentUser = "me", selectMode = false, selected = false, onMessageClick, onToggleSelect }) => {
     const theme = useTheme();
+    const menuRef = useRef(null);
     const { username } = useParams();
     const isOwnMessage = message.sender === currentUser || message.outgoing;
 
-    // پیدا کردن اطلاعات کاربر مقابل از ChatList
-    const otherUser = ChatList.find((c) => c.username === username);
+    // پیدا کردن اطلاعات کاربر مقابل از PV (localStorage)
+    const pv = loadPV();
+    const otherUser = (pv || []).find((p) => p.customUrl === username);
 
     // تعیین آواتار بر اساس فرستنده
     const getAvatar = () => {
+        if (message && message.senderAvatar) {
+            return message.senderAvatar;
+        }
         if (isOwnMessage) {
-            return faker.image.avatar(); // آواتار کاربر فعلی
+            return faker.image.avatar();
         } else {
-            return otherUser ? otherUser.img : faker.image.avatar(); // آواتار کاربر مقابل
+            return otherUser ? resolveAvatarUrl(otherUser.avatarUrl) : faker.image.avatar();
         }
     };
 
@@ -116,7 +123,31 @@ const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForward
                         boxShadow: theme.shadows[1], //add
                     }}
                     onClick={(!isEditing && selectMode) ? onToggleSelect : (!isEditing ? onMessageClick : undefined)}
+                    onContextMenu={(e) => {
+                        // Right-click opens the same options menu
+                        try {
+                            if (menuRef && menuRef.current && typeof menuRef.current.openAt === 'function') {
+                                menuRef.current.openAt(e);
+                            } else {
+                                e.preventDefault();
+                            }
+                        } catch {}
+                    }}
                 >
+                    {/* نام فرستنده برای پیام‌های گروهی */}
+                    {message?.senderName && (
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                color: isOwnMessage ? "rgba(255,255,255,0.85)" : theme.palette.text.secondary,
+                                fontWeight: 600,
+                                display: 'block',
+                                mb: 0.5,
+                            }}
+                        >
+                            {message.senderName}
+                        </Typography>
+                    )}
                     {/* نمایش ری‌اکشن‌ها */}
                     <MessageReactions
                         message={message}
@@ -224,6 +255,8 @@ const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForward
                     onReactionChange={onReactionChange}
                     onForwardMessage={onForwardMessage}
                     onEditClick={isOwnMessage ? handleEditClick : undefined}
+                    onReportMessage={onReportMessage}
+                    ref={menuRef}
                 />
             </Stack>
 
