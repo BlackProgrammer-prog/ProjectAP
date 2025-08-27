@@ -7,6 +7,7 @@ import { ChatList } from '../../data';
 import { clearPrivateChat } from '../../utils/chatStorage';
 import { loadPV } from '../../utils/pvStorage';
 import { resolveAvatarUrl } from '../../utils/resolveAvatarUrl';
+import { loadGroupMembers } from '../../utils/groupMembersStorage';
 import { useAuth } from '../../Login/Component/Context/AuthContext';
 import webSocketService from '../../Login/Component/Services/WebSocketService';
 import Swal from 'sweetalert2';
@@ -60,6 +61,29 @@ const UserProfile = ({ onClose, onBlockUser, onDeleteChat, isBlocked }) => {
         }
     };
 
+    const [members, setMembers] = React.useState(() => (group ? loadGroupMembers(group.id) : []));
+    React.useEffect(() => {
+        if (!group) return;
+        setMembers(loadGroupMembers(group.id));
+        const off = webSocketService.addGeneralListener((raw) => {
+            try {
+                const data = JSON.parse(raw);
+                if (!data) return;
+                if ((data.type === 'get_group_members_response' || Array.isArray(data.members)) && data.status === 'success') {
+                    setMembers(loadGroupMembers(group.id));
+                }
+                if ((data.type === 'get_profile_response' || data.profile) && data.status === 'success' && data.profile && data.profile.email) {
+                    const email = String(data.profile.email);
+                    const currentEmails = (loadGroupMembers(group.id) || []).map((m) => m && m.email);
+                    if (currentEmails.includes(email)) {
+                        setMembers(loadGroupMembers(group.id));
+                    }
+                }
+            } catch {}
+        });
+        return () => off && off();
+    }, [group]);
+
     return (
         group ? (
             <Box sx={{
@@ -102,6 +126,24 @@ const UserProfile = ({ onClose, onBlockUser, onDeleteChat, isBlocked }) => {
                         />
                         <Typography variant="h5" sx={{ fontWeight: 600 }}>{group.name}</Typography>
 
+                        <Divider sx={{ width: '100%', my: 2 }} />
+                        <Box sx={{ width: '100%' }}>
+                            <Typography variant="subtitle2" gutterBottom>Members</Typography>
+                            <Stack spacing={1} sx={{ width: '100%' }}>
+                                {(members || []).map((m, idx) => (
+                                    <Stack key={(m && m.email) || idx} direction="row" spacing={1.5} alignItems="center">
+                                        <Avatar src={resolveAvatarUrl(m && m.avatarUrl)} sx={{ width: 36, height: 36 }} />
+                                        <Box>
+                                            <Typography variant="body2">{(m && (m.fullName || m.username || m.email)) || '-'}</Typography>
+                                            <Typography variant="caption" color="text.secondary">{m && m.email}</Typography>
+                                        </Box>
+                                    </Stack>
+                                ))}
+                                {(!members || members.length === 0) && (
+                                    <Typography variant="caption" color="text.secondary">No members to display</Typography>
+                                )}
+                            </Stack>
+                        </Box>
                         <Divider sx={{ width: '100%', my: 2 }} />
                         <Stack spacing={1} sx={{ width: '100%' }}>
                             <Button

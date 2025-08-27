@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Conversation from '../../components/Conversation';
 import GroupSidebar from '../../components/Group/Sidebar';
@@ -7,12 +7,15 @@ import webSocketService from '../../Login/Component/Services/WebSocketService';
 import { findGroupByIdOrUrl, upsertGroup } from '../../utils/groupStorage';
 import { ensureGroupChatExists, saveGroupChat, loadGroupChat } from '../../utils/groupChatStorage';
 import { v4 as uuidv4 } from 'uuid';
+import { loadGroupMembers, saveGroupMembers, upsertGroupMember } from '../../utils/groupMembersStorage';
 
 const GroupChatPage = () => {
     const { groupId } = useParams();
     const { token, user } = useAuth();
     const [group, setGroup] = useState(() => findGroupByIdOrUrl(groupId));
     const [messages, setMessages] = useState([]);
+    const [members, setMembers] = useState(() => loadGroupMembers(groupId));
+    const memberEmailsRef = useRef([]);
 
     const chatData = useMemo(() => {
         if (!group) return null;
@@ -27,9 +30,10 @@ const GroupChatPage = () => {
         setGroup(findGroupByIdOrUrl(groupId));
         ensureGroupChatExists(groupId);
         setMessages(loadGroupChat(groupId));
+        setMembers(loadGroupMembers(groupId));
     }, [groupId]);
 
-    // Refresh group info and messages from server
+    // Refresh group info, messages, and members from server
     useEffect(() => {
         if (!token || !groupId) return;
         const off = webSocketService.addGeneralListener((raw) => {
@@ -40,6 +44,32 @@ const GroupChatPage = () => {
                     if (data.status === 'success' && data.group) {
                         upsertGroup(data.group);
                         setGroup(data.group);
+                    }
+                    return;
+                }
+                // Group members list
+                if (data && (data.type === 'get_group_members_response' || (data.status === 'success' && Array.isArray(data.members)))) {
+                    if (data.status === 'success' && Array.isArray(data.members)) {
+                        const emails = (data.members || []).filter((e) => typeof e === 'string');
+                        memberEmailsRef.current = emails;
+                        // Save minimal members immediately (emails only) while profiles load
+                        saveGroupMembers(groupId, emails.map((email) => ({ email })));
+                        setMembers(loadGroupMembers(groupId));
+                        // Request profiles for each member
+                        emails.forEach((email) => {
+                            try { webSocketService.send({ type: 'get_profile', token, email }); } catch {}
+                        });
+                    }
+                    return;
+                }
+                // Profile responses for members
+                if (data && (data.type === 'get_profile_response' || data.profile)) {
+                    if (data.status === 'success' && data.profile && data.profile.email) {
+                        const email = String(data.profile.email);
+                        if (memberEmailsRef.current.includes(email)) {
+                            upsertGroupMember(groupId, data.profile);
+                            setMembers(loadGroupMembers(groupId));
+                        }
                     }
                     return;
                 }
@@ -107,8 +137,11 @@ const GroupChatPage = () => {
         });
         // Ensure connection is active before sending; send after listener is registered
         try { webSocketService.connect(); } catch {}
-        webSocketService.send({ type: 'get_group_info', token, group_id: group?.id || groupId });
-        webSocketService.send({ type: 'get_group_messages', token, group_id: group?.id || groupId, limit: 50, order: 'asc' });
+        const gid = group?.id || groupId;
+        webSocketService.send({ type: 'get_group_info', token, group_id: gid });
+        webSocketService.send({ type: 'get_group_messages', token, group_id: gid, limit: 50, order: 'asc' });
+        // On refresh: request group members once
+        webSocketService.send({ type: 'get_group_members', token, group_id: gid });
         return () => off && off();
     }, [token, groupId]);
 
