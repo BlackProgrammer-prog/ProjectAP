@@ -16,6 +16,7 @@ const GroupChatPage = () => {
     const [messages, setMessages] = useState([]);
     const [members, setMembers] = useState(() => loadGroupMembers(groupId));
     const memberEmailsRef = useRef([]);
+    const requestedGroupKeyRef = useRef(null);
 
     const chatData = useMemo(() => {
         if (!group) return null;
@@ -84,7 +85,7 @@ const GroupChatPage = () => {
                     }
                     return;
                 }
-                // Bulk group messages (guard strictly to the current group)
+                // Bulk group messages
                 if (data && Array.isArray(data.messages)) {
                     const gid = keyId;
                     const typeStr = typeof data.type === 'string' ? data.type : '';
@@ -93,36 +94,32 @@ const GroupChatPage = () => {
                     const isPvLike = typeStr === 'get_messages_response' || typeStr === 'get_messages' || Object.prototype.hasOwnProperty.call(data, 'with');
                     if (isPvLike) return;
 
-                    // If envelope specifies a group_id, require it to match
-                    if (data.group_id && String(data.group_id) !== String(gid)) return;
-
-                    // If no group_id on envelope, try to infer from first item if available
-                    const first = data.messages[0];
-                    if (!data.group_id && first && first.group_id && String(first.group_id) !== String(gid)) return;
-
-                    // If we cannot determine group context at all, ignore to avoid cross-contamination
-                    const hasSomeGroupContext = !!data.group_id || !!(first && first.group_id);
-                    if (!hasSomeGroupContext) return;
-
-                    // If there is a type string and it doesn't mention group, ignore
-                    if (typeStr && !typeStr.includes('group')) return;
+                    // Determine if this payload belongs to current group
+                    const first = data.messages[0] || {};
+                    const envGroup = data.group_id || data.groupId;
+                    const msgGroup = first.group_id || first.groupId || first.group;
+                    const matchesEnv = envGroup ? String(envGroup) === String(gid) : false;
+                    const matchesMsg = msgGroup ? String(msgGroup) === String(gid) : false;
+                    const matchesRequestContext = requestedGroupKeyRef.current && String(requestedGroupKeyRef.current) === String(gid);
+                    if (!(matchesEnv || matchesMsg || matchesRequestContext)) return;
 
                     const myId = user?.user_id || user?.id;
                     const adapted = (data.messages || []).map((m) => {
                         const ms = typeof m.timestamp === 'number' ? (m.timestamp < 1e12 ? m.timestamp * 1000 : m.timestamp) : null;
                         const ts = ms ? new Date(ms).toISOString() : (m.timestamp || new Date().toISOString());
-                        const isOutgoing = myId && m.sender_id ? String(m.sender_id) === String(myId) : false;
+                        const senderAny = m.sender_id || m.senderId || m.sender || m.user_id || m.userId;
+                        const isOutgoing = myId && senderAny ? String(senderAny) === String(myId) : false;
                         return {
                             id: m.id || m._id || uuidv4(),
                             type: 'msg',
                             message: m.content || m.message || '',
                             incoming: !isOutgoing,
                             outgoing: !!isOutgoing,
-                            sender: String(m.sender_id || ''),
+                            sender: String(senderAny || ''),
                             receiver: '',
                             timestamp: ts,
                             read: m.read === true || m.read === 1,
-                            senderName: isOutgoing ? (user?.profile?.fullName || user?.username || 'You') : `Member ${m.sender_id}`,
+                            senderName: isOutgoing ? (user?.profile?.fullName || user?.username || 'You') : `Member ${senderAny ?? ''}`,
                             senderAvatar: isOutgoing ? (user?.profile?.avatarUrl || '') : '',
                         };
                     });
@@ -170,6 +167,7 @@ const GroupChatPage = () => {
         // Ensure connection is active before sending; send after listener is registered
         try { webSocketService.connect(); } catch {}
         webSocketService.send({ type: 'get_group_info', token, group_id: keyId });
+        requestedGroupKeyRef.current = String(keyId);
         webSocketService.send({ type: 'get_group_messages', token, group_id: keyId, limit: 50, order: 'asc' });
         // On refresh: request group members once
         webSocketService.send({ type: 'get_group_members', token, group_id: keyId });

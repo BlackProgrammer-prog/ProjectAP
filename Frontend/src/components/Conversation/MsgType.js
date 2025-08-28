@@ -14,6 +14,7 @@ import {
     Copy,
 } from "phosphor-react"
 import { useState, forwardRef, useImperativeHandle } from "react"
+import Swal from "sweetalert2"
 import ForwardDialog from "./ForwardDialog"
 import { MdEdit } from "react-icons/md";
 
@@ -97,7 +98,7 @@ export const MessageOption = forwardRef(({ el, message, onDeleteMessage, onReact
         setReactionAnchorEl(null)
     }
 
-    const handleMenuItemClick = (option, e) => {
+    const handleMenuItemClick = async (option, e) => {
         if (option.title === "Copy message") {
             // کپی کردن پیام به کلیپ‌بورد
             navigator.clipboard.writeText(message).then(() => {
@@ -119,7 +120,59 @@ export const MessageOption = forwardRef(({ el, message, onDeleteMessage, onReact
         } else if (option.title === "Edit message") {
             if (onEditClick) onEditClick();
         } else if (option.title === "Report") {
-            if (onReportMessage) onReportMessage(el);
+            // ارسال درخواست POST /moderate با بدنه موردنظر و نمایش پاسخ به صورت Toast
+            try {
+                const payload = {
+                    id: el?.id || el?._id || undefined,
+                    sender_id: (el && (el.sender_id || el.senderId || el.sender)) ? String(el.sender_id || el.senderId || el.sender) : undefined,
+                    receiver_id: (el && (el.receiver_id || el.receiverId || el.receiver)) ? String(el.receiver_id || el.receiverId || el.receiver) : undefined,
+                    content: el?.message || el?.text || "",
+                    timestamp: el?.timestamp ? Math.floor(new Date(el.timestamp).getTime() / 1000) : undefined,
+                };
+
+                const res = await fetch('http://localhost:8080/moderate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!res.ok) {
+                    const text = await res.text().catch(() => '');
+                    throw new Error(text || `HTTP ${res.status}`);
+                }
+                const data = await res.json().catch(() => ({}));
+
+                // انتخاب آیکن بر اساس action/allowed
+                const action = String(data.action || '').toLowerCase();
+                const allowed = data.allowed !== false;
+                const icon = !allowed || action === 'block' ? 'error' : (action === 'warn' || action === 'review') ? 'warning' : 'success';
+                const title = `Moderation: ${action || (allowed ? 'allow' : 'block')}`;
+                const reason = data.reason ? `علت: ${data.reason}` : '';
+                const confidence = typeof data.confidence === 'number' ? `| اطمینان: ${data.confidence}%` : '';
+                const score = typeof data.score === 'number' ? `| امتیاز: ${data.score}` : '';
+
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom-start',
+                    icon,
+                    title,
+                    text: [reason, confidence, score].filter(Boolean).join(' '),
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                });
+            } catch (err) {
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom-start',
+                    icon: 'error',
+                    title: 'Moderation failed',
+                    text: err?.message || 'خطا در ارسال گزارش',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                });
+            }
         }
         handleClose();
     }

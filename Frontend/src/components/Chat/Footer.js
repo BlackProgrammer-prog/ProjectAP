@@ -15,7 +15,8 @@ import {
   PaperPlaneTilt,
   Smiley,
   Sticker,
-  User,
+  Microphone,
+  MicrophoneSlash,
 } from "phosphor-react";
 import { useTheme, styled } from "@mui/material/styles";
 import React from "react";
@@ -59,14 +60,98 @@ const Actions = [
   },
   {
     color: "#013f7f",
-    icon: <User size={24} />,
+    icon: <Microphone size={24} />,
     y: 382,
-    title: "Contact",
+    title: "Microphone",
   },
 ];
 
 const ChatInput = ({ openPicker, setOpenPicker, value, onChange, onKeyDown }) => {
   const [openActions, setOpenActions] = React.useState(false);
+  const [isListening, setIsListening] = React.useState(false);
+  const recognitionRef = React.useRef(null);
+  const baseTextRef = React.useRef("");
+  const hasRequestedMediaRef = React.useRef(false);
+
+  const stopRecognition = React.useCallback(() => {
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+      try { recognitionRef.current.abort && recognitionRef.current.abort(); } catch {}
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+  }, []);
+
+  const ensureMicPermission = React.useCallback(async () => {
+    if (hasRequestedMediaRef.current) return true;
+    try {
+      const isLocalhost = typeof window !== 'undefined' && (/^(localhost|127\.0\.0\.1|\[::1\])$/i).test(window.location.hostname);
+      const isSecure = typeof window !== 'undefined' && (window.isSecureContext || isLocalhost);
+      if (!isSecure) {
+        alert("برای استفاده از میکروفون، برنامه باید روی HTTPS یا localhost اجرا شود.");
+        return false;
+      }
+      if (!navigator?.mediaDevices?.getUserMedia) return true; // skip if not available
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      try { (stream.getTracks() || []).forEach(t => t.stop()); } catch {}
+      hasRequestedMediaRef.current = true;
+      return true;
+    } catch (err) {
+      try { console.error('Microphone permission error:', err); } catch {}
+      alert("دسترسی به میکروفون رد شد یا در دسترس نیست. لطفاً اجازه دسترسی را فعال کنید.");
+      return false;
+    }
+  }, []);
+
+  const toggleMic = React.useCallback(async () => {
+    try {
+      // 1) Always try to request mic permission first to trigger browser prompt
+      const allowed = await ensureMicPermission();
+      if (!allowed) return;
+
+      // 2) Then check speech recognition availability
+      const RecognitionCtor = (typeof window !== 'undefined') && (window.webkitSpeechRecognition || window.SpeechRecognition);
+      if (!RecognitionCtor) {
+        alert("تبدیل گفتار به متن در این مرورگر پشتیبانی نمی‌شود. Chrome/Edge پیشنهاد می‌شود.");
+        return;
+      }
+
+      if (!isListening) {
+        baseTextRef.current = value || "";
+        const recognition = new RecognitionCtor();
+        recognition.lang = 'fa-IR';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+        recognition.onstart = () => setIsListening(true);
+        recognition.onerror = (e) => { try { console.warn('Speech error:', e?.error || e); } catch {}; stopRecognition(); };
+        recognition.onend = () => setIsListening(false);
+        recognition.onresult = (event) => {
+          let interim = "";
+          let final = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const result = event.results[i];
+            const transcript = (result[0] && result[0].transcript) ? result[0].transcript : "";
+            if (result.isFinal) final += transcript;
+            else interim += transcript;
+          }
+          const merged = (baseTextRef.current + (final || interim ? (baseTextRef.current ? " " : "") + (final || interim) : "")).trim();
+          onChange && onChange(merged);
+          if (final) baseTextRef.current = merged;
+        };
+        try { recognition.start(); } catch {}
+        recognitionRef.current = recognition;
+      } else {
+        stopRecognition();
+      }
+    } catch {}
+  }, [isListening, value, onChange, ensureMicPermission, stopRecognition]);
+
+  React.useEffect(() => {
+    return () => {
+      stopRecognition();
+    };
+  }, [stopRecognition]);
 
   return (
     <StyledInput
@@ -125,6 +210,9 @@ const ChatInput = ({ openPicker, setOpenPicker, value, onChange, onKeyDown }) =>
                 }}
               >
                 <Smiley />
+              </IconButton>
+              <IconButton onClick={toggleMic}>
+                {isListening ? <MicrophoneSlash /> : <Microphone />}
               </IconButton>
             </InputAdornment>
           </Stack>
