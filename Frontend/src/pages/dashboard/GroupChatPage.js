@@ -174,6 +174,19 @@ const GroupChatPage = () => {
         return () => off && off();
     }, [token, groupId]);
 
+    // Poll latest group messages every 3 seconds (single request per interval)
+    useEffect(() => {
+        if (!token || !groupId) return;
+        const resolved = findGroupByIdOrUrl(groupId);
+        const keyId = (resolved && resolved.id) ? resolved.id : groupId;
+        const tick = () => {
+            try { webSocketService.send({ type: 'get_group_messages', token, group_id: keyId, limit: 50, order: 'asc' }); } catch {}
+        };
+        const id = setInterval(tick, 3000);
+        tick();
+        return () => clearInterval(id);
+    }, [token, groupId]);
+
     // Placeholder handlers; will be implemented with group messaging later
     const handleSend = (text) => {
         const pending = {

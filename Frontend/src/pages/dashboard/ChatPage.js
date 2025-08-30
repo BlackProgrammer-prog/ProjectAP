@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Box, Stack } from "@mui/material";
 import { Chat_History } from "../../data";
 import Conversation from "../../components/Conversation";
@@ -45,6 +45,18 @@ const ChatPage = () => {
         }
     }, [username, token, peerEmail]);
 
+    // Poll latest messages every 3 seconds (single request per interval)
+    useEffect(() => {
+        if (!token || !peerEmail) return;
+        const tick = () => {
+            try { webSocketService.send({ type: 'get_messages', token, with: peerEmail, limit: 100, order: 'asc' }); } catch {}
+        };
+        const id = setInterval(tick, 3000);
+        // Optionally fetch once immediately to reduce initial latency
+        tick();
+        return () => clearInterval(id);
+    }, [token, peerEmail]);
+
     // Helper: map server message to local message shape
     const adaptServerMessage = (msg) => {
         const serverId = msg.id || msg._id || uuidv4();
@@ -88,6 +100,7 @@ const ChatPage = () => {
     };
 
     // Listen to incoming WS messages for get_messages responses and new messages
+    const initialBulkFetchedRef = useRef(false);
     useEffect(() => {
         const off = webSocketService.addGeneralListener((raw) => {
             let data;
@@ -116,7 +129,10 @@ const ChatPage = () => {
                 // جایگزینی کامل با پاسخ سرور
                 savePrivateChat(keyOther, adapted);
                 setMessages(adapted);
-                Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: `دریافت ${data.count ?? adapted.length} پیام`, showConfirmButton: false, timer: 1800, timerProgressBar: true });
+                if (!initialBulkFetchedRef.current) {
+                    Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: `دریافت ${data.count ?? adapted.length} پیام`, showConfirmButton: false, timer: 1800, timerProgressBar: true });
+                    initialBulkFetchedRef.current = true;
+                }
                 return;
             }
 
