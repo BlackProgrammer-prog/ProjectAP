@@ -11,3 +11,4 @@
 /Backend/%SystemDrive%
 /SeverCall/node_modules
 /SeverCall/.idea
+/Backend/DatabaseAPI/__pycache__
