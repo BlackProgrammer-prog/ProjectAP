@@ -12,3 +12,7 @@
 /SeverCall/node_modules
 /SeverCall/.idea
 /Backend/DatabaseAPI/__pycache__
+/Backend/SeverCall/.idea
+/Backend/SeverCall/node_modules
+/Frontend/SeverCall/node_modules
+/Frontend/SeverCall/.idea

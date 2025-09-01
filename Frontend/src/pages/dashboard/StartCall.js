@@ -91,14 +91,41 @@ const VideoCallApp = () => {
             socket.connect();
         }
 
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then((stream) => {
-                setStream(stream);
-                if (myVideo.current) {
-                    myVideo.current.srcObject = stream;
+        const getMediaSafely = async () => {
+            const isLocalhost = typeof window !== 'undefined' && (/^(localhost|127\.0\.0\.1|\[::1\])$/i).test(window.location.hostname);
+            const isSecure = typeof window !== 'undefined' && (window.isSecureContext || isLocalhost);
+            if (!isSecure) {
+                console.warn('getUserMedia requires HTTPS or localhost');
+                return;
+            }
+
+            const tryGet = async (constraints) => {
+                try {
+                    const s = await navigator.mediaDevices.getUserMedia(constraints);
+                    return s;
+                } catch (e) {
+                    console.warn('getUserMedia failed for', constraints, e && e.name);
+                    return null;
                 }
-            })
-            .catch(err => console.error("Error accessing media devices:", err));
+            };
+
+            try { await navigator.mediaDevices.enumerateDevices(); } catch {}
+
+            let s = await tryGet({ video: { facingMode: 'user' }, audio: true });
+            if (!s) s = await tryGet({ video: true, audio: true });
+            if (!s) s = await tryGet({ video: true, audio: false });
+            if (!s) s = await tryGet({ video: false, audio: true });
+            if (!s) {
+                alert('هیچ دوربین/میکروفنی پیدا نشد یا دسترسی رد شد');
+                return;
+            }
+            setStream(s);
+            if (myVideo.current) {
+                myVideo.current.srcObject = s;
+            }
+        };
+
+        getMediaSafely();
 
         // تمیز کردن لیسنرهای قبلی برای جلوگیری از duplicate
         socket.off("me");

@@ -27,12 +27,12 @@ const DashboardLayout = () => {
   }
 
   return (
-    // Wrap the entire authenticated layout with the ContactsProvider
+    // Wrap the entire authenticated layout with the ContactsProvider only.
+    // VideoCallProvider is provided globally in App.js to avoid duplicating state.
     <ContactsProvider>
       <Stack direction="row" sx={{ width: '100%' }}>
         <SideBar />
         {/* The Outlet will render the authenticated routes like /app, /contacts, etc. */}
-        {/* All of them will now have access to the ContactsContext. */}
         <Outlet />
       </Stack>
     </ContactsProvider>

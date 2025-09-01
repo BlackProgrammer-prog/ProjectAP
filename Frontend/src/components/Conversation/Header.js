@@ -7,7 +7,10 @@ import { useParams } from 'react-router-dom';
 import { clearPrivateChat } from '../../utils/chatStorage';
 import StartCall from '../../Secctions/main/StartCall';
 import { loadPV } from '../../utils/pvStorage';
+import { useVideoCall } from '../../contexts/VideoCallContext';
 import { resolveAvatarUrl } from '../../utils/resolveAvatarUrl';
+import { useAuth } from '../../Login/Component/Context/AuthContext';
+import webSocketService from '../../Login/Component/Services/WebSocketService';
 
 const StyledBadge = styled(Badge)(({ theme }) => ({
     '& .MuiBadge-badge': {
@@ -35,6 +38,8 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
 const Header = ({ chatData, onBlockUser, onDeleteChat, onSearchChange, isSearchActive }) => {
     const { username } = useParams();
     const theme = useTheme();
+    const { startCall } = useVideoCall();
+    const { token } = useAuth();
     const [showUserProfile, setShowUserProfile] = useState(false);
     const [blockedUsers, setBlockedUsers] = useState(() => {
         const stored = localStorage.getItem('blocked_users');
@@ -223,7 +228,59 @@ const Header = ({ chatData, onBlockUser, onDeleteChat, onSearchChange, isSearchA
                                 top: 33
                             }}
                         >
-                            <IconButton>
+                            <IconButton onClick={() => {
+                                try {
+                                    const pv = loadPV();
+                                    const u = (pv || []).find((p) => p && (p.customUrl === username || p.username === username || p.email === username));
+                                    const toUserId = u && (u.user_id || u.id || u.userId);
+                                    if (toUserId) { startCall(String(toUserId)); return; }
+
+                                    const targetEmail = (u && u.email) || (username && username.includes('@') ? username : null) || (u && u.username) || null;
+                                    const httpResolve = async (identity) => {
+                                        try {
+                                            if (!identity) return false;
+                                            const resp = await fetch('http://localhost:5000/resolve-user', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ identity })
+                                            });
+                                            const data = await resp.json().catch(() => null);
+                                            if (resp.ok && data && data.status === 'success' && data.userId) {
+                                                startCall(String(data.userId));
+                                                return true;
+                                            }
+                                        } catch {}
+                                        return false;
+                                    };
+                                    if (token && targetEmail) {
+                                        let resolved = false;
+                                        const off = webSocketService.addGeneralListener((raw) => {
+                                            let data; try { data = JSON.parse(raw); } catch { return; }
+                                            if ((data?.type === 'get_profile_response' || data?.profile) && data?.status === 'success' && data?.profile) {
+                                                const same = String(data.profile.email || data.profile.username || '').toLowerCase() === String(targetEmail).toLowerCase();
+                                                if (!same) return;
+                                                const id = data.profile.user_id || data.profile.id || data.profile.userId;
+                                                if (id && !resolved) { resolved = true; off && off(); startCall(String(id)); }
+                                            }
+                                        });
+                                        try { webSocketService.send({ type: 'get_profile', token, email: targetEmail }); } catch {}
+                                        setTimeout(async () => {
+                                            if (!resolved) {
+                                                off && off();
+                                                const ok = await httpResolve(targetEmail);
+                                                if (!ok) alert('شناسه کاربر برای تماس پیدا نشد');
+                                            }
+                                        }, 1500);
+                                        return;
+                                    }
+
+                                    (async () => {
+                                        const identity = targetEmail || username || null;
+                                        const ok = await httpResolve(identity);
+                                        if (!ok) alert('شناسه کاربر برای تماس پیدا نشد');
+                                    })();
+                                } catch { alert('شناسه کاربر برای تماس پیدا نشد'); }
+                            }}>
                                 <VideoCamera size={22} />
                             </IconButton>
                             <IconButton onClick={() => setOpenDialog(true)}>
