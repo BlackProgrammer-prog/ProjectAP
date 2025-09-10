@@ -96,7 +96,46 @@ const ChatPage = () => {
             receiver: outgoing ? (peerEmail || username) : (myEmail || 'me'),
             timestamp: ts,
             read: isRead,
+            // preserve flags for UI badges
+            delivered: typeof msg.delivered === 'boolean' ? msg.delivered : (msg.delivered === 1 ? true : false),
+            status: typeof msg.status === 'number' ? msg.status : undefined,
         };
+    };
+
+    // Normalize important fields for stable equality checks
+    const normalizeForCompare = (m) => ({
+        id: String(m.id || ''),
+        message: String(m.message || ''),
+        incoming: !!m.incoming,
+        outgoing: !!m.outgoing,
+        timestamp: String(m.timestamp || ''),
+        read: !!m.read,
+        type: String(m.type || 'msg'),
+    });
+
+    const areMessagesEqual = (a, b) => {
+        const arrA = Array.isArray(a) ? a : [];
+        const arrB = Array.isArray(b) ? b : [];
+        if (arrA.length !== arrB.length) return false;
+        for (let i = 0; i < arrA.length; i++) {
+            const x = normalizeForCompare(arrA[i] || {});
+            const y = normalizeForCompare(arrB[i] || {});
+            if (x.id !== y.id || x.message !== y.message || x.incoming !== y.incoming || x.outgoing !== y.outgoing || x.timestamp !== y.timestamp || x.read !== y.read || x.type !== y.type) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    // Build next array while reusing identical message object references to minimize re-render cost
+    const buildNextWithReuse = (prev, next) => {
+        const prevById = new Map();
+        (prev || []).forEach((m) => { if (m && m.id) prevById.set(String(m.id), m); });
+        return (Array.isArray(next) ? next : []).map((m) => {
+            const old = m && m.id ? prevById.get(String(m.id)) : null;
+            if (old && areMessagesEqual([old], [m])) return old; // reuse identical item
+            return m;
+        });
     };
 
     // Listen to incoming WS messages for get_messages responses and new messages
@@ -126,13 +165,18 @@ const ChatPage = () => {
             if (data && Array.isArray(data.messages)) {
                 const keyOther = peerEmail || username;
                 const adapted = data.messages.map(adaptServerMessage);
-                // جایگزینی کامل با پاسخ سرور
-                savePrivateChat(keyOther, adapted);
-                setMessages(adapted);
-                if (!initialBulkFetchedRef.current) {
-                    Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: `دریافت ${data.count ?? adapted.length} پیام`, showConfirmButton: false, timer: 1800, timerProgressBar: true });
-                    initialBulkFetchedRef.current = true;
-                }
+                setMessages((prev) => {
+                    if (areMessagesEqual(prev, adapted)) {
+                        return prev; // هیچ تغییری رخ نداده؛ از بروزرسانی state خودداری کن
+                    }
+                    const next = buildNextWithReuse(prev, adapted);
+                    savePrivateChat(keyOther, next);
+                    if (!initialBulkFetchedRef.current) {
+                        Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: `دریافت ${data.count ?? adapted.length} پیام`, showConfirmButton: false, timer: 1800, timerProgressBar: true });
+                        initialBulkFetchedRef.current = true;
+                    }
+                    return next;
+                });
                 return;
             }
 

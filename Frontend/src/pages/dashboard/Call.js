@@ -196,12 +196,12 @@
 // ========================================================================
 
 import { alpha, Box, Divider, IconButton, InputBase, Stack, styled, Typography, useTheme } from '@mui/material';
-import { CaretLeft, MagnifyingGlass, Phone, PhoneCall, Plus } from 'phosphor-react';
-import React, { useState } from 'react';
+import { CaretLeft, MagnifyingGlass, PhoneCall } from 'phosphor-react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CallLogElement } from '../../components/CallElement';
-import { CallList } from '../../data';
 import StartCall from '../../Secctions/main/StartCall';
+import { useAuth } from '../../Login/Component/Context/AuthContext';
 
 const Search = styled("div")(({ theme }) => ({
     position: 'relative',
@@ -237,6 +237,27 @@ const Call = () => {
     const handleCloseDialog = ()=>{
         setOpenDialog(false)
     }
+    const { user } = useAuth();
+    const myUserId = useMemo(() => (user && (user.user_id || user.id || user.userId)) || null, [user]);
+    const [logs, setLogs] = useState([]);
+    const [query, setQuery] = useState('');
+
+    useEffect(() => {
+        let abort = false;
+        const fetchLogs = async () => {
+            if (!myUserId) return;
+            try {
+                const resp = await fetch(`http://localhost:5000/call-logs?userId=${encodeURIComponent(String(myUserId))}&limit=100`);
+                const data = await resp.json().catch(() => null);
+                if (!abort && resp.ok && data && data.status === 'success') {
+                    setLogs(Array.isArray(data.logs) ? data.logs : []);
+                }
+            } catch {}
+        };
+        fetchLogs();
+        const id = setInterval(fetchLogs, 5000);
+        return () => { abort = true; clearInterval(id); };
+    }, [myUserId]);
     return (
         <>
             <Box
@@ -264,7 +285,7 @@ const Call = () => {
                             <SearchIconWrapper>
                                 <MagnifyingGlass color='#709CE6' />
                             </SearchIconWrapper>
-                            <StyledInputBase placeholder='Search...' />
+                            <StyledInputBase placeholder='Search...' value={query} onChange={(e)=> setQuery(e.target.value)} />
                         </Search>
                     </Stack>
                     <Stack spacing={2.5}>
@@ -282,9 +303,27 @@ const Call = () => {
                     </Stack>
                     <Stack direction={"column"} sx={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'scroll' }}>
                         <Stack spacing={2.4}>
-                            {/* <Typography variant='subtitle2' sx={{ color: '#676767' }}>All Calls</Typography> */}
-                            {/* Call Logs */}
-                            {CallList.map((el) => <CallLogElement {...el} />)}
+                            {logs
+                                .filter((l) => {
+                                    if (!query) return true;
+                                    const hay = `${l.from_user_id || ''} ${l.to_user_id || ''} ${l.call_type || ''} ${l.status || ''}`.toLowerCase();
+                                    return hay.includes(String(query).toLowerCase());
+                                })
+                                .map((l) => {
+                                    const incoming = String(l.to_user_id) === String(myUserId);
+                                    const missed = String(l.status) === 'missed' || String(l.status) === 'rejected';
+                                    const name = incoming ? (l.from_user_id || 'Unknown') : (l.to_user_id || 'Unknown');
+                                    return (
+                                        <CallLogElement
+                                            key={l.call_id || `${l.id}`}
+                                            id={l.id}
+                                            name={String(name)}
+                                            incoming={incoming}
+                                            missed={missed}
+                                            online={false}
+                                        />
+                                    );
+                                })}
                         </Stack>
                     </Stack>
                 </Stack>

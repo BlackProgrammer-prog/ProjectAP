@@ -280,10 +280,11 @@ io.on("connection", (socket) => {
             return socket.emit("userOffline", { userId: toUserId ? String(toUserId) : undefined, socketId: toSocketId ? String(toSocketId) : undefined });
         }
         console.log(`📲 startCall: ${fromUserId} -> ${(toUserId || toSocketId)} (callId=${callId}, type=${callType})`);
+        try { await logCallStarted(callId, fromUserId, (toUserId || toSocketId || null), callType); } catch {}
     });
 
     // پذیرش تماس
-    socket.on("acceptCall", (payload) => {
+    socket.on("acceptCall", async (payload) => {
         // payload: { callId, toUserId? (caller), toSocketId?, fromUserId (callee), answer, callType? }
         const { callId, toUserId, toSocketId, fromUserId, answer } = payload || {};
         const callType = (payload && payload.callType) ? String(payload.callType) : null;
@@ -313,10 +314,11 @@ io.on("connection", (socket) => {
             return socket.emit("userOffline", { userId: toUserId ? String(toUserId) : undefined, socketId: toSocketId ? String(toSocketId) : undefined });
         }
         console.log(`🟢 acceptCall: ${fromUserId} -> ${(toUserId || toSocketId)} (callId=${callId || "-"})`);
+        try { if (callId) await logCallAccepted(callId); } catch {}
     });
 
     // رد تماس (نسخه مبتنی بر userId برای جلوگیری از تداخل با نسخه legacy)
-    socket.on("rejectCallUser", (payload) => {
+    socket.on("rejectCallUser", async (payload) => {
         // payload: { callId, toUserId? (caller), toSocketId?, fromUserId (callee), reason? }
         const { callId, toUserId, toSocketId, fromUserId, reason } = payload || {};
         if (!fromUserId) {
@@ -343,6 +345,7 @@ io.on("connection", (socket) => {
             return socket.emit("userOffline", { userId: toUserId ? String(toUserId) : undefined, socketId: toSocketId ? String(toSocketId) : undefined });
         }
         console.log(`🔴 rejectCall: ${fromUserId} -> ${(toUserId || toSocketId)} (callId=${callId || "-"})`);
+        try { if (callId) await logCallRejected(callId); } catch {}
     });
 
     // تبادل ICE Candidate
@@ -373,7 +376,7 @@ io.on("connection", (socket) => {
     });
 
     // پایان تماس
-    socket.on("hangupCall", (payload) => {
+    socket.on("hangupCall", async (payload) => {
         // payload: { toUserId?, toSocketId?, fromUserId, callId? }
         const { toUserId, toSocketId, fromUserId, callId } = payload || {};
         if (!fromUserId) {
@@ -394,6 +397,7 @@ io.on("connection", (socket) => {
             });
         }
         console.log(`⬛ hangupCall: ${fromUserId} -> ${(toUserId || toSocketId)} (callId=${callId || "-"})`);
+        try { if (callId) await logCallEnded(callId); } catch {}
     });
 
     socket.on("disconnect", () => {
@@ -460,6 +464,7 @@ try {
             } else {
                 console.log('✅ SQLite connected at', DB_PATH);
                 sqliteStatus.initialized = true;
+                try { initializeCallLogsSchema(); } catch (e) { console.error('Failed to ensure call_logs schema', e && e.message); }
             }
         });
     }
@@ -571,6 +576,121 @@ app.get('/debug/resolve', async (req, res) => {
         const userId = await findUserIdByIdentity(identity);
         if (!userId) return res.status(404).json({ status: 'error', message: 'not_found' });
         return res.json({ status: 'success', identity, userId });
+    } catch (e) {
+        return res.status(500).json({ status: 'error', message: e.message || 'internal_error' });
+    }
+});
+
+// ------------------- Call Logs (SQLite) -------------------
+function initializeCallLogsSchema() {
+    if (!sqliteDb) return;
+    const ddl = [
+        `CREATE TABLE IF NOT EXISTS call_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            call_id TEXT UNIQUE,
+            from_user_id TEXT,
+            to_user_id TEXT,
+            call_type TEXT,
+            status TEXT,
+            started_at INTEGER,
+            accepted_at INTEGER,
+            ended_at INTEGER,
+            duration_sec INTEGER,
+            extra_json TEXT
+        )`,
+        `CREATE INDEX IF NOT EXISTS idx_call_logs_call_id ON call_logs(call_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_call_logs_users ON call_logs(from_user_id, to_user_id)`
+    ];
+    sqliteDb.serialize(() => { ddl.forEach((sql) => sqliteDb.run(sql)); });
+}
+
+function runDb(sql, params = []) {
+    return new Promise((resolve) => {
+        if (!sqliteDb) return resolve({ err: 'db_unavailable' });
+        sqliteDb.run(sql, params, function (err) {
+            resolve({ err: err || null, changes: this && this.changes, lastID: this && this.lastID });
+        });
+    });
+}
+
+function getDb(sql, params = []) {
+    return new Promise((resolve) => {
+        if (!sqliteDb) return resolve({ err: 'db_unavailable', row: null });
+        sqliteDb.get(sql, params, (err, row) => resolve({ err: err || null, row: row || null }));
+    });
+}
+
+function allDb(sql, params = []) {
+    return new Promise((resolve) => {
+        if (!sqliteDb) return resolve({ err: 'db_unavailable', rows: [] });
+        sqliteDb.all(sql, params, (err, rows) => resolve({ err: err || null, rows: rows || [] }));
+    });
+}
+
+async function logCallStarted(callId, fromUserId, toUserId, callType) {
+    if (!sqliteDb || !callId) return;
+    const now = Date.now();
+    await runDb(
+        `INSERT OR IGNORE INTO call_logs (call_id, from_user_id, to_user_id, call_type, status, started_at)
+         VALUES (?, ?, ?, ?, 'started', ?)`,
+        [String(callId), String(fromUserId || ''), String(toUserId || ''), String(callType || 'video'), now]
+    );
+}
+
+async function logCallAccepted(callId) {
+    if (!sqliteDb || !callId) return;
+    const ts = Date.now();
+    await runDb(
+        `UPDATE call_logs SET status = 'accepted', accepted_at = COALESCE(accepted_at, ?) WHERE call_id = ?`,
+        [ts, String(callId)]
+    );
+}
+
+async function logCallRejected(callId) {
+    if (!sqliteDb || !callId) return;
+    const ts = Date.now();
+    await runDb(
+        `UPDATE call_logs SET status = 'rejected', ended_at = COALESCE(ended_at, ?), duration_sec = 0 WHERE call_id = ?`,
+        [ts, String(callId)]
+    );
+}
+
+async function logCallEnded(callId) {
+    if (!sqliteDb || !callId) return;
+    const ts = Date.now();
+    const { row } = await getDb(`SELECT started_at, accepted_at, status FROM call_logs WHERE call_id = ?`, [String(callId)]);
+    let durationSec = null;
+    let status = 'ended';
+    if (row && row.started_at) {
+        durationSec = Math.max(0, Math.floor((ts - (row.accepted_at || row.started_at)) / 1000));
+        if (!row.accepted_at && (row.status === 'started' || row.status === 'rejected')) {
+            status = row.status === 'rejected' ? 'rejected' : 'missed';
+            durationSec = 0;
+        }
+    }
+    await runDb(
+        `UPDATE call_logs SET status = ?, ended_at = COALESCE(ended_at, ?), duration_sec = COALESCE(duration_sec, ?) WHERE call_id = ?`,
+        [status, ts, durationSec, String(callId)]
+    );
+}
+
+// GET /call-logs?userId=123&limit=50
+app.get('/call-logs', async (req, res) => {
+    try {
+        if (!sqliteDb) return res.status(503).json({ status: 'error', message: 'db_unavailable' });
+        const userId = String(req.query.userId || '').trim();
+        if (!userId) return res.status(400).json({ status: 'error', message: 'userId required' });
+        const limit = Math.max(1, Math.min(200, parseInt(String(req.query.limit || '50'), 10) || 50));
+        const { err, rows } = await allDb(
+            `SELECT id, call_id, from_user_id, to_user_id, call_type, status, started_at, accepted_at, ended_at, duration_sec
+             FROM call_logs
+             WHERE from_user_id = ? OR to_user_id = ?
+             ORDER BY started_at DESC
+             LIMIT ?`,
+            [userId, userId, limit]
+        );
+        if (err) return res.status(500).json({ status: 'error', message: String(err) });
+        return res.json({ status: 'success', logs: rows || [] });
     } catch (e) {
         return res.status(500).json({ status: 'error', message: e.message || 'internal_error' });
     }
