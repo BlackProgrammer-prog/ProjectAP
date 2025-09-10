@@ -8,6 +8,8 @@ import webSocketService from '../../Login/Component/Services/WebSocketService';
 import { useAuth } from '../../Login/Component/Context/AuthContext';
 import { loadPV, getStoredEmails } from '../../utils/pvStorage';
 import { resolveAvatarUrl } from '../../utils/resolveAvatarUrl';
+import QREmailDialog from './QREmailDialog';
+import QRScanDialog from './QRScanDialog';
 
 const ContactElement = ({ contact, onClick }) => {
     const { removeContact } = useContacts();
@@ -63,11 +65,17 @@ const ContactElement = ({ contact, onClick }) => {
 
 const Contacts = () => {
     const { contacts, isLoading, error } = useContacts();
-    const { token, isAuthenticated } = useAuth();
+    const { token, isAuthenticated, user } = useAuth();
     const [openDialog, setOpenDialog] = useState(false);
+    const [openQR, setOpenQR] = useState(false);
+    const [openScan, setOpenScan] = useState(false);
     
     const handleOpenDialog = () => setOpenDialog(true);
     const handleCloseDialog = () => setOpenDialog(false);
+    const handleOpenQR = () => setOpenQR(true);
+    const handleCloseQR = () => setOpenQR(false);
+    const handleOpenScan = () => setOpenScan(true);
+    const handleCloseScan = () => setOpenScan(false);
 
     const handleContactClick = useCallback((contact) => {
         if (!isAuthenticated || !token) return;
@@ -87,9 +95,17 @@ const Contacts = () => {
         <Box sx={{ p: 3, height: '100vh', display: 'flex', flexDirection: 'column' }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Typography variant="h5">مخاطبین</Typography>
-                <Button onClick={handleOpenDialog} startIcon={<UserPlus />}>
-                    افزودن مخاطب
-                </Button>
+                <Stack direction="row" spacing={1}>
+                    <Button onClick={handleOpenScan} variant="contained" color="primary">
+                        اسکن QR مخاطب
+                    </Button>
+                    <Button onClick={handleOpenQR} variant="outlined">
+                        نمایش QR ایمیل من
+                    </Button>
+                    <Button onClick={handleOpenDialog} startIcon={<UserPlus />}>
+                        افزودن مخاطب
+                    </Button>
+                </Stack>
             </Stack>
             <Divider sx={{ my: 2 }} />
             
@@ -118,6 +134,19 @@ const Contacts = () => {
             </Box>
 
             {openDialog && <AddContactDialog open={openDialog} handleClose={handleCloseDialog} />}
+            {openQR && (
+                <QREmailDialog
+                    open={openQR}
+                    onClose={handleCloseQR}
+                    email={(user && (user.email || user.username)) || ''}
+                />
+            )}
+            {openScan && (
+                <QRScanDialog
+                    open={openScan}
+                    onClose={handleCloseScan}
+                />
+            )}
         </Box>
     );
 };

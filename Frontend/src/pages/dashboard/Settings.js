@@ -4,7 +4,7 @@ import {
     Avatar, Box, Divider, IconButton, Stack,
     Typography, useTheme, Dialog, Switch
 } from '@mui/material';
-import { CaretLeft, Bell, Lock, Key, PencilCircle, Image, Note, Keyboard, Info } from 'phosphor-react';
+import { CaretLeft, Bell, Lock, Key, PencilCircle, Image, Note, Keyboard, Info, WifiHigh, WifiLow, WifiSlash } from 'phosphor-react';
 import { useNavigate } from 'react-router-dom';
 import { faker } from '@faker-js/faker';
 import Shortcuts from '../../Secctions/settings/Shortcuts';
@@ -16,7 +16,7 @@ import UpdateAvatarDialog from '../../Secctions/settings/UpdateAvatarDialog'; //
 const Settings = () => {
     const theme = useTheme();
     const navigate = useNavigate();
-    const { user, setNotificationStatus } = useAuth();
+    const { user, setNotificationStatus, connectionStatus } = useAuth();
 
     // State for all dialogs
     const [openShortcuts, setOpenShortcuts] = useState(false);
@@ -58,6 +58,14 @@ const Settings = () => {
                     <Stack>
                         <Typography variant='subtitle1'>{user?.profile?.fullName || user?.username}</Typography>
                         <Typography variant='body2' color="text.secondary">{user?.username}</Typography>
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
+                            {connectionStatus === 'connected' && <WifiHigh size={16} color="#22c55e" />}
+                            {connectionStatus === 'weak' && <WifiLow size={16} color="#f59e0b" />}
+                            {connectionStatus === 'disconnected' && <WifiSlash size={16} color="#ef4444" />}
+                            <Typography variant='caption' color={connectionStatus === 'connected' ? 'success.main' : connectionStatus === 'weak' ? 'warning.main' : 'error.main'}>
+                                اتصال پورت 8081: {connectionStatus === 'connected' ? 'وصل' : connectionStatus === 'weak' ? 'ضعیف' : 'قطع'}
+                            </Typography>
+                        </Stack>
                     </Stack>
                 </Stack>
                 <Box sx={{ overflowY: 'auto', flexGrow: 1 }}>

@@ -61,6 +61,8 @@ add_executable(Backend
         GroupManager.hpp
         GroupChatManagre.cpp
         GroupChatManagre.hpp
+        DateBaseBackup.cpp
+        DateBaseBackup.h
 )
 
 # ────────────────────────────────

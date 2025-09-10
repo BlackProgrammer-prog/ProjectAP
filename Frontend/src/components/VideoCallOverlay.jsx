@@ -33,20 +33,35 @@ const VideoCallOverlay = () => {
             <Box sx={{ position: 'fixed', inset: 0, zIndex: 20000, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Stack spacing={2} sx={{ width: 'min(900px, 92vw)', height: 'min(560px, 80vh)', backgroundColor: 'background.paper', borderRadius: 3, p: 2, boxShadow: 8 }}>
                     <Stack direction="row" spacing={2} sx={{ flex: 1 }}>
-                        <Box sx={{ flex: 1, backgroundColor: '#000', borderRadius: 2, overflow: 'hidden' }}>
-                            {localStream ? <VideoElement stream={localStream} muted /> : (
-                                <Stack sx={{ width: '100%', height: '100%' }} alignItems="center" justifyContent="center">
-                                    <VideoCamera size={32} color="#fff" />
-                                </Stack>
-                            )}
-                        </Box>
-                        <Box sx={{ flex: 1, backgroundColor: '#000', borderRadius: 2, overflow: 'hidden' }}>
-                            {remoteStream ? <VideoElement stream={remoteStream} /> : (
-                                <Stack sx={{ width: '100%', height: '100%' }} alignItems="center" justifyContent="center">
-                                    <Typography color="#fff">{isOutgoing ? 'در انتظار پاسخ...' : (isIncoming ? 'تماس ورودی' : 'در حال اتصال...')}</Typography>
-                                </Stack>
-                            )}
-                        </Box>
+                        {currentCall && currentCall.callType === 'audio' ? (
+                            <Stack sx={{ width: '100%' }} alignItems="center" justifyContent="center">
+                                <Typography variant="h6">تماس صوتی</Typography>
+                                <Typography variant="body2" color="text.secondary">{isOutgoing ? 'در انتظار پاسخ...' : (isIncoming ? 'تماس ورودی' : 'در حال اتصال...')}</Typography>
+                                {/* Hidden audio element for remote audio playback */}
+                                <audio
+                                    autoPlay
+                                    ref={(el) => { if (el && remoteStream) el.srcObject = remoteStream; }}
+                                    style={{ display: 'none' }}
+                                />
+                            </Stack>
+                        ) : (
+                            <>
+                                <Box sx={{ flex: 1, backgroundColor: '#000', borderRadius: 2, overflow: 'hidden' }}>
+                                    {localStream ? <VideoElement stream={localStream} muted /> : (
+                                        <Stack sx={{ width: '100%', height: '100%' }} alignItems="center" justifyContent="center">
+                                            <VideoCamera size={32} color="#fff" />
+                                        </Stack>
+                                    )}
+                                </Box>
+                                <Box sx={{ flex: 1, backgroundColor: '#000', borderRadius: 2, overflow: 'hidden' }}>
+                                    {remoteStream ? <VideoElement stream={remoteStream} /> : (
+                                        <Stack sx={{ width: '100%', height: '100%' }} alignItems="center" justifyContent="center">
+                                            <Typography color="#fff">{isOutgoing ? 'در انتظار پاسخ...' : (isIncoming ? 'تماس ورودی' : 'در حال اتصال...')}</Typography>
+                                        </Stack>
+                                    )}
+                                </Box>
+                            </>
+                        )}
                     </Stack>
 
                     <Stack direction="row" spacing={2} alignItems="center" justifyContent="center">

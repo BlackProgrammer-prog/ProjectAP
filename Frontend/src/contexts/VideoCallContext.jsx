@@ -22,7 +22,7 @@ export const VideoCallProvider = ({ children }) => {
     const registeredRef = useRef(false);
 
     const [callState, setCallState] = useState('idle'); // 'idle' | 'ringingOutgoing' | 'ringingIncoming' | 'inCall'
-    const [currentCall, setCurrentCall] = useState(null); // { callId, fromUserId, toUserId }
+    const [currentCall, setCurrentCall] = useState(null); // { callId, fromUserId, toUserId, callType }
     const [remoteStream, setRemoteStream] = useState(null);
     const [localStream, setLocalStream] = useState(null);
 
@@ -113,9 +113,9 @@ export const VideoCallProvider = ({ children }) => {
             } catch {}
         });
 
-        s.on('incomingCall', async ({ callId, fromUserId, fromSocketId, offer }) => {
+        s.on('incomingCall', async ({ callId, fromUserId, fromSocketId, offer, callType }) => {
             try { console.log('[VC] incomingCall -> set ringingIncoming'); } catch {}
-            setCurrentCall({ callId, fromUserId, fromSocketId, toUserId: myUserId, offer });
+            setCurrentCall({ callId, fromUserId, fromSocketId, toUserId: myUserId, offer, callType: callType || 'video' });
             setCallState('ringingIncoming');
             // Auto-timeout
             clearTimeout(ringTimeoutRef.current);
@@ -148,7 +148,7 @@ export const VideoCallProvider = ({ children }) => {
             } catch {}
         });
 
-        s.on('callAccepted', async ({ callId, fromUserId, answer }) => {
+        s.on('callAccepted', async ({ callId, fromUserId, answer, callType }) => {
             try {
                 if (pcRef.current) {
                     await pcRef.current.setRemoteDescription(answer);
@@ -159,6 +159,9 @@ export const VideoCallProvider = ({ children }) => {
                     } catch {}
                     pendingCandidatesRef.current = [];
                     setCallState('inCall');
+                    if (callType) {
+                        setCurrentCall((prev) => prev ? { ...prev, callType } : prev);
+                    }
                     try { console.log('[VC] callAccepted -> set inCall'); } catch {}
                 }
             } catch (e) { console.error(e); }
@@ -301,6 +304,19 @@ export const VideoCallProvider = ({ children }) => {
         return ls;
     }, []);
 
+    const getLocalAudioOnly = useCallback(async () => {
+        // Do not reuse a prior video stream; request a clean audio-only stream
+        try { await navigator.mediaDevices.enumerateDevices(); } catch {}
+        try {
+            const media = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+            localStreamRef.current = media; setLocalStream(media);
+            return media;
+        } catch (e) {
+            try { alert('دسترسی به میکروفن ممکن نیست'); } catch {}
+            return null;
+        }
+    }, []);
+
     const startVideoCall = useCallback(async (toUserId = null, providedLocalStream = null, userIdOverride = null, toSocketId = null) => {
         const fromUserId = userIdOverride || selfUserId || myUserId;
         if (!fromUserId) { try { console.warn('[VC] Missing self userId; cannot start call'); alert('شناسه کاربری شما برای تماس نامعتبر است'); } catch {}; return; }
@@ -313,10 +329,10 @@ export const VideoCallProvider = ({ children }) => {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         const callId = `${fromUserId}:${(toUserId || toSocketId)}:${Date.now()}`;
-        setCurrentCall({ callId, fromUserId, toUserId, toSocketId: toSocketId || null });
+        setCurrentCall({ callId, fromUserId, toUserId, toSocketId: toSocketId || null, callType: 'video' });
         setCallState('ringingOutgoing');
-        if (toSocketId) { s.emit('startCall', { toSocketId, fromUserId, offer, callId }); }
-        else { s.emit('startCall', { toUserId, fromUserId, offer, callId }); }
+        if (toSocketId) { s.emit('startCall', { toSocketId, fromUserId, offer, callId, callType: 'video' }); }
+        else { s.emit('startCall', { toUserId, fromUserId, offer, callId, callType: 'video' }); }
 
         clearTimeout(ringTimeoutRef.current);
         ringTimeoutRef.current = setTimeout(() => {
@@ -327,6 +343,31 @@ export const VideoCallProvider = ({ children }) => {
     }, [myUserId, selfUserId, ensureSocket, getLocalStream, createPeerConnection, cleanupMedia, backToIdle]);
 
     const startCall = useCallback(async (toUserId) => startVideoCall(toUserId), [startVideoCall]);
+
+    const startVoiceCall = useCallback(async (toUserId = null, userIdOverride = null, toSocketId = null) => {
+        const fromUserId = userIdOverride || selfUserId || myUserId;
+        if (!fromUserId) { try { console.warn('[VC] Missing self userId; cannot start voice call'); alert('شناسه کاربری شما برای تماس نامعتبر است'); } catch {}; return; }
+        if (!toUserId && !toSocketId) { try { console.warn('[VC] Missing target (toUserId/toSocketId)'); alert('مقصد تماس نامعتبر است'); } catch {}; return; }
+        const s = ensureSocket();
+        const ls = await getLocalAudioOnly();
+        const pc = createPeerConnection({ toUserId, toSocketId }, fromUserId);
+        if (ls) { (ls.getTracks() || []).forEach((t) => pc.addTrack(t, ls)); }
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        const callId = `${fromUserId}:${(toUserId || toSocketId)}:${Date.now()}`;
+        setCurrentCall({ callId, fromUserId, toUserId, toSocketId: toSocketId || null, callType: 'audio' });
+        setCallState('ringingOutgoing');
+        if (toSocketId) { s.emit('startCall', { toSocketId, fromUserId, offer, callId, callType: 'audio' }); }
+        else { s.emit('startCall', { toUserId, fromUserId, offer, callId, callType: 'audio' }); }
+
+        clearTimeout(ringTimeoutRef.current);
+        ringTimeoutRef.current = setTimeout(() => {
+            try { s.emit('hangupCall', { toUserId, fromUserId, callId }); } catch {}
+            cleanupMedia();
+            backToIdle();
+        }, RING_TIMEOUT_MS);
+    }, [myUserId, selfUserId, ensureSocket, getLocalAudioOnly, createPeerConnection, cleanupMedia, backToIdle]);
 
     const acceptIncoming = useCallback(async () => {
         const info = currentCall || {};
@@ -352,7 +393,7 @@ export const VideoCallProvider = ({ children }) => {
         }
         if (!ensureFromUserId) { try { alert('شناسه کاربری شما برای پذیرش تماس نامعتبر است'); } catch {}; return; }
 
-        const ls = await getLocalStream();
+        const ls = info.callType === 'audio' ? (await getLocalAudioOnly()) : (await getLocalStream());
         const pc = createPeerConnection({ toUserId, toSocketId }, ensureFromUserId);
         if (ls) { (ls.getTracks() || []).forEach((t) => pc.addTrack(t, ls)); }
 
@@ -363,10 +404,10 @@ export const VideoCallProvider = ({ children }) => {
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         const fromUserId = ensureFromUserId;
-        if (toSocketId) s.emit('acceptCall', { callId: info.callId, toSocketId, fromUserId, answer });
-        else s.emit('acceptCall', { callId: info.callId, toUserId, fromUserId, answer });
+        if (toSocketId) s.emit('acceptCall', { callId: info.callId, toSocketId, fromUserId, answer, callType: info.callType || 'video' });
+        else s.emit('acceptCall', { callId: info.callId, toUserId, fromUserId, answer, callType: info.callType || 'video' });
         setCallState('inCall');
-    }, [currentCall, myUserId, selfUserId, ensureSocket, getLocalStream, createPeerConnection, user]);
+    }, [currentCall, myUserId, selfUserId, ensureSocket, getLocalStream, getLocalAudioOnly, createPeerConnection, user]);
 
     const rejectIncoming = useCallback((reason = 'busy') => {
         const info = currentCall || {};
@@ -415,8 +456,8 @@ export const VideoCallProvider = ({ children }) => {
         // state
         callState, currentCall, localStream, remoteStream,
         // actions
-        startCall, startVideoCall, acceptIncoming, rejectIncoming, hangup, hangupCall,
-    }), [callState, currentCall, localStream, remoteStream, startCall, startVideoCall, acceptIncoming, rejectIncoming, hangup, hangupCall]);
+        startCall, startVideoCall, startVoiceCall, acceptIncoming, rejectIncoming, hangup, hangupCall,
+    }), [callState, currentCall, localStream, remoteStream, startCall, startVideoCall, startVoiceCall, acceptIncoming, rejectIncoming, hangup, hangupCall]);
 
     return (
         <VideoCallContext.Provider value={value}>

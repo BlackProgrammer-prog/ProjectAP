@@ -14,6 +14,7 @@ export const AuthProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [token, setToken] = useState(null);
     const [onRegisterSuccessCallback, setOnRegisterSuccessCallback] = useState(null);
+    const [connectionStatus, setConnectionStatus] = useState('disconnected'); // 'connected' | 'weak' | 'disconnected'
 
     const lastHeartbeatResponseRef = useRef(Date.now());
     const heartbeatTimeoutRef = useRef(null);
@@ -244,6 +245,43 @@ export const AuthProvider = ({ children }) => {
         isAuthenticatedRef.current = isAuthenticated;
     }, [token, isAuthenticated]);
 
+    // Ensure WebSocket connection attempt on app load
+    useEffect(() => {
+        try { webSocketService.connect(); } catch {}
+    }, []);
+
+    // Periodically evaluate connection status to ws://localhost:8081
+    const evaluateConnection = useCallback(() => {
+        try {
+            const socket = webSocketService.socket;
+            const readyState = socket ? socket.readyState : (typeof WebSocket !== 'undefined' ? WebSocket.CLOSED : 3);
+            if (readyState !== (typeof WebSocket !== 'undefined' ? WebSocket.OPEN : 1)) {
+                setConnectionStatus('disconnected');
+                return;
+            }
+            if (isAuthenticatedRef.current) {
+                const sinceMs = Date.now() - lastHeartbeatResponseRef.current;
+                const missed = missedBeatsRef.current;
+                if (missed >= 2 || sinceMs > HEARTBEAT_TIMEOUT) {
+                    setConnectionStatus('weak');
+                } else {
+                    setConnectionStatus('connected');
+                }
+            } else {
+                // When not authenticated, rely on open socket only
+                setConnectionStatus('connected');
+            }
+        } catch {
+            setConnectionStatus('disconnected');
+        }
+    }, []);
+
+    useEffect(() => {
+        const id = setInterval(evaluateConnection, 2000);
+        evaluateConnection();
+        return () => clearInterval(id);
+    }, [evaluateConnection]);
+
     // پس از احراز هویت (ورود یا auto-login) یک‌بار درخواست unread بده
     useEffect(() => {
         if (isAuthenticated && token && !unreadRequestedRef.current) {
@@ -328,7 +366,7 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     return (
-        <AuthContext.Provider value={{ user, token, isAuthenticated, isLoading, login, register, logout, setOnRegisterSuccess, updateUser, setNotificationStatus, changePassword, updateAvatar }}>
+        <AuthContext.Provider value={{ user, token, isAuthenticated, isLoading, connectionStatus, login, register, logout, setOnRegisterSuccess, updateUser, setNotificationStatus, changePassword, updateAvatar }}>
             {children}
         </AuthContext.Provider>
     );

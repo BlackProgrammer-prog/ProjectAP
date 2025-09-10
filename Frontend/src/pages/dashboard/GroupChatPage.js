@@ -14,6 +14,9 @@ const GroupChatPage = () => {
     const { token, user } = useAuth();
     const [group, setGroup] = useState(() => findGroupByIdOrUrl(groupId));
     const [messages, setMessages] = useState([]);
+    // مرجع آخرین پیام‌ها برای مقایسه و جلوگیری از رندرهای غیرضروری
+    const messagesRef = useRef(messages);
+    useEffect(() => { messagesRef.current = messages; }, [messages]);
     const [members, setMembers] = useState(() => loadGroupMembers(groupId));
     const memberEmailsRef = useRef([]);
     const requestedGroupKeyRef = useRef(null);
@@ -123,8 +126,14 @@ const GroupChatPage = () => {
                             senderAvatar: isOutgoing ? (user?.profile?.avatarUrl || '') : '',
                         };
                     });
-                    saveGroupChat(gid, adapted);
-                    setMessages(adapted);
+                    // فقط اگر داده‌ها تغییر داشتند رفرش کن
+                    const select = (m) => ({ id: m.id, message: m.message, timestamp: m.timestamp, read: !!m.read, incoming: !!m.incoming, outgoing: !!m.outgoing });
+                    const prevSig = JSON.stringify((messagesRef.current || []).map(select));
+                    const nextSig = JSON.stringify((adapted || []).map(select));
+                    if (prevSig !== nextSig) {
+                        saveGroupChat(gid, adapted);
+                        setMessages(adapted);
+                    }
                     return;
                 }
                 // Single group message event (if any)
@@ -237,6 +246,7 @@ const GroupChatPage = () => {
                 onForwardMessage={handleForwardMessage}
                 onEditMessage={handleEditMessage}
                 onReportMessage={handleReportMessage}
+                isGroup={true}
             />
         </>
     );

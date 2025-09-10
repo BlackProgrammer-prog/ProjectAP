@@ -50,6 +50,10 @@ function emitToAnyKey(possibleKeys, eventName, payload, options = {}) {
     return delivered;
 }
 
+function isNumericId(v) {
+    return /^\d+$/.test(String(v || ''));
+}
+
 // Fetch alias keys (email/username/customUrl) for a given numeric user id
 async function getAliasKeysForUserId(userId) {
     const keys = [];
@@ -124,6 +128,7 @@ io.on("connection", (socket) => {
         userIdToSocketIds.get(userIdStr).add(socket.id);
         console.log(`👤 Registered userId=${userIdStr} for socket=${socket.id}`);
         // Also register alias identities so startCall can target non-numeric keys when DB is unavailable
+        let aliasSet = new Set();
         try {
             const aliases = new Set();
             const v = (x) => (x === undefined || x === null) ? null : String(x).trim();
@@ -137,6 +142,7 @@ io.on("connection", (socket) => {
                 userIdToSocketIds.get(alias).add(socket.id);
                 try { identityToUserId.set(alias, userIdStr); } catch {}
             }
+            aliasSet = aliases;
             if (aliases.size > 0) {
                 console.log(`🔗 Aliases registered for ${socket.id}: ${Array.from(aliases).join(', ')}`);
             }
@@ -144,13 +150,17 @@ io.on("connection", (socket) => {
         socket.emit("registered", { userId: userIdStr, socketId: socket.id });
 
         // پس از ثبت، تماس‌های در انتظار را تحویل بده
-        const queued = pendingIncomingByUserId.get(userIdStr);
-        if (queued && queued.length > 0) {
-            console.log(`📨 Delivering ${queued.length} queued incomingCall(s) to user=${userIdStr}`);
-            for (const p of queued) {
-                emitToUser(userIdStr, "incomingCall", p);
+        const flushKeys = new Set([userIdStr]);
+        try { for (const a of aliasSet) flushKeys.add(String(a).toLowerCase()); } catch {}
+        for (const key of flushKeys) {
+            const queued = pendingIncomingByUserId.get(key);
+            if (queued && queued.length > 0) {
+                console.log(`📨 Delivering ${queued.length} queued incomingCall(s) to key=${key}`);
+                for (const p of queued) {
+                    emitToAnyKey([userIdStr, key], "incomingCall", p);
+                }
+                pendingIncomingByUserId.delete(key);
             }
-            pendingIncomingByUserId.delete(userIdStr);
         }
     });
 
@@ -196,8 +206,9 @@ io.on("connection", (socket) => {
     // -------------------- WebRTC signaling by userId --------------------
     // شروع تماس (مشابه واتساپ/تلگرام)
     socket.on("startCall", async (payload) => {
-        // payload: { toUserId?, toSocketId?, fromUserId, offer, callId? }
+        // payload: { toUserId?, toSocketId?, fromUserId, offer, callId?, callType? ('video'|'audio') }
         const { toUserId, toSocketId, fromUserId, offer } = payload || {};
+        const callType = (payload && payload.callType) ? String(payload.callType) : 'video';
         if (!fromUserId || !offer) {
             return socket.emit("callError", { code: "BAD_REQUEST", message: "fromUserId and offer are required" });
         }
@@ -207,49 +218,57 @@ io.on("connection", (socket) => {
         const callId = (payload && payload.callId) || `${fromUserId}:${(toUserId || toSocketId)}:${Date.now()}`;
         let delivered = false;
         if (toUserId) {
-            const sockets = userIdToSocketIds.get(String(toUserId)) || userIdToSocketIds.get(String(toUserId).toLowerCase());
-            console.log(`➡️ startCall target user=${toUserId}, sockets=${sockets ? Array.from(sockets).join(',') : 'NONE'}`);
-            // Try direct numeric key first
             const incomingPayload = {
                 callId,
                 fromUserId: String(fromUserId),
                 offer,
+                callType,
                 fromSocketId: socket.id
             };
-            delivered = emitToUser(String(toUserId), "incomingCall", incomingPayload);
-            // Also emit legacy event for simple-peer based clients
-            try {
-                const setOfSockets = userIdToSocketIds.get(String(toUserId)) || userIdToSocketIds.get(String(toUserId).toLowerCase());
-                if (setOfSockets && setOfSockets.size > 0) {
-                    for (const sid of setOfSockets) {
-                        io.to(sid).emit("callUser", { signal: offer, from: socket.id, name: String(fromUserId) });
+            const toKey = String(toUserId);
+            const numeric = isNumericId(toKey);
+            if (numeric) {
+                const sockets = userIdToSocketIds.get(toKey) || userIdToSocketIds.get(toKey.toLowerCase());
+                console.log(`➡️ startCall target user=${toKey}, sockets=${sockets ? Array.from(sockets).join(',') : 'NONE'}`);
+                delivered = emitToUser(toKey, "incomingCall", incomingPayload);
+                // legacy mirror
+                try {
+                    const setOfSockets = userIdToSocketIds.get(toKey) || userIdToSocketIds.get(toKey.toLowerCase());
+                    if (setOfSockets && setOfSockets.size > 0) {
+                        for (const sid of setOfSockets) {
+                            io.to(sid).emit("callUser", { signal: offer, from: socket.id, name: String(fromUserId) });
+                        }
+                    }
+                } catch {}
+                if (!delivered) {
+                    const aliases = await getAliasKeysForUserId(toKey);
+                    if (aliases && aliases.length > 0) {
+                        delivered = emitToAnyKey(aliases, "incomingCall", incomingPayload);
                     }
                 }
-            } catch {}
-            // If not delivered, try alias keys (email/username/customUrl) resolved from DB
-            if (!delivered) {
-                const aliases = await getAliasKeysForUserId(String(toUserId));
-                if (aliases && aliases.length > 0) {
-                    delivered = emitToAnyKey(aliases, "incomingCall", {
-                        callId,
-                        fromUserId: String(fromUserId),
-                        offer,
-                        fromSocketId: socket.id
-                    });
+                if (!delivered) {
+                    const arr = pendingIncomingByUserId.get(toKey) || [];
+                    arr.push(incomingPayload);
+                    pendingIncomingByUserId.set(toKey, arr);
+                    console.warn(`⏳ startCall queued for user=${toKey}; will deliver on register`);
                 }
-            }
-            if (!delivered) {
-                const key = String(toUserId);
-                const arr = pendingIncomingByUserId.get(key) || [];
-                arr.push({ callId, fromUserId: String(fromUserId), offer, fromSocketId: socket.id });
-                pendingIncomingByUserId.set(key, arr);
-                console.warn(`⏳ startCall queued for user=${key}; will deliver on register`);
+            } else {
+                // Treat toUserId as an identity/alias
+                const identityLower = toKey.toLowerCase();
+                delivered = emitToAnyKey([identityLower, toKey], "incomingCall", incomingPayload);
+                if (!delivered) {
+                    const arr = pendingIncomingByUserId.get(identityLower) || [];
+                    arr.push(incomingPayload);
+                    pendingIncomingByUserId.set(identityLower, arr);
+                    console.warn(`⏳ startCall queued for alias=${identityLower}; will deliver on register`);
+                }
             }
         } else if (toSocketId) {
             const incomingPayload = {
                 callId,
                 fromUserId: String(fromUserId),
                 offer,
+                callType,
                 fromSocketId: socket.id
             };
             delivered = emitToSocketId(String(toSocketId), "incomingCall", incomingPayload);
@@ -260,13 +279,14 @@ io.on("connection", (socket) => {
             console.warn(`⚠️ startCall not delivered. toUserId=${toUserId || '-'} toSocketId=${toSocketId || '-'}`);
             return socket.emit("userOffline", { userId: toUserId ? String(toUserId) : undefined, socketId: toSocketId ? String(toSocketId) : undefined });
         }
-        console.log(`📲 startCall: ${fromUserId} -> ${(toUserId || toSocketId)} (callId=${callId})`);
+        console.log(`📲 startCall: ${fromUserId} -> ${(toUserId || toSocketId)} (callId=${callId}, type=${callType})`);
     });
 
     // پذیرش تماس
     socket.on("acceptCall", (payload) => {
-        // payload: { callId, toUserId? (caller), toSocketId?, fromUserId (callee), answer }
+        // payload: { callId, toUserId? (caller), toSocketId?, fromUserId (callee), answer, callType? }
         const { callId, toUserId, toSocketId, fromUserId, answer } = payload || {};
+        const callType = (payload && payload.callType) ? String(payload.callType) : null;
         if (!fromUserId || !answer) {
             return socket.emit("callError", { code: "BAD_REQUEST", message: "fromUserId and answer are required" });
         }
@@ -275,16 +295,18 @@ io.on("connection", (socket) => {
         }
         let delivered = false;
         if (toUserId) {
-            delivered = emitToUser(String(toUserId), "callAccepted", {
+            delivered = emitToAnyKey([String(toUserId)], "callAccepted", {
                 callId: callId || null,
                 fromUserId: String(fromUserId),
-                answer
+                answer,
+                callType
             });
         } else if (toSocketId) {
             delivered = emitToSocketId(String(toSocketId), "callAccepted", {
                 callId: callId || null,
                 fromUserId: String(fromUserId),
-                answer
+                answer,
+                callType
             });
         }
         if (!delivered) {
@@ -305,7 +327,7 @@ io.on("connection", (socket) => {
         }
         let delivered = false;
         if (toUserId) {
-            delivered = emitToUser(String(toUserId), "callRejected", {
+            delivered = emitToAnyKey([String(toUserId)], "callRejected", {
                 callId: callId || null,
                 fromUserId: String(fromUserId),
                 reason: reason || null
@@ -335,7 +357,7 @@ io.on("connection", (socket) => {
         }
         let delivered = false;
         if (toUserId) {
-            delivered = emitToUser(String(toUserId), "iceCandidate", {
+            delivered = emitToAnyKey([String(toUserId)], "iceCandidate", {
                 fromUserId: String(fromUserId),
                 candidate
             }, { excludeSocketId: socket.id });
@@ -361,7 +383,7 @@ io.on("connection", (socket) => {
             return socket.emit("callError", { code: "MISSING_TARGET", message: "toUserId or toSocketId is required" });
         }
         if (toUserId) {
-            emitToUser(String(toUserId), "callEnded", {
+            emitToAnyKey([String(toUserId)], "callEnded", {
                 callId: callId || null,
                 fromUserId: String(fromUserId)
             });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Stack, styled, Badge, Avatar, Typography, IconButton, Divider, useTheme, TextField, InputAdornment } from '@mui/material';
 import { faker } from '@faker-js/faker';
-import { CaretDown, MagnifyingGlass, PhoneCall, VideoCamera, X } from 'phosphor-react';
+import { CaretDown, MagnifyingGlass, PhoneCall, VideoCamera, X, DownloadSimple } from 'phosphor-react';
 import UserProfile from '../../layouts/dashboard/UserProfile';
 import { useParams } from 'react-router-dom';
 import { clearPrivateChat } from '../../utils/chatStorage';
@@ -35,10 +35,10 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
     },
 }));
 
-const Header = ({ chatData, onBlockUser, onDeleteChat, onSearchChange, isSearchActive }) => {
+const Header = ({ chatData, onBlockUser, onDeleteChat, onSearchChange, isSearchActive, onExportChat }) => {
     const { username } = useParams();
     const theme = useTheme();
-    const { startCall } = useVideoCall();
+    const { startCall, startVoiceCall } = useVideoCall();
     const { token } = useAuth();
     const [showUserProfile, setShowUserProfile] = useState(false);
     const [blockedUsers, setBlockedUsers] = useState(() => {
@@ -283,11 +283,26 @@ const Header = ({ chatData, onBlockUser, onDeleteChat, onSearchChange, isSearchA
                             }}>
                                 <VideoCamera size={22} />
                             </IconButton>
-                            <IconButton onClick={() => setOpenDialog(true)}>
+                            <IconButton onClick={() => {
+                                try {
+                                    const pv = loadPV();
+                                    const u = (pv || []).find((p) => p && (p.customUrl === username || p.username === username || p.email === username));
+                                    const toUserId = u && (u.user_id || u.id || u.userId);
+                                    if (toUserId) { startVoiceCall(String(toUserId)); return; }
+
+                                    const targetIdentity = (u && (u.email || u.username || u.customUrl)) || username || null;
+                                    if (targetIdentity) { startVoiceCall(String(targetIdentity)); return; }
+
+                                    alert('شناسه کاربر برای تماس صوتی پیدا نشد');
+                                } catch { alert('شناسه کاربر برای تماس صوتی پیدا نشد'); }
+                            }}>
                                 <PhoneCall />
                             </IconButton>
                             <IconButton onClick={handleSearchClick}>
                                 <MagnifyingGlass />
+                            </IconButton>
+                            <IconButton onClick={() => { try { onExportChat && onExportChat(); } catch {} }} title={'خروجی گرفتن از چت'}>
+                                <DownloadSimple />
                             </IconButton>
                             <Divider orientation="vertical" flexItem sx={{ mx: 2 }} />
                             <IconButton>
