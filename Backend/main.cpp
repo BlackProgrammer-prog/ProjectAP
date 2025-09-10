@@ -20,6 +20,7 @@
 #include "GroupChatManagre.hpp"
 #include "HttpServer.h"
 #include <filesystem>
+#include "DateBaseBackup.h"
 
 int main() {
     // تنظیمات اولیه
@@ -95,6 +96,14 @@ int main() {
         // 10. شروع سرور وب‌سوکت
         server.start();
         std::cout << "سرور چت روی پورت " << WS_PORT << " راه‌اندازی شد" << std::endl;
+
+        // راه‌اندازی بکاپ دوره‌ای دیتابیس (هر 15 دقیقه) بدون تغییر در منطق موجود
+        static DateBaseBackup databaseBackup(
+                DB_PATH,
+                "C:/Users/HOME/Desktop/ProjectAP/ProjectAP/Database/backups",
+                15
+        );
+        databaseBackup.start();
         
         // 11. نگه‌داشتن برنامه در حالت اجرا
         while (true) {
