@@ -8,6 +8,8 @@
     "dev": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "author": "",
+  "license": "UNLICENSED",
   "repository": {
     "type": "git",
     "url": "https://github.com/BlackProgrammer-prog/ProjectAP.git"
@@ -17,6 +19,6 @@
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "socket.io": "^4.8.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.6"
   }
 }
