@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 import time
+import os
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Union
 
 from fastapi import FastAPI
@@ -18,10 +19,10 @@ DATABASE_PATH: str = "C:/Users/HOME/Desktop/ProjectAP/ProjectAP/Database/app_dat
 
 
 def get_sqlite_connection() -> sqlite3.Connection:
-    if not DATABASE_PATH or DATABASE_PATH == "C:/Users/HOME/Desktop/ProjectAP/ProjectAP/Database/app_database.db":
-        raise RuntimeError(
-            "Please set DATABASE_PATH to your SQLite database file path in APIDB.py."
-        )
+    if not DATABASE_PATH:
+        raise RuntimeError("DATABASE_PATH is empty. Please set it to your SQLite file path.")
+    if not os.path.exists(DATABASE_PATH):
+        raise RuntimeError(f"Database file not found at: {DATABASE_PATH}")
     # Create a new connection per request for thread safety
     conn = sqlite3.connect(DATABASE_PATH, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
