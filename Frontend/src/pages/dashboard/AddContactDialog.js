@@ -4,7 +4,7 @@ import { MagnifyingGlass } from 'phosphor-react';
 import { useContacts } from '../../contexts/ContactsContext';
 
 const AddContactDialog = ({ open, handleClose }) => {
-    const { searchResults, searchUsers, addContact, setSearchResults } = useContacts();
+    const { searchResults, searchUsers, addContact, setSearchResults, searchError } = useContacts();
     const [query, setQuery] = useState("");
     const [searchTimeout, setSearchTimeout] = useState(null);
 
@@ -52,25 +52,31 @@ const AddContactDialog = ({ open, handleClose }) => {
                         }}
                     />
                     <Box sx={{ minHeight: 200, maxHeight: '50vh', overflowY: 'auto' }}>
-                        <List>
-                            {searchResults.length > 0 ? (
-                                searchResults.map((user) => (
-                                    <ListItem key={user.user_id} sx={{ justifyContent: 'space-between' }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                            <ListItemAvatar>
-                                                <Avatar src={user.profile?.avatarUrl} />
-                                            </ListItemAvatar>
-                                            <ListItemText primary={user.username} secondary={user.email} />
-                                        </Box>
-                                        <Button size="small" variant="outlined" onClick={() => handleAddContact(user.email)}>افزودن</Button>
-                                    </ListItem>
-                                ))
-                            ) : (
-                                <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ pt: 4 }}>
-                                    برای یافتن کاربر، جست‌وجو کنید.
-                                </Typography>
-                            )}
-                        </List>
+                        {searchError ? (
+                            <Typography variant="body2" color="error" textAlign="center" sx={{ pt: 4 }}>
+                                {searchError}
+                            </Typography>
+                        ) : (
+                            <List>
+                                {searchResults.length > 0 ? (
+                                    searchResults.map((user) => (
+                                        <ListItem key={user.user_id || user.email} sx={{ justifyContent: 'space-between' }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                <ListItemAvatar>
+                                                    <Avatar src={user.profile?.avatarUrl} />
+                                                </ListItemAvatar>
+                                                <ListItemText primary={user.username || user.email} secondary={user.email} />
+                                            </Box>
+                                            <Button size="small" variant="outlined" onClick={() => handleAddContact(user.email)}>افزودن</Button>
+                                        </ListItem>
+                                    ))
+                                ) : (
+                                    <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ pt: 4 }}>
+                                        برای یافتن کاربر، جست‌وجو کنید.
+                                    </Typography>
+                                )}
+                            </List>
+                        )}
                     </Box>
                 </Stack>
             </DialogContent>

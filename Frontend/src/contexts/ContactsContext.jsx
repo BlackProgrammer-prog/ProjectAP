@@ -14,6 +14,7 @@ export const ContactsProvider = ({ children }) => {
     const [searchResults, setSearchResults] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [searchError, setSearchError] = useState(null);
 
     // Invitation handling refs
     const invitationIdsRef = useRef(new Set());
@@ -88,28 +89,6 @@ export const ContactsProvider = ({ children }) => {
                 setContacts([]);
                 setError(response.message || "لیست مخاطبین خالی است.");
             }
-        } else if (messageType === 'add_contact_response' || response.hasOwnProperty('contact')) {
-            console.log('🧠 Contacts Handler: Identified as ADD_CONTACT response.');
-            if (response.status === 'success') {
-                // ** THE FIX IS HERE **
-                // Use .find() to check for existence, which is safer and clearer.
-                setContacts(prev => {
-                    const exists = prev.find(c => c.user_id === response.contact.user_id);
-                    return exists ? prev : [...prev, response.contact];
-                });
-                alert('مخاطب با موفقیت اضافه شد');
-                setSearchResults([]);
-            } else {
-                alert(`خطا در افزودن مخاطب: ${response.message}`);
-            }
-        } else if (messageType === 'remove_contact_response' || response.hasOwnProperty('removed_contact')) {
-            console.log('🧠 Contacts Handler: Identified as REMOVE_CONTACT response.');
-             if (response.status === 'success') {
-                setContacts(prev => prev.filter(c => c.email !== response.removed_contact));
-                alert('مخاطب با موفقیت حذف شد.');
-            } else {
-                alert(`خطا در حذف مخاطب: ${response.message}`);
-            }
         } else if (response.status === 'success' && Array.isArray(response.results) && response.results.some(r => r && Object.prototype.hasOwnProperty.call(r, 'online'))) {
             // Presence results: [{ email, online: 1|0 }, ...]
             try {
@@ -127,12 +106,46 @@ export const ContactsProvider = ({ children }) => {
             } catch (err) {
                 console.error('Failed to process presence results:', err);
             }
-        } else if (messageType === 'search_user_response') {
+        } else if (
+            messageType === 'search_user_response' ||
+            (response.status && Array.isArray(response.results)) ||
+            (response.status === 'error' && response.code === 'NO_RESULTS')
+        ) {
             console.log('🧠 Contacts Handler: Identified as SEARCH_USER response.');
             if (response.status === 'success') {
                 setSearchResults(response.results || []);
+                setSearchError(null);
             } else {
                 setSearchResults([]);
+                setSearchError(response.message || 'نتیجه‌ای یافت نشد');
+            }
+        } else if (
+            messageType === 'add_contact_response' ||
+            response.hasOwnProperty('contact') ||
+            (response.status === 'error' && response.code === 'USER_NOT_FOUND')
+        ) {
+            console.log('🧠 Contacts Handler: Identified as ADD_CONTACT response.');
+            if (response.status === 'success' && response.contact) {
+                // ** THE FIX IS HERE **
+                // Use .find() to check for existence, which is safer and clearer.
+                setContacts(prev => {
+                    const exists = prev.find(c => c.user_id === response.contact.user_id);
+                    return exists ? prev : [...prev, response.contact];
+                });
+                alert('مخاطب با موفقیت اضافه شد');
+                setSearchResults([]);
+                setSearchError(null);
+            } else {
+                const msg = response.message || 'کاربر مورد نظر یافت نشد';
+                alert(`خطا در افزودن مخاطب: ${msg}`);
+            }
+        } else if (messageType === 'remove_contact_response' || response.hasOwnProperty('removed_contact')) {
+            console.log('🧠 Contacts Handler: Identified as REMOVE_CONTACT response.');
+             if (response.status === 'success') {
+                setContacts(prev => prev.filter(c => c.email !== response.removed_contact));
+                alert('مخاطب با موفقیت حذف شد.');
+            } else {
+                alert(`خطا در حذف مخاطب: ${response.message}`);
             }
         } else if (messageType === 'get_profile_response' || response.hasOwnProperty('profile')) {
             // Handle get_profile result: store only profile in PV and upsert by email
@@ -294,14 +307,16 @@ export const ContactsProvider = ({ children }) => {
     
     const searchUsers = useCallback((query) => {
         if (token && query && query.trim() !== '') {
+            setSearchError(null);
             webSocketService.send({ type: 'search_user', token, query });
         } else {
             setSearchResults([]);
+            setSearchError(null);
         }
     }, [token]);
 
     const value = {
-        contacts, searchResults, isLoading, error,
+        contacts, searchResults, isLoading, error, searchError,
         getContacts, addContact, removeContact, searchUsers, setSearchResults
     };
 

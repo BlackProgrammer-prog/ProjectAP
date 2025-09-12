@@ -13,10 +13,12 @@ class WebSocketService {
             // console.log('🔌 WebSocket is already connected or connecting.');
             return;
         }
+        // const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        // this.socket = new WebSocket(`${protocol}://${window.location.host}/ws`);
 
         this.socket = new WebSocket('ws://localhost:8081');
-        console.log('🔌 Attempting to connect to WebSocket...');
 
+        console.log('🔌 Attempting to connect to WebSocket...');
         this.socket.onopen = () => {
             console.log('✅ WebSocket connected successfully!');
             this.reconnectAttempts = 0;
