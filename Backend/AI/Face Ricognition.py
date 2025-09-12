@@ -253,4 +253,15 @@ def health_check():
         'timestamp': datetime.now().isoformat()
     })
 
-if name == 'main':
+if name == 'main':# ایجاد دیتابیس
+    init_database()
+
+    print("سیستم احراز هویت با تشخیص چهره راه‌اندازی شد!")
+    print("API های موجود:")
+    print("- POST /register: ثبت کاربر جدید")
+    print("- POST /authenticate: احراز هویت کاربر")
+    print("- GET /users: مشاهده لیست کاربران")
+    print("- GET /health: بررسی سلامت سیستم")
+
+    # اجرای برنامه
+    app.run(debug=True, host='0.0.0.0', port=5000)
