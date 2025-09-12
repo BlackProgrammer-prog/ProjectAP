@@ -10,7 +10,8 @@ NotificationManager::NotificationManager(
         std::shared_ptr<PrivateChatManager> cm)
         : ws_server_(ws), session_manager_(sm), chat_manager_(cm) {}
 
-void NotificationManager::notifyNewMessage(const Message& message) {
+void
+::notifyNewMessage(const Message& message) {
     json payload = {
             {"type", "new_message"},
             {"message", message.toJson()}
