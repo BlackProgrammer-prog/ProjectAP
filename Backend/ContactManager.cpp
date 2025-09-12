@@ -73,6 +73,11 @@ std::string ContactManager::findUserByEmail(const std::string& email) {
     return user.id;
 }
 
+std::string ContactManager::getEmailByUserId(const std::string& user_id) {
+    DBUser user = database_->getUserById(user_id);
+    return user.email;
+}
+
 json ContactManager::searchUsers(const std::string& query) {
     auto results = database_->searchUsers(query);
     json users = json::array();
@@ -96,4 +101,36 @@ bool ContactManager::setUserOnlineStatus(const std::string& user_id, bool online
 
 bool ContactManager::setAllUsersOffline() {
     return database_->setAllUsersOffline();
+}
+
+bool ContactManager::blockUserByEmail(const std::string& user_id, const std::string& target_email) {
+    DBUser target = database_->getUserByEmail(target_email);
+    if (user_id.empty() || target.id.empty()) return false;
+    return database_->addBlock(user_id, target.id);
+}
+
+bool ContactManager::isBlocked(const std::string& user_id, const std::string& target_email) {
+    DBUser target = database_->getUserByEmail(target_email);
+    if (user_id.empty() || target.id.empty()) return false;
+    return database_->isBlocked(user_id, target.id);
+}
+
+int ContactManager::getOnlineStatusByEmail(const std::string& email) {
+    return database_->getOnlineStatusByEmail(email);
+}
+
+int ContactManager::getUnreadCountForUser(const std::string& user_id) {
+    return database_->getUnreadCountForUser(user_id);
+}
+
+bool ContactManager::deleteUserById(const std::string& user_id) {
+    return database_->deleteUser(user_id);
+}
+
+json ContactManager::getOpenChats(const std::string& user_id) {
+    return database_->getOpenChats(user_id);
+}
+
+bool ContactManager::setOpenChats(const std::string& user_id, const json& open_chats) {
+    return database_->setOpenChats(user_id, open_chats);
 }

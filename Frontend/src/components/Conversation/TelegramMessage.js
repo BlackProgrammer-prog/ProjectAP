@@ -4,24 +4,53 @@ import { MessageOption } from "./MsgType";
 import MessageReactions from "./MessageReactions";
 import { faker } from "@faker-js/faker";
 import { useParams } from "react-router-dom";
-import { ChatList } from "../../data";
+import { loadPV } from "../../utils/pvStorage";
+import { resolveAvatarUrl } from "../../utils/resolveAvatarUrl";
 import { useState } from "react";
 import React from "react";
+import { useRef } from "react";
+import { useAuth } from "../../Login/Component/Context/AuthContext";
 
-const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForwardMessage, onEditMessage, currentUser = "me", selectMode = false, selected = false, onMessageClick, onToggleSelect }) => {
+// Telegram-like tick icons (SVG)
+const SingleTickIcon = ({ color = 'currentColor', size = 16 }) => (
+    <svg width={size} height={size} viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2.5 10.5 L7.5 15.5 L17.5 5.5" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+);
+
+const DoubleTickIcon = ({ color = 'currentColor', size = 16 }) => (
+    <svg width={size} height={size} viewBox="0 0 22 20" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 10.5 L9 15.5 L19 5.5" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M2 10 L7 15 L17 5" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+);
+
+const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForwardMessage, onEditMessage, onReportMessage, currentUser = "me", selectMode = false, selected = false, onMessageClick, onToggleSelect, isGroup = false }) => {
     const theme = useTheme();
+    const menuRef = useRef(null);
     const { username } = useParams();
-    const isOwnMessage = message.sender === currentUser || message.outgoing;
+    const { user } = useAuth();
+    const myEmail = user?.email || user?.username || null;
+    const isOwnMessage = Boolean(
+        message?.outgoing === true ||
+        (message?.incoming === false) ||
+        (myEmail && message?.sender && String(message.sender).toLowerCase() === String(myEmail).toLowerCase()) ||
+        (currentUser && message?.sender && String(message.sender).toLowerCase() === String(currentUser).toLowerCase())
+    );
 
-    // پیدا کردن اطلاعات کاربر مقابل از ChatList
-    const otherUser = ChatList.find((c) => c.username === username);
+    // پیدا کردن اطلاعات کاربر مقابل از PV (localStorage)
+    const pv = loadPV();
+    const otherUser = (pv || []).find((p) => p.customUrl === username);
 
     // تعیین آواتار بر اساس فرستنده
     const getAvatar = () => {
+        if (message && message.senderAvatar) {
+            return message.senderAvatar;
+        }
         if (isOwnMessage) {
-            return faker.image.avatar(); // آواتار کاربر فعلی
+            return faker.image.avatar();
         } else {
-            return otherUser ? otherUser.img : faker.image.avatar(); // آواتار کاربر مقابل
+            return otherUser ? resolveAvatarUrl(otherUser.avatarUrl) : faker.image.avatar();
         }
     };
 
@@ -116,7 +145,31 @@ const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForward
                         boxShadow: theme.shadows[1], //add
                     }}
                     onClick={(!isEditing && selectMode) ? onToggleSelect : (!isEditing ? onMessageClick : undefined)}
+                    onContextMenu={(e) => {
+                        // Right-click opens the same options menu
+                        try {
+                            if (menuRef && menuRef.current && typeof menuRef.current.openAt === 'function') {
+                                menuRef.current.openAt(e);
+                            } else {
+                                e.preventDefault();
+                            }
+                        } catch {}
+                    }}
                 >
+                    {/* نام فرستنده برای پیام‌های گروهی */}
+                    {message?.senderName && (
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                color: isOwnMessage ? "rgba(255,255,255,0.85)" : theme.palette.text.secondary,
+                                fontWeight: 600,
+                                display: 'block',
+                                mb: 0.5,
+                            }}
+                        >
+                            {message.senderName}
+                        </Typography>
+                    )}
                     {/* نمایش ری‌اکشن‌ها */}
                     <MessageReactions
                         message={message}
@@ -201,19 +254,32 @@ const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForward
                         </Typography>
                     )}
 
-                    {/* زمان ارسال */}
-                    <Typography
-                        variant="caption"
-                        sx={{
-                            color: isOwnMessage ? "rgba(255,255,255,0.7)" : theme.palette.text.secondary,
-                            fontSize: "0.75rem",
-                            display: "block",
-                            textAlign: "right",
-                            mt: 0.5,
-                        }}
-                    >
-                        {formatTime(message.timestamp)}
-                    </Typography>
+                    {/* زمان ارسال + وضعیت خوانده شدن (فقط PV و پیام خروجی) */}
+                    <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 0.5, justifyContent: 'flex-end' }}>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                color: isOwnMessage ? "rgba(255,255,255,0.7)" : theme.palette.text.secondary,
+                                fontSize: "0.75rem",
+                            }}
+                        >
+                            {formatTime(message.timestamp)}
+                        </Typography>
+                        {isOwnMessage && !isGroup && (
+                            <Box
+                                sx={{ display: 'inline-flex', alignItems: 'center', lineHeight: 0, filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.35))' }}
+                                aria-label={message?.read ? 'Read' : 'Sent'}
+                                title={message?.read ? 'خوانده شد' : 'ارسال شد'}
+                            >
+                                {(() => {
+                                    const tickColor = message?.read ? '#34B7F1' : (isOwnMessage ? '#FFFFFF' : theme.palette.text.secondary);
+                                    return message?.read
+                                        ? <DoubleTickIcon color={tickColor} size={16} />
+                                        : <SingleTickIcon color={tickColor} size={16} />;
+                                })()}
+                            </Box>
+                        )}
+                    </Stack>
                 </Box>
 
                 {/* دکمه‌های آپشن */}
@@ -224,6 +290,8 @@ const TelegramMessage = ({ message, onDeleteMessage, onReactionChange, onForward
                     onReactionChange={onReactionChange}
                     onForwardMessage={onForwardMessage}
                     onEditClick={isOwnMessage ? handleEditClick : undefined}
+                    onReportMessage={onReportMessage}
+                    ref={menuRef}
                 />
             </Stack>
 

@@ -16,11 +16,15 @@
 #include "PrivateChatManager.h"
 #include "NotificationManager.h"
 #include "ProfileManager.h"
+#include "GroupManager.hpp"
+#include "GroupChatManagre.hpp"
 #include "HttpServer.h"
 #include <filesystem>
+#include "DateBaseBackup.h"
 
 int main() {
     // تنظیمات اولیه
+    // Use the database file in Backend directory to match runtime data
     const std::string DB_PATH = "C:/Users/HOME/Desktop/ProjectAP/ProjectAP/Database/app_database.db";
     const int WS_PORT = 8081;
     const int HTTP_PORT = 8080;
@@ -44,6 +48,8 @@ int main() {
         auto status_manager = std::make_shared<UserStatusManager>();
         auto contact_manager = std::make_shared<ContactManager>(db);
         auto chat_manager = std::make_shared<PrivateChatManager>(db);
+        auto group_manager = std::make_shared<GroupManager>(db);
+        auto group_chat_manager = std::make_shared<GroupChatManager>(db, group_manager);
         
         // 4. راه‌اندازی سرور WebSocket با وابستگی‌های جدید
         WebSocketServer server(
@@ -59,6 +65,7 @@ int main() {
         // 5. تنظیم chat_manager برای سرور
         server.setChatManager(chat_manager);
         server.setProfileManager(profile_manager);
+        server.setGroupManagers(group_manager, group_chat_manager);
 
 
         // 6. ایجاد و تنظیم NotificationManager
@@ -89,6 +96,14 @@ int main() {
         // 10. شروع سرور وب‌سوکت
         server.start();
         std::cout << "سرور چت روی پورت " << WS_PORT << " راه‌اندازی شد" << std::endl;
+
+        // راه‌اندازی بکاپ دوره‌ای دیتابیس (هر 15 دقیقه) بدون تغییر در منطق موجود
+        static DateBaseBackup databaseBackup(
+                DB_PATH,
+                "C:/Users/HOME/Desktop/ProjectAP/ProjectAP/Database/backups",
+                15
+        );
+        databaseBackup.start();
         
         // 11. نگه‌داشتن برنامه در حالت اجرا
         while (true) {

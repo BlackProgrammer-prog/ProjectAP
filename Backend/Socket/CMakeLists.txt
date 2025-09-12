@@ -6,13 +6,14 @@ add_library(SocketLib
 )
 
 find_package(jwt-cpp CONFIG REQUIRED)
-find_package(Boost REQUIRED COMPONENTS system thread)
+find_package(Boost REQUIRED COMPONENTS uuid system thread)
 
 target_link_libraries(SocketLib
         PUBLIC
         DataBaseLib             # اگر WebSocketHandler به دیتابیس ارجاع می‌ده
         PRIVATE
         jwt-cpp::jwt-cpp
+        Boost::uuid
         Boost::system
         Boost::thread
 )

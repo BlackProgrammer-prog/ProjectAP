@@ -20,11 +20,32 @@ public:
     std::vector<std::string> getContacts(const std::string& user_id);
     bool isContact(const std::string& user_id, const std::string& contact_email);
     std::string findUserByEmail(const std::string& email);
+    // Lookup email by user id
+    std::string getEmailByUserId(const std::string& user_id);
+    // Expose database handle for internal server queries (read-only usage preferred)
+    std::shared_ptr<Database> getDatabase() { return database_; }
     json searchUsers(const std::string& query);
 
     // Persist online/offline flag in database
     bool setUserOnlineStatus(const std::string& user_id, bool online);
     bool setAllUsersOffline();
+
+    // Blocking helpers
+    bool blockUserByEmail(const std::string& user_id, const std::string& target_email);
+    bool isBlocked(const std::string& user_id, const std::string& target_email);
+
+    // Online status by email (from DB `users.online`)
+    int getOnlineStatusByEmail(const std::string& email);
+    
+    // Unread count by user id
+    int getUnreadCountForUser(const std::string& user_id);
+
+    // Delete user by id
+    bool deleteUserById(const std::string& user_id);
+
+    // Open chats JSON helpers
+    json getOpenChats(const std::string& user_id);
+    bool setOpenChats(const std::string& user_id, const json& open_chats);
 
 private:
     std::shared_ptr<Database> database_;

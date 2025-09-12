@@ -68,6 +68,7 @@ export default function Router() {
         { element: <Navigate to={DEFAULT_PATH} replace />, index: true },
         { path: "Login-Register", element: <Login /> },
         { path: "app", element: <GeneralApp /> },
+        { path: "app/group/:groupId", element: <GroupChatPage /> },
         // { path: "game", element: <TicTocToe/> },
         { path: "settings", element: <Settings /> },
         { path: "group", element: <GroupPage /> },
@@ -127,4 +128,5 @@ const Login = Loadable(lazy(() => import("../Login/LoginRegister")));
 const Profile = Loadable(lazy(() => import("../layouts/dashboard/Profile")));
 const Services = Loadable(lazy(() => import("../services/state/ServiceState")));
 const GroupPage = Loadable(lazy(() => import("../pages/dashboard/Group")))
+const GroupChatPage = Loadable(lazy(() => import("../pages/dashboard/GroupChatPage")))
 const Page404 = Loadable(lazy(() => import("../pages/Page404")));

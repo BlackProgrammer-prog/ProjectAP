@@ -8,7 +8,7 @@ import {
   User,
   Users,
 } from "phosphor-react";
-import { useNavigate } from "react-router-dom";
+import {json, useNavigate} from "react-router-dom";
 import { loadPrivateChat } from "../utils/chatStorage";
 
 // const navigate = useNavigate()
@@ -68,95 +68,40 @@ const getLastMessage = (username) => {
 };
 
 const ChatList = [
-  {
-    id: 0,
-    username: "parham",
-    img: faker.image.avatar(),
-    name: "parham",
-    msg: getLastMessage("parham"),
-    // time: "9:36",
-    unread: 0,
-    pinned: true,
-    online: true,
-  },
-  {
-    id: 1,
-    username: "mmd",
-    img: faker.image.avatar(),
-    name: "mmd",
-    msg: getLastMessage("mmd"),
-    // time: "12:02",
-    unread: 2,
-    pinned: true,
-    online: false,
-  },
-  {
-    id: 2,
-    username: "mahdi",
-    img: faker.image.avatar(),
-    name: "mahdi",
-    msg: getLastMessage("mahdi"),
-    // time: "10:35",
-    unread: 3,
-    pinned: false,
-    online: true,
-  },
-  {
-    id: 3,
-    username: "meysam",
-    img: faker.image.avatar(),
-    name: "meysam",
-    msg: getLastMessage("meysam"),
-    // time: "04:00",
-    unread: 0,
-    pinned: false,
-    online: true,
-  },
-  {
-    id: 4,
-    username: "misagh",
-    img: faker.image.avatar(),
-    name: "misagh",
-    msg: getLastMessage("misagh"),
-    // time: "08:42",
-    unread: 0,
-    pinned: false,
-    online: false,
-  },
-  {
-    id: 5,
-    username: "jdhjkchd",
-    img: faker.image.avatar(),
-    name: "jdhjkchd",
-    msg: getLastMessage("jdhjkchd"),
-    // time: "08:42",
-    unread: 0,
-    pinned: false,
-    online: false,
-  },
-  {
-    id: 6,
-    username: "jdjkh",
-    img: faker.image.avatar(),
-    name: "jdjkh",
-    msg: getLastMessage("jdjkh"),
-    // time: "08:42",
-    unread: 0,
-    pinned: false,
-    online: false,
-  },
-  {
-    id: 7,
-    username: "cgfcf",
-    img: faker.image.avatar(),
-    name: "cgfcf",
-    msg: getLastMessage("cgfcf"),
-    // time: "08:42",
-    unread: 0,
-    pinned: false,
-    online: false,
-  },
 ];
+
+const PVOBJ = {
+  id: 0,
+  username: "",
+  img: faker.image.avatar(),
+  name: "",
+  // msg: getLastMessage(this.username.toString()),
+  // time: "9:36",
+  // unread: 0,
+  // pinned: false,
+  // online: false
+}
+
+const PVStorage = localStorage.getItem("PV");
+if (PVStorage) {
+  try {
+    const PVArray = JSON.parse(PVStorage) || [];
+    let n = 0;
+    PVArray.forEach((pv) => {
+      const item = {
+        id: pv.email || n,
+        username: pv.customUrl || pv.username || pv.email || "",
+        img: pv.avatarUrl || faker.image.avatar(),
+        name: pv.fullName || pv.username || pv.email || "",
+      };
+      ChatList.push(item);
+      n++;
+    });
+  } catch (e) {
+    console.error("Failed to parse PV from localStorage:", e);
+  }
+}
+
 
 // const ChatList = [
 //   {

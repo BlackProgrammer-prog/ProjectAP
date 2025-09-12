@@ -30,7 +30,18 @@ struct Database::Impl {
                 profile_json TEXT NOT NULL,
                 settings_json TEXT NOT NULL,
                 custom_url TEXT UNIQUE NOT NULL,
-                contacts_json TEXT
+                contacts_json TEXT,
+                open_chats_json TEXT,
+                invitation TEXT
+            );
+            
+            -- Stats table for user login/register events
+            CREATE TABLE IF NOT EXISTS stat (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                event TEXT NOT NULL, -- 'register' or 'login'
+                timestamp INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
             
             CREATE TABLE IF NOT EXISTS contacts (
@@ -41,6 +52,17 @@ struct Database::Impl {
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                 FOREIGN KEY (contact_user_id) REFERENCES users(id) ON DELETE CASCADE,
                 UNIQUE(user_id, contact_user_id)
+            );
+            
+            -- Blocks table
+            CREATE TABLE IF NOT EXISTS blocks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                blocked_user_id TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (blocked_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE(user_id, blocked_user_id)
             );
             
             CREATE TABLE IF NOT EXISTS private_messages (
@@ -67,8 +89,99 @@ struct Database::Impl {
             
             CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts 
             USING fts5(sender_id, receiver_id, content);
+
+            -- Groups core tables
+            CREATE TABLE IF NOT EXISTS groups (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                creator_id TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                custom_url TEXT UNIQUE NOT NULL,
+                profile_image TEXT DEFAULT '',
+                FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS group_members (
+                group_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                joined_at INTEGER NOT NULL,
+                PRIMARY KEY (group_id, user_id),
+                FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS group_messages (
+                id TEXT PRIMARY KEY,
+                group_id TEXT NOT NULL,
+                sender_id TEXT NOT NULL,
+                content TEXT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                edited_timestamp INTEGER DEFAULT 0,
+                deleted INTEGER DEFAULT 0,
+                pinned INTEGER DEFAULT 0,
+                FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+                FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS group_message_logs (
+                id TEXT PRIMARY KEY,
+                message_id TEXT NOT NULL,
+                group_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                FOREIGN KEY (message_id) REFERENCES group_messages(id) ON DELETE CASCADE,
+                FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_group_members_gid ON group_members(group_id);
+            CREATE INDEX IF NOT EXISTS idx_group_messages_gid_ts ON group_messages(group_id, timestamp);
         )";
         executeQueryInternal(sql);
+
+        // Migrations / compatibility adjustments (idempotent best-effort)
+        // 1) Ensure groups.custom_url exists and is populated with id; add profile_image column
+        {
+            char* errMsg = nullptr;
+            // invitations column for users
+            sqlite3_exec(db, "ALTER TABLE users ADD COLUMN invitation TEXT", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "UPDATE users SET invitation = '[]' WHERE invitation IS NULL OR invitation = ''", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "ALTER TABLE groups ADD COLUMN custom_url TEXT", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "UPDATE groups SET custom_url = id WHERE custom_url IS NULL OR custom_url = ''", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "CREATE UNIQUE INDEX IF NOT EXISTS idx_groups_custom_url ON groups(custom_url)", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "ALTER TABLE groups ADD COLUMN profile_image TEXT", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "UPDATE groups SET profile_image = '' WHERE profile_image IS NULL", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+        }
+
+        // 2) Normalize group_messages schema in case of legacy (few-column) tables
+        // Add missing columns if they don't exist; ignore errors if already exist
+        {
+            char* errMsg = nullptr;
+            sqlite3_exec(db, "ALTER TABLE group_messages ADD COLUMN edited_timestamp INTEGER DEFAULT 0", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "ALTER TABLE group_messages ADD COLUMN deleted INTEGER DEFAULT 0", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "ALTER TABLE group_messages ADD COLUMN pinned INTEGER DEFAULT 0", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            // Ensure timestamp column exists; if a legacy table lacks it, attempt to add with default 0
+            sqlite3_exec(db, "ALTER TABLE group_messages ADD COLUMN timestamp INTEGER DEFAULT 0", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            // Drop any legacy tables with incorrect casing or schema (best-effort)
+            sqlite3_exec(db, "DROP TABLE IF EXISTS group_message", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "DROP TABLE IF EXISTS Group_message", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+            sqlite3_exec(db, "DROP TABLE IF EXISTS GROUP_MESSAGE", nullptr, nullptr, &errMsg);
+            if (errMsg) sqlite3_free(errMsg);
+        }
 
         // Try to add 'online' column if it doesn't exist (ignore error if already exists)
         // Add online column if missing (ignore error if exists)
@@ -78,6 +191,15 @@ struct Database::Impl {
         if (errMsg) {
             // Suppress duplicate column error
             std::string err = errMsg;
+            sqlite3_free(errMsg);
+        }
+
+        // Try to add 'open_chats_json' column if it doesn't exist (ignore error if exists)
+        errMsg = nullptr;
+        std::string add_open_chats_col = "ALTER TABLE users ADD COLUMN open_chats_json TEXT DEFAULT '[]'";
+        sqlite3_exec(db, add_open_chats_col.c_str(), nullptr, nullptr, &errMsg);
+        if (errMsg) {
+            std::string err2 = errMsg;
             sqlite3_free(errMsg);
         }
     }
@@ -323,7 +445,7 @@ bool Database::storeMessage(const std::string& id,
             sender_id,
             receiver_id,
             content,
-            std::to_string(timestamp),
+            std::to_string(timestamp > 0 ? timestamp : std::time(nullptr)),
             delivered ? "1" : "0",
             read ? "1" : "0"
     }).success;
@@ -336,7 +458,8 @@ std::vector<std::vector<std::string>> Database::getMessagesBetweenUsers(
 ) {
     std::vector<std::vector<std::string>> messages;
     std::string sql = R"(
-        SELECT id, sender_id, receiver_id, content, timestamp, delivered, read
+        SELECT id, sender_id, receiver_id, content,
+               COALESCE(timestamp, 0), COALESCE(delivered, 0), COALESCE(read, 0)
         FROM private_messages
         WHERE (sender_id = ? AND receiver_id = ?)
         OR (sender_id = ? AND receiver_id = ?)
@@ -424,5 +547,68 @@ bool Database::setAllUsersOffline() {
     std::string sql = "UPDATE users SET online = 0";
     auto result = executeQuery(sql);
     return result.success;
+}
+
+json Database::getOpenChats(const std::string& userId) {
+    std::string sql = "SELECT open_chats_json FROM users WHERE id = ?";
+    auto result = executeQueryWithParams(sql, {userId});
+    if (result.success && !result.data.empty()) {
+        try {
+            return json::parse(result.data[0].empty() ? "[]" : result.data[0]);
+        } catch(...) {
+            return json::array();
+        }
+    }
+    return json::array();
+}
+
+bool Database::setOpenChats(const std::string& userId, const json& openChats) {
+    std::string sql = "UPDATE users SET open_chats_json = ? WHERE id = ?";
+    auto result = executeQueryWithParams(sql, {openChats.dump(), userId});
+    return result.success;
+}
+
+int Database::getOnlineStatusByEmail(const std::string& email) {
+    std::string sql = "SELECT online FROM users WHERE email = ?";
+    auto result = executeQueryWithParams(sql, {email});
+    if (result.success && !result.data.empty()) {
+        return std::stoi(result.data[0]);
+    }
+    return 0;
+}
+
+bool Database::addBlock(const std::string& userId, const std::string& blockedUserId) {
+    std::string sql = R"(
+        INSERT OR IGNORE INTO blocks (user_id, blocked_user_id, created_at)
+        VALUES (?, ?, ?)
+    )";
+    auto result = executeQueryWithParams(sql, {userId, blockedUserId, std::to_string(std::time(nullptr))});
+    return result.success;
+}
+
+bool Database::isBlocked(const std::string& userId, const std::string& blockedUserId) {
+    std::string sql = R"(
+        SELECT COUNT(1)
+        FROM blocks
+        WHERE user_id = ? AND blocked_user_id = ?
+    )";
+    auto result = executeQueryWithParams(sql, {userId, blockedUserId});
+    if (result.success && !result.data.empty()) {
+        return std::stoi(result.data[0]) > 0;
+    }
+    return false;
+}
+
+int Database::getUnreadCountForUser(const std::string& userId) {
+    std::string sql = R"(
+        SELECT COUNT(1)
+        FROM private_messages
+        WHERE receiver_id = ? AND read = 0 AND deleted = 0
+    )";
+    auto result = executeQueryWithParams(sql, {userId});
+    if (result.success && !result.data.empty()) {
+        return std::stoi(result.data[0]);
+    }
+    return 0;
 }
 

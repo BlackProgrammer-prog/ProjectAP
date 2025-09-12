@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <optional>
 
 namespace beast = boost::beast;
 namespace http = beast::http;
@@ -91,12 +92,100 @@ void handle_request(
     try {
         std::cout << "[HTTP] target=" << req.target() << ", doc_root=" << std::string(doc_root) << std::endl;
     } catch(...) {}
+
+    // Helper to apply CORS headers
+    auto apply_cors = [&](auto& res) {
+        std::string origin = "*";
+        try {
+            if (req.find(http::field::origin) != req.end()) {
+                origin = std::string(req[http::field::origin]);
+            }
+        } catch(...) {}
+        res.set(http::field::access_control_allow_origin, origin);
+        res.set(http::field::access_control_allow_methods, "GET,POST,HEAD,OPTIONS");
+        // Reflect requested headers if provided
+        std::string req_headers = "Content-Type, Authorization, Accept";
+        try {
+            if (req.find(http::field::access_control_request_headers) != req.end()) {
+                req_headers = std::string(req[http::field::access_control_request_headers]);
+            }
+        } catch(...) {}
+        res.set(http::field::access_control_allow_headers, req_headers);
+        // Uncomment if you intend to use credentials; then origin must not be '*'
+        // res.set(http::field::access_control_allow_credentials, "true");
+    };
+
+    // CORS preflight handling (OPTIONS)
+    if (req.method() == http::verb::options) {
+        http::response<http::string_body> res{http::status::no_content, req.version()};
+        res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+        apply_cors(res);
+        res.set(http::field::access_control_max_age, "600");
+        res.keep_alive(req.keep_alive());
+        return send(std::move(res));
+    }
+
+    // Proxy certain API routes to AI service on localhost:9000
+    auto proxy_api = [&](const http::request<Body, http::basic_fields<Allocator>>& origReq)
+        -> std::optional<http::response<http::string_body>> {
+        std::string target = std::string(origReq.target());
+        bool is_get_proxy = (origReq.method() == http::verb::get) && (target == "/health" || target == "/blocked-messages" || target == "/stats");
+        bool is_post_proxy = (origReq.method() == http::verb::post) && (target == "/moderate" || target == "/add-banned-word");
+        if (!(is_get_proxy || is_post_proxy)) return std::nullopt;
+
+        try {
+            net::io_context ioc;
+            tcp::resolver resolver{ioc};
+            beast::tcp_stream stream{ioc};
+            auto const results = resolver.resolve("127.0.0.1", "9000");
+            stream.connect(results);
+
+            http::request<http::string_body> fwd;
+            fwd.method(origReq.method());
+            fwd.target(origReq.target());
+            fwd.version(11);
+            fwd.set(http::field::host, "127.0.0.1:9000");
+            // Forward common headers
+            if (origReq.find(http::field::content_type) != origReq.end()) {
+                fwd.set(http::field::content_type, origReq[http::field::content_type]);
+            }
+            // Body
+            if (origReq.method() == http::verb::post) {
+                // Try to get body as a string
+                try {
+                    fwd.body() = origReq.body();
+                } catch(...) {
+                    // Fallback empty
+                    fwd.body() = "";
+                }
+                fwd.prepare_payload();
+            }
+
+            http::write(stream, fwd);
+            beast::flat_buffer buffer;
+            http::response<http::string_body> fwdRes;
+            http::read(stream, buffer, fwdRes);
+            beast::error_code ec;
+            stream.socket().shutdown(tcp::socket::shutdown_both, ec);
+            return fwdRes;
+        } catch (const std::exception& e) {
+            return http::response<http::string_body>{http::status::bad_gateway, origReq.version()};
+        }
+    };
+
+    if (auto proxied = proxy_api(req)) {
+        // Add CORS headers on proxied responses
+        apply_cors(*proxied);
+        proxied->keep_alive(req.keep_alive());
+        return send(std::move(*proxied));
+    }
     auto const bad_request =
-    [&req](beast::string_view why)
+    [&req, &apply_cors](beast::string_view why)
     {
         http::response<http::string_body> res{http::status::bad_request, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(http::field::content_type, "text/html");
+        apply_cors(res);
         res.keep_alive(req.keep_alive());
         res.body() = std::string(why);
         res.prepare_payload();
@@ -104,11 +193,12 @@ void handle_request(
     };
 
     auto const not_found =
-    [&req](beast::string_view target)
+    [&req, &apply_cors](beast::string_view target)
     {
         http::response<http::string_body> res{http::status::not_found, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(http::field::content_type, "text/html");
+        apply_cors(res);
         res.keep_alive(req.keep_alive());
         res.body() = "The resource '" + std::string(target) + "' was not found.";
         res.prepare_payload();
@@ -116,11 +206,12 @@ void handle_request(
     };
 
     auto const server_error =
-    [&req](beast::string_view what)
+    [&req, &apply_cors](beast::string_view what)
     {
         http::response<http::string_body> res{http::status::internal_server_error, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(http::field::content_type, "text/html");
+        apply_cors(res);
         res.keep_alive(req.keep_alive());
         res.body() = "An error occurred: '" + std::string(what) + "'";
         res.prepare_payload();
@@ -177,6 +268,7 @@ void handle_request(
         http::response<http::empty_body> res{http::status::ok, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(http::field::content_type, mime_type(path));
+        apply_cors(res);
         res.content_length(size);
         res.keep_alive(req.keep_alive());
         return send(std::move(res));
@@ -188,6 +280,7 @@ void handle_request(
         std::make_tuple(http::status::ok, req.version())};
     res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
     res.set(http::field::content_type, mime_type(path));
+    apply_cors(res);
     res.content_length(size);
     res.keep_alive(req.keep_alive());
     return send(std::move(res));

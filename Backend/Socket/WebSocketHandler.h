@@ -12,6 +12,9 @@
 #include "UserStatusManager.h"
 #include "PrivateChatManager.h"
 #include "ProfileManager.h"
+// Forward declarations for group types to avoid heavy includes in header
+class GroupManager;
+class GroupChatManager;
 
 using json = nlohmann::json;
 
@@ -37,6 +40,11 @@ public:
     void setupHandlers();
     void setChatManager(std::shared_ptr<PrivateChatManager> chat_manager);
     void setProfileManager(std::shared_ptr<ProfileManager> profile_manager);
+    void setGroupManagers(std::shared_ptr<GroupManager> gm,
+                          std::shared_ptr<GroupChatManager> gcm) {
+        group_manager_ = std::move(gm);
+        group_chat_manager_ = std::move(gcm);
+    }
     void setUserOnlineStatus(const std::string& user_id, bool online);
     void forceAllOfflineTick();
 
@@ -46,6 +54,8 @@ private:
 
     // Handlers
     json handleSendMessage(const json& data, const std::string& client_id);
+    json handleGetMessages(const json& data, const std::string& client_id);
+    json handleExportMessages(const json& data, const std::string& client_id);
     json handleAddContact(const json& data, const std::string& client_id);
     json handleRemoveContact(const json& data, const std::string& client_id);
     json handleGetContacts(const json& data, const std::string& client_id);
@@ -58,6 +68,27 @@ private:
     json handleHeartbeat(const json& data, const std::string& client_id);
     json handleLogout(const json& data, const std::string& client_id);
 
+    // New handlers
+    json handleCheckOnlineByEmails(const json& data, const std::string& client_id);
+    json handleDeleteAccount(const json& data, const std::string& client_id);
+    json handleBlockUser(const json& data, const std::string& client_id);
+    json handleGetUnreadCount(const json& data, const std::string& client_id);
+    json handleGetOpenChats(const json& data, const std::string& client_id);
+    json handleUpdateOpenChats(const json& data, const std::string& client_id);
+
+    // Group chat handlers
+    json handleCreateGroup(const json& data, const std::string& client_id);
+    json handleInviteToGroup(const json& data, const std::string& client_id);
+    json handleJoinGroup(const json& data, const std::string& client_id);
+    json handleLeaveGroup(const json& data, const std::string& client_id);
+    json handleSendGroupMessage(const json& data, const std::string& client_id);
+    json handleGetGroupMessages(const json& data, const std::string& client_id);
+    json handleSearchGroupMessages(const json& data, const std::string& client_id);
+    json handleGetGroupInfo(const json& data, const std::string& client_id);
+    json handleGetUserGroupsByEmail(const json& data, const std::string& client_id);
+    json handleGetGroupMembers(const json& data, const std::string& client_id);
+    json handleGetAndClearInvitations(const json& data, const std::string& client_id);
+
     // Dependencies
     std::shared_ptr<JwtAuth> jwt_auth_;
     std::shared_ptr<ContactManager> contact_manager_;
@@ -65,4 +96,6 @@ private:
     std::shared_ptr<SessionManager> session_manager_;
     std::shared_ptr<PrivateChatManager> chat_manager_;
     std::shared_ptr<ProfileManager> profile_manager_;
+    std::shared_ptr<GroupManager> group_manager_;
+    std::shared_ptr<GroupChatManager> group_chat_manager_;
 };

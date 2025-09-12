@@ -1,5 +1,5 @@
 #pragma once
-#include "Message.hpp"
+#include "Message.h"
 #include "Database.h"
 #include "GroupManager.hpp"
 #include <memory>
@@ -10,7 +10,7 @@ public:
     GroupChatManager(std::shared_ptr<Database> db,
                      std::shared_ptr<GroupManager> gm);
 
-    bool sendGroupMessage(const Message& message);
+    bool sendGroupMessage(const std::string& group_id, const Message& message);
     std::vector<Message> getGroupMessages(const std::string& group_id, int limit = 100);
     bool deleteGroupMessage(const std::string& message_id, const std::string& requester_id);
     bool editGroupMessage(const std::string& message_id,

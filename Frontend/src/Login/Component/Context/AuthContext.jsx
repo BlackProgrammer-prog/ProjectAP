@@ -1,5 +1,7 @@
 import React, {createContext, useContext, useState, useEffect, useCallback, useRef} from 'react';
 import webSocketService from "../Services/WebSocketService";
+import { clearAllPrivateChatsForCurrentUser } from '../../../utils/chatStorage';
+import Swal from "sweetalert2";
 
 const AuthContext = createContext();
 const HEARTBEAT_INTERVAL = 3000; // 3 ثانیه
@@ -12,6 +14,7 @@ export const AuthProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [token, setToken] = useState(null);
     const [onRegisterSuccessCallback, setOnRegisterSuccessCallback] = useState(null);
+    const [connectionStatus, setConnectionStatus] = useState('disconnected'); // 'connected' | 'weak' | 'disconnected'
 
     const lastHeartbeatResponseRef = useRef(Date.now());
     const heartbeatTimeoutRef = useRef(null);
@@ -20,6 +23,7 @@ export const AuthProvider = ({ children }) => {
     const tokenRef = useRef(null);
     const isAuthenticatedRef = useRef(false);
     const registerPendingRef = useRef(false);
+    const unreadRequestedRef = useRef(false);
 
 
 
@@ -34,13 +38,25 @@ export const AuthProvider = ({ children }) => {
         // پاک کردن تایمرها
         clearInterval(heartbeatIntervalRef.current);
         clearTimeout(heartbeatTimeoutRef.current);
+        unreadRequestedRef.current = false;
 
         // کدهای موجود برای پاک کردن state و localStorage
         setUser(null);
         setToken(null);
         setIsAuthenticated(false);
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
+        try {
+            // Remove all private chat caches for current user (email-based prefix)
+            clearAllPrivateChatsForCurrentUser();
+            // Remove PV cache
+            localStorage.removeItem('PV');
+            // Remove Groups cache
+            localStorage.removeItem('GROUPS');
+            // Remove auth
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+        } catch (e) {
+            console.error('Failed to cleanup localStorage on logout:', e);
+        }
     }, [isAuthenticated, token]);
 
 
@@ -189,6 +205,14 @@ export const AuthProvider = ({ children }) => {
             } else {
                  console.error(`❌ Server failed update for: ${response.type}. Reason: ${response.message}`);
             }
+        } else if (response.status === 'success' && typeof response.unread === 'number') {
+            // Handle get_unread_count response
+            const count = response.unread;
+            if (count > 0) {
+                Swal.fire({ toast: true, position: 'bottom-start', icon: 'info', title: `شما ${count} پیام خوانده‌نشده دارید`, showConfirmButton: false, timer: 2800, timerProgressBar: true });
+            } else {
+                Swal.fire({ toast: true, position: 'bottom-start', icon: 'success', title: 'هیچ پیام خوانده‌نشده‌ای ندارید', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+            }
         } else if (response.status === 'error' && (response.message?.includes('ورود') || response.message?.includes('ثبت نام'))) {
             setIsLoading(false);
             if (registerPendingRef.current) registerPendingRef.current = false;
@@ -221,6 +245,53 @@ export const AuthProvider = ({ children }) => {
         isAuthenticatedRef.current = isAuthenticated;
     }, [token, isAuthenticated]);
 
+    // Ensure WebSocket connection attempt on app load
+    useEffect(() => {
+        try { webSocketService.connect(); } catch {}
+    }, []);
+
+    // Periodically evaluate connection status to ws://localhost:8081
+    const evaluateConnection = useCallback(() => {
+        try {
+            const socket = webSocketService.socket;
+            const readyState = socket ? socket.readyState : (typeof WebSocket !== 'undefined' ? WebSocket.CLOSED : 3);
+            if (readyState !== (typeof WebSocket !== 'undefined' ? WebSocket.OPEN : 1)) {
+                setConnectionStatus('disconnected');
+                return;
+            }
+            if (isAuthenticatedRef.current) {
+                const sinceMs = Date.now() - lastHeartbeatResponseRef.current;
+                const missed = missedBeatsRef.current;
+                if (missed >= 2 || sinceMs > HEARTBEAT_TIMEOUT) {
+                    setConnectionStatus('weak');
+                } else {
+                    setConnectionStatus('connected');
+                }
+            } else {
+                // When not authenticated, rely on open socket only
+                setConnectionStatus('connected');
+            }
+        } catch {
+            setConnectionStatus('disconnected');
+        }
+    }, []);
+
+    useEffect(() => {
+        const id = setInterval(evaluateConnection, 2000);
+        evaluateConnection();
+        return () => clearInterval(id);
+    }, [evaluateConnection]);
+
+    // پس از احراز هویت (ورود یا auto-login) یک‌بار درخواست unread بده
+    useEffect(() => {
+        if (isAuthenticated && token && !unreadRequestedRef.current) {
+            try {
+                webSocketService.send({ type: 'get_unread_count', token });
+                unreadRequestedRef.current = true;
+            } catch {}
+        }
+    }, [isAuthenticated, token]);
+
 
     const handleLoginSuccess = (response) => {
         localStorage.setItem('token', response.token);
@@ -235,6 +306,13 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(JSONUSER));
         setUser(response.user); setToken(response.token); setIsAuthenticated(true);
         alert('ورود با موفقیت انجام شد!');
+        // Immediately request unread count once after successful login
+        try {
+            if (!unreadRequestedRef.current && response?.token) {
+                webSocketService.send({ type: 'get_unread_count', token: response.token });
+                unreadRequestedRef.current = true;
+            }
+        } catch {}
     };
 
     const handleRegisterSuccess = (response) => {
@@ -288,7 +366,7 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     return (
-        <AuthContext.Provider value={{ user, token, isAuthenticated, isLoading, login, register, logout, setOnRegisterSuccess, updateUser, setNotificationStatus, changePassword, updateAvatar }}>
+        <AuthContext.Provider value={{ user, token, isAuthenticated, isLoading, connectionStatus, login, register, logout, setOnRegisterSuccess, updateUser, setNotificationStatus, changePassword, updateAvatar }}>
             {children}
         </AuthContext.Provider>
     );
