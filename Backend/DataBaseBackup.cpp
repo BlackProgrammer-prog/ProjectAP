@@ -1,4 +1,4 @@
-#include "DateBaseBackup.h"
+#include "DatabaseBackup.h"
 #include <filesystem>
 #include <chrono>
 #include <iomanip>
@@ -8,40 +8,54 @@
 
 namespace fs = std::filesystem;
 
-DateBaseBackup::DateBaseBackup(const std::string &dbPath, const std::string &backupFolder, int intervalMinutes)
-    : dbPath(dbPath), backupFolder(backupFolder), intervalMinutes(intervalMinutes)
+DatabaseBackup::DatabaseBackup(std::string dbPath, std::string backupFolder, int intervalMinutes)
+    : dbPath(std::move(dbPath)),
+      backupFolder(std::move(backupFolder)),
+      intervalMinutes(intervalMinutes)
 {
-    if (!fs::exists(backupFolder))
+    try
     {
-        fs::create_directories(backupFolder);
+        if (!fs::exists(this->backupFolder))
+        {
+            fs::create_directories(this->backupFolder);
+        }
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Failed to create backup directory: " << e.what() << std::endl;
+        throw; // بهتره خطا propagate بشه تا برنامه بدونه بکاپ نمی‌تونه ذخیره بشه
     }
 }
 
-DateBaseBackup::~DateBaseBackup()
+DatabaseBackup::~DatabaseBackup()
 {
     stop();
 }
 
-void DateBaseBackup::start()
+void DatabaseBackup::start()
 {
-    running = true;
-    worker = std::thread(&DateBaseBackup::backupLoop, this);
+    if (running.exchange(true))
+        return; // اگر قبلاً اجرا شده، دوباره اجرا نکن
+    worker = std::thread(&DatabaseBackup::backupLoop, this);
 }
 
-void DateBaseBackup::stop()
+void DatabaseBackup::stop()
 {
-    running = false;
+    if (!running.exchange(false))
+        return; // اگر قبلاً متوقف شده، کاری نکن
     if (worker.joinable())
     {
         worker.join();
     }
 }
 
-void DateBaseBackup::backupNow()
+void DatabaseBackup::backupNow()
 {
     try
     {
-        auto t = std::time(nullptr);
+        auto now = std::chrono::system_clock::now();
+        std::time_t t = std::chrono::system_clock::to_time_t(now);
+
         std::ostringstream oss;
         oss << std::put_time(std::localtime(&t), "%Y-%m-%d_%H-%M-%S");
         std::string filename = "backup_" + oss.str() + ".db";
@@ -49,19 +63,27 @@ void DateBaseBackup::backupNow()
         fs::path target = fs::path(backupFolder) / filename;
         fs::copy_file(dbPath, target, fs::copy_options::overwrite_existing);
 
-        std::cout << "Backup created: " << target << std::endl;
+        std::cout << "[INFO] Backup created: " << target << std::endl;
+    }
+    catch (const fs::filesystem_error &e)
+    {
+        std::cerr << "[ERROR] Filesystem error during backup: " << e.what() << std::endl;
     }
     catch (const std::exception &e)
     {
-        std::cerr << "Backup failed: " << e.what() << std::endl;
+        std::cerr << "[ERROR] Backup failed: " << e.what() << std::endl;
     }
 }
 
-void DateBaseBackup::backupLoop()
+void DatabaseBackup::backupLoop()
 {
+    using namespace std::chrono_literals;
     while (running)
     {
         backupNow();
-        std::this_thread::sleep_for(std::chrono::minutes(intervalMinutes));
+        for (int i = 0; i < intervalMinutes * 60 && running; ++i)
+        {
+            std::this_thread::sleep_for(1s); // چک هر ثانیه برای stop()
+        }
     }
 }
