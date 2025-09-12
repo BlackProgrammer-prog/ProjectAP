@@ -1,6 +1,4 @@
-//
-// Created by HOME on 9/10/2025.
-//
+
 
 #ifndef BACKEND_DATEBASEBACKUP_H
 #define BACKEND_DATEBASEBACKUP_H
