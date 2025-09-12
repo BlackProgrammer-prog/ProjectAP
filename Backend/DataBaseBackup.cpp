@@ -1,7 +1,3 @@
-//
-// Created by HOME on 9/10/2025.
-//
-
 #include "DateBaseBackup.h"
 #include <filesystem>
 #include <chrono>
