@@ -12,6 +12,7 @@ import Help from '../../Secctions/help/help';
 import { useAuth } from '../../Login/Component/Context/AuthContext';
 import ChangePasswordDialog from '../../Secctions/settings/ChangePasswordDialog';
 import UpdateAvatarDialog from '../../Secctions/settings/UpdateAvatarDialog'; // Import the new dialog
+import FaceEnrollDialog from '../../Secctions/settings/FaceEnrollDialog';
 
 const Settings = () => {
     const theme = useTheme();
@@ -24,6 +25,7 @@ const Settings = () => {
     const [openHelpDialog, setOpenHelpDialog] = useState(false);
     const [openChangePassword, setOpenChangePassword] = useState(false);
     const [openUpdateAvatar, setOpenUpdateAvatar] = useState(false); // New state for avatar dialog
+    const [openFaceEnroll, setOpenFaceEnroll] = useState(false);
     
     const handleBack = () => navigate(-1);
     
@@ -41,6 +43,7 @@ const Settings = () => {
         { key: 5, icon: <Note size={20} />, title: "Request Account Info", onclick: () => {} },
         { key: 6, icon: <Keyboard size={20} />, title: "Keyboard Shortcuts", onclick: () => setOpenShortcuts(true) },
         { key: 7, icon: <Info size={20} />, title: "Help", onclick: () => setOpenHelpDialog(true) },
+        { key: 8, icon: <Image size={20} />, title: "ثبت چهره (وب‌کم)", onclick: () => setOpenFaceEnroll(true) },
     ];
     
     return (
@@ -97,6 +100,7 @@ const Settings = () => {
             {openWallpaperDialog && <WallpaperDialog open={openWallpaperDialog} onClose={() => setOpenWallpaperDialog(false)} />}
             {openChangePassword && <ChangePasswordDialog open={openChangePassword} handleClose={() => setOpenChangePassword(false)} />}
             {openUpdateAvatar && <UpdateAvatarDialog open={openUpdateAvatar} handleClose={() => setOpenUpdateAvatar(false)} />}
+            {openFaceEnroll && <FaceEnrollDialog open={openFaceEnroll} handleClose={() => setOpenFaceEnroll(false)} />}
         </>
     );
 };

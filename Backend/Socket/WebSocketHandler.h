@@ -76,6 +76,10 @@ private:
     json handleGetOpenChats(const json& data, const std::string& client_id);
     json handleUpdateOpenChats(const json& data, const std::string& client_id);
 
+    // Image message handlers
+    json handleSendImageMessage(const json& data, const std::string& client_id);
+    json handleSendGroupImageMessage(const json& data, const std::string& client_id);
+
     // Group chat handlers
     json handleCreateGroup(const json& data, const std::string& client_id);
     json handleInviteToGroup(const json& data, const std::string& client_id);

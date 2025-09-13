@@ -2,6 +2,7 @@
 #include "WebSocketHandler.h"
 #include "GroupManager.hpp"
 #include "GroupChatManagre.hpp"
+#include "FileManager.h"
 #include <vector>
 #include <ctime>
 #include <iostream>
@@ -165,6 +166,40 @@ json WebSocketServer::handleSendGroupMessage(const json& data, const std::string
     }
 
     return {{"status","success"},{"message_id", msg.id}};
+}
+
+json WebSocketServer::handleSendGroupImageMessage(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"]))
+        return {{"status","error"},{"message","Invalid token"}};
+    if (!data.contains("group_id") || !data.contains("image_data") || !data.contains("filename"))
+        return {{"status","error"},{"message","Missing group_id, image_data or filename"}};
+
+    std::string uid = jwt_auth_->getUserId(data["token"]);
+    std::string gid = data["group_id"];
+    if (!group_manager_ || !group_chat_manager_) return {{"status","error"},{"message","Group services not ready"}};
+    if (!group_manager_->isMember(gid, uid)) return {{"status","error"},{"message","Not a group member"}};
+
+    std::string saved_path = FileManager::saveBase64File(static_cast<std::string>(data["image_data"]),
+                                                         "uploads/group_messages",
+                                                         static_cast<std::string>(data["filename"]));
+    if (saved_path.empty()) return {{"status","error"},{"message","Failed to save image"}};
+
+    Message msg;
+    msg.id = Message::generateUUID();
+    msg.sender_id = uid;
+    msg.receiver_id = "";
+    msg.content = saved_path; // store URL
+    msg.timestamp = std::time(nullptr);
+    msg.edited_timestamp = msg.timestamp;
+    msg.type = MessageType::GROUP;
+    msg.status = MessageStatus::SENT;
+    msg.deleted = false;
+    msg.delivered = false;
+    msg.read = false;
+
+    bool ok = group_chat_manager_->sendGroupMessage(gid, msg);
+    if (!ok) return {{"status","error"},{"message","Failed to send"}};
+    return {{"status","success"},{"message_id", msg.id},{"url", saved_path}};
 }
 
 json WebSocketServer::handleGetGroupMessages(const json& data, const std::string& client_id) {
@@ -844,6 +879,14 @@ void WebSocketServer::setupHandlers() {
         return handleGetMessages(data, clientId);
     });
 
+    // Image routes
+    impl_->on("send_image_message", [this](const json& data, const std::string& clientId) {
+        return handleSendImageMessage(data, clientId);
+    });
+    impl_->on("send_group_image_message", [this](const json& data, const std::string& clientId) {
+        return handleSendGroupImageMessage(data, clientId);
+    });
+
     impl_->on("search_user", [this](const json& data, const std::string& clientId) {
         return handleSearchUser(data, clientId);
     });
@@ -1017,6 +1060,58 @@ json WebSocketServer::handleSendMessage(const json& data, const std::string& cli
         return {{"status", "success"}, {"message_id", msg.id}};
     }
 
+    return {{"status", "error"}, {"message", "Failed to send message"}};
+}
+
+json WebSocketServer::handleSendImageMessage(const json& data, const std::string& client_id) {
+    if (!data.contains("token") || !jwt_auth_->isValidToken(data["token"])) {
+        return {{"status", "error"}, {"message", "Invalid token"}};
+    }
+    if (!data.contains("to") || !data.contains("image_data") || !data.contains("filename")) {
+        return {{"status", "error"}, {"message", "Missing fields (to, image_data, filename)"}};
+    }
+
+    std::string sender_id = jwt_auth_->getUserId(data["token"]);
+    std::string receiver_email = data["to"];
+
+    if (!contact_manager_->isContact(sender_id, receiver_email)) {
+        return {{"status", "error"}, {"message", "User not in contacts"}};
+    }
+    std::string receiver_id = contact_manager_->findUserByEmail(receiver_email);
+    if (receiver_id.empty()) {
+        return {{"status", "error"}, {"message", "User not found"}};
+    }
+
+    std::string base64 = data["image_data"];
+    std::string fname = data["filename"];
+    std::string saved_path = FileManager::saveBase64File(base64, "uploads/messages", fname);
+    if (saved_path.empty()) {
+        return {{"status", "error"}, {"message", "Failed to save image"}};
+    }
+
+    Message msg;
+    msg.id = Message::generateUUID();
+    msg.sender_id = sender_id;
+    msg.receiver_id = receiver_id;
+    // Store as URL in content
+    msg.content = saved_path;
+    msg.timestamp = std::time(nullptr);
+    msg.type = MessageType::PRIVATE;
+    msg.status = MessageStatus::SENT;
+    msg.deleted = false;
+    msg.delivered = false;
+    msg.read = false;
+    msg.edited_timestamp = msg.timestamp;
+
+    if (chat_manager_->sendMessage(msg)) {
+        json payload = {
+            {"type", "new_message"},
+            {"message", msg.toJson()}
+        };
+        auto client_ids = session_manager_->getClientIds(receiver_id);
+        for (const auto& cid : client_ids) sendToClient(cid, payload);
+        return {{"status", "success"}, {"message_id", msg.id}, {"url", saved_path}};
+    }
     return {{"status", "error"}, {"message", "Failed to send message"}};
 }
 

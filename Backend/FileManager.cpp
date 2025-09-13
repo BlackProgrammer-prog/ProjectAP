@@ -61,8 +61,9 @@
      outFile.write(reinterpret_cast<const char*>(decodedData.data()), decodedData.size());
      outFile.close();
 
-     // Return the relative path to be stored in the DB and used by the client
-     return "uploads/avatars/" + uniqueFilename;
+     // Return the relative path (normalize to forward slashes) to be stored in the DB and used by the client
+     std::string rel = (fs::path(directory) / uniqueFilename).generic_string();
+     return rel;
  }
 // -------------------------------------------------------------------------------ali
 //#include "FileManager.h"

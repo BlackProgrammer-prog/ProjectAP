@@ -8,6 +8,7 @@ import { EnvelopeSimple } from 'phosphor-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './Component/Context/AuthContext';
 import backgroundImage from './Assist/background.jpg';
+import FaceResetDialog from './Component/FaceResetDialog';
 
 const LoginRegister = () => {
     const navigate = useNavigate();
@@ -16,6 +17,7 @@ const LoginRegister = () => {
     const [isLogin, setIsLogin] = useState(true);
     const [showPassword, setShowPassword] = useState(false);
     const [alertInfo, setAlertInfo] = useState(null);
+    const [openFaceReset, setOpenFaceReset] = useState(false);
 
     // Form fields
     const [username, setUsername] = useState('');
@@ -106,7 +108,7 @@ const LoginRegister = () => {
                     {isLogin ? (
                         <Stack direction="row" justifyContent="space-between" alignItems="center">
                             <FormControlLabel control={<Checkbox />} label="مرا به خاطر بسپار" />
-                            <Link href="#" variant="body2">رمز عبور را فراموش کرده‌اید؟</Link>
+                            <Link href="#" variant="body2" onClick={(e) => { e.preventDefault(); setOpenFaceReset(true); }}>رمز عبور را فراموش کرده‌اید؟</Link>
                         </Stack>
                     ) : (
                         <FormControlLabel control={<Checkbox required />} label="با شرایط و قوانین موافقم" />
@@ -124,6 +126,13 @@ const LoginRegister = () => {
                     </Typography>
                 </Stack>
             </Paper>
+            {openFaceReset && (
+                <FaceResetDialog
+                    open={openFaceReset}
+                    handleClose={() => setOpenFaceReset(false)}
+                    defaultEmail={email}
+                />
+            )}
         </Box>
     );
 };
