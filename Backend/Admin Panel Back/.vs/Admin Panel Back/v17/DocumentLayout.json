@@ -1,0 +1,72 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\HOME\\Desktop\\Admin Panel Back\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{365E2B7E-1438-49D5-AFA3-6ED271C044E0}|Admin Panel Back\\Admin Panel Back.csproj|c:\\users\\home\\desktop\\admin panel back\\admin panel back\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{365E2B7E-1438-49D5-AFA3-6ED271C044E0}|Admin Panel Back\\Admin Panel Back.csproj|solutionrelative:admin panel back\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{365E2B7E-1438-49D5-AFA3-6ED271C044E0}|Admin Panel Back\\Admin Panel Back.csproj|C:\\Users\\HOME\\Desktop\\Admin Panel Back\\admin panel back\\formsrevermanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{365E2B7E-1438-49D5-AFA3-6ED271C044E0}|Admin Panel Back\\Admin Panel Back.csproj|solutionrelative:admin panel back\\formsrevermanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{365E2B7E-1438-49D5-AFA3-6ED271C044E0}|Admin Panel Back\\Admin Panel Back.csproj|C:\\Users\\HOME\\Desktop\\Admin Panel Back\\Admin Panel Back\\Form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{365E2B7E-1438-49D5-AFA3-6ED271C044E0}|Admin Panel Back\\Admin Panel Back.csproj|solutionrelative:Admin Panel Back\\Form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 3,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "FormSreverManager.cs [Design]",
+              "DocumentMoniker": "C:\\Users\\HOME\\Desktop\\Admin Panel Back\\Admin Panel Back\\FormSreverManager.cs",
+              "RelativeDocumentMoniker": "Admin Panel Back\\FormSreverManager.cs",
+              "ToolTip": "C:\\Users\\HOME\\Desktop\\Admin Panel Back\\Admin Panel Back\\FormSreverManager.cs [Design]",
+              "RelativeToolTip": "Admin Panel Back\\FormSreverManager.cs [Design]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-11T02:35:50.674Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Form1.cs",
+              "DocumentMoniker": "C:\\Users\\HOME\\Desktop\\Admin Panel Back\\Admin Panel Back\\Form1.cs",
+              "RelativeDocumentMoniker": "Admin Panel Back\\Form1.cs",
+              "ToolTip": "C:\\Users\\HOME\\Desktop\\Admin Panel Back\\Admin Panel Back\\Form1.cs",
+              "RelativeToolTip": "Admin Panel Back\\Form1.cs",
+              "ViewState": "AgIAAHYBAAAAAAAAAAAUwHgBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-31T20:19:35.874Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Form1.cs [Design]",
+              "DocumentMoniker": "C:\\Users\\HOME\\Desktop\\Admin Panel Back\\Admin Panel Back\\Form1.cs",
+              "RelativeDocumentMoniker": "Admin Panel Back\\Form1.cs",
+              "ToolTip": "C:\\Users\\HOME\\Desktop\\Admin Panel Back\\Admin Panel Back\\Form1.cs [Design]",
+              "RelativeToolTip": "Admin Panel Back\\Form1.cs [Design]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-31T19:18:23.335Z",
+              "EditorCaption": " [Design]"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
